@@ -1,0 +1,100 @@
+            <span>A maximum of 3 candidates may file in a party's primary.</span><br>
+            <span>After registration, primaries run for 24 hours.</span>
+            <br><br>
+            <table class="table">
+            <thead>
+                <th>Party</th>
+                <th>Signup Deadline</th>
+                <th>Candidates</th>
+            </thead>
+            <tbody>
+                <tr>
+                <td class="ppusa-bmc-color">
+                <img src="/assets/img/party-pictures/bmc.webp" style="width:50px; height:50px;">
+                &nbsp;
+                                <a class="ppusa-bmc-color" href="../../../primaries/1683">Democratic Party</a>
+                </td>
+                                <td style="padding-top:18px;">
+                <div class="d-flex flex-column align-items-center text-center">
+                    <div>October 19, 2025 at 9:00 PM</div>
+                    <small class="text-muted">Week 48, 2037</small>
+                </div>
+                </td>
+                <td style="padding-top:23px;">1</td>
+                </tr>
+                <tr>
+                <td class="ppusa-ava-color">
+                <img src="/assets/img/party-pictures/ava.webp" style="width:50px; height:50px;">
+                &nbsp;
+                                <a class="ppusa-ava-color" href="../../../primaries/1684">Republican Party</a>
+                </td>
+                                <td style="padding-top:18px;">
+                <div class="d-flex flex-column align-items-center text-center">
+                    <div>October 19, 2025 at 9:00 PM</div>
+                    <small class="text-muted">Week 48, 2037</small>
+                </div>
+                </td>
+                <td style="padding-top:23px;">0</td>
+                </tr>
+            </tbody>
+            </table>
+            </div>
+            </div>
+
+            <div class="col-sm-6">
+            <div class="container-fluid bg-white rounded text-center">
+            <br>
+            <h4>House of Representatives</h4>
+            <span>A maximum of 3 candidates may file in a party's primary.</span><br>
+            <span>After registration, primaries run for 24 hours.</span>
+            <br><br>
+            <table class="table">
+            <thead>
+                <th>Party</th>
+                <th>Signup Deadline</th>
+                <th>Candidates</th>
+            </thead>
+            <tbody>
+                <tr>
+                <td class="ppusa-bmc-color">
+                <img src="/assets/img/party-pictures/bmc.webp" style="width:50px; height:50px;">
+                &nbsp;
+                                <a class="ppusa-bmc-color" href="../../../primaries/1685">Democratic Party</a>
+                </td>
+                                <td style="padding-top:18px;">
+                <div class="d-flex flex-column align-items-center text-center">
+                    <div>October 15, 2025 at 9:00 PM</div>
+                    <small class="text-muted">Week 48, 2035</small>
+                </div>
+                </td>
+                <td style="padding-top:23px;">1</td>
+                </tr>
+                <tr>
+                <td class="ppusa-ava-color">
+                <img src="/assets/img/party-pictures/ava.webp" style="width:50px; height:50px;">
+                &nbsp;
+                                <a class="ppusa-ava-color" href="../../../primaries/1686">Republican Party</a>
+                </td>
+                                <td style="padding-top:18px;">
+                <div class="d-flex flex-column align-items-center text-center">
+                    <div>October 15, 2025 at 9:00 PM</div>
+                    <small class="text-muted">Week 48, 2035</small>
+                </div>
+                </td>
+                <td style="padding-top:23px;">1</td>
+                </tr>
+            </tbody>
+            </table>
+            </div>
+            </div>
+
+        </div>
+    </div>
+    <div class="col-md-1"></div>
+</main>
+
+<footer class="footer pt-5 pb-3 bg-primary text-white" style="background-color:#15234d !important;">
+  <div class="container">
+    <div class="row">
+      <div class="col-md-4">
+        <img class="navbar-brand-dark mb-4" height="50" src="/assets/img/branding/ppusaicon.webp" alt="Logo light">
