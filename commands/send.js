@@ -1,17 +1,12 @@
 // commands/send.js
 const { SlashCommandBuilder } = require('discord.js');
-const { launch } = require('../lib/puppeteer-launch');
+const { authenticateAndNavigate, PPUSAAuthError } = require('../lib/ppusa-auth');
+const { config, getEnv, toAbsoluteUrl } = require('../lib/ppusa-config');
 
-// Env helpers and config
-const E = (k, d = '') => process.env[k] ?? d;
-const BASE = E('PPUSA_BASE_URL', 'https://powerplayusa.net');
-const LOGIN_PAGE = E('PPUSA_LOGIN_PAGE', '/login');
-const EMAIL = E('PPUSA_EMAIL');
-const PASSWORD = E('PPUSA_PASSWORD');
-const NAV_TIMEOUT = Number(E('PPUSA_NAV_TIMEOUT_MS', '20000'));
-// Dem treasury page contains the send/approval form
-const DEMS_TREASURY_URL = E('DEMS_TREASURY_URL', `${BASE}/parties/1/treasury`);
-const SEND_USE_AUTOSUGGEST = String(E('SEND_USE_AUTOSUGGEST', 'false')).toLowerCase() === 'true';
+const NAV_TIMEOUT = config.navTimeout;
+const DEFAULT_DEBUG = config.debug;
+const DEMS_TREASURY_URL = toAbsoluteUrl(getEnv('DEMS_TREASURY_URL', '/parties/1/treasury'));
+const SEND_USE_AUTOSUGGEST = String(getEnv('SEND_USE_AUTOSUGGEST', 'false')).toLowerCase() === 'true';
 
 // Committee roles (reused from funds.js)
 const ROLE_NATIONAL = '1257715735090954270';
@@ -90,7 +85,7 @@ module.exports = {
     // Attempt the website send if configured
     let webResult = null;
     try {
-      if (!EMAIL || !PASSWORD) {
+      if (!config.email || !config.password) {
         webResult = { ok: false, reason: 'Missing PPUSA_EMAIL/PASSWORD' };
       } else {
         webResult = await performWebSend({ type, name, amount, debug });
@@ -141,66 +136,19 @@ async function performWebSend({ type, name, amount, debug }) {
   };
   note('start', 'Initiating web send.', { type, name, amount });
 
-  const browser = await launch();
+  let session;
+  let browser;
+  let page;
+  let finalUrl = null;
   try {
-    const page = await browser.newPage();
-    await page.setUserAgent('Mozilla/5.0');
-    page.setDefaultNavigationTimeout(NAV_TIMEOUT);
-    note('browser', 'Browser launched and page initialised.');
-
-    // Login
-    const loginUrl = LOGIN_PAGE.startsWith('http') ? LOGIN_PAGE : BASE + LOGIN_PAGE;
-    await page.goto(loginUrl, { waitUntil: 'networkidle2' });
-    note('navigate-login', 'Navigated to login page.', { loginUrl: page.url() });
-
-    const emailSel = await pickFirst(page, [
-      'input[type="email"]',
-      'input[name="email"]',
-      'input[name="username"]',
-      'input[name*="email" i]',
-      'input[name*="user" i]'
-    ]);
-    const passSel = await pickFirst(page, [
-      'input[type="password"]',
-      'input[name="password"]',
-      'input[name*="pass" i]'
-    ]);
-    if (!emailSel || !passSel) {
-      note('login', 'Login fields missing.', { emailSel, passSel });
-      return { ok: false, step: 'login', reason: 'Login fields not found', actions };
-    }
-    note('login', 'Login fields located.', { emailSel, passSel });
-
-    await page.focus(emailSel); await page.keyboard.type(EMAIL, { delay: 15 });
-    await page.focus(passSel);  await page.keyboard.type(PASSWORD, { delay: 15 });
-    note('login', 'Credentials entered (email masked).');
-
-    const submitSel = await pickFirst(page, [
-      'button[type="submit"]', 'input[type="submit"]', 'button[name="login"]'
-    ]);
-    if (submitSel) {
-      await Promise.all([
-        page.waitForNavigation({ waitUntil: 'networkidle2', timeout: NAV_TIMEOUT }),
-        page.click(submitSel),
-      ]);
-    } else {
-      await Promise.all([
-        page.waitForNavigation({ waitUntil: 'networkidle2', timeout: NAV_TIMEOUT }),
-        page.keyboard.press('Enter'),
-      ]);
-    }
-    note('login', 'Login form submitted.', { submitSel });
-
-    if (/\/login\b/i.test(page.url())) {
-      note('login', 'Still on login page after submit.', { currentUrl: page.url() });
-      return { ok: false, step: 'login', reason: 'Auth rejected', actions };
-    }
-    note('login-success', 'Logged in successfully.', { currentUrl: page.url() });
-
-    // Go to Dems treasury page (send form lives here)
-    const demUrl = DEMS_TREASURY_URL.startsWith('http') ? DEMS_TREASURY_URL : BASE + DEMS_TREASURY_URL;
-    await page.goto(demUrl, { waitUntil: 'networkidle2' });
-    note('navigate-treasury', 'Navigated to Dem treasury page.', { currentUrl: page.url() });
+    const authDebug = debug || DEFAULT_DEBUG;
+    session = await authenticateAndNavigate({ url: DEMS_TREASURY_URL, debug: authDebug });
+    browser = session.browser;
+    page = session.page;
+    finalUrl = session.finalUrl;
+    const authActions = Array.isArray(session.actions) ? session.actions : [];
+    for (const action of authActions) actions.push({ phase: 'auth', ...action });
+    note('login-success', 'Authenticated and ready on treasury page.', { finalUrl });
 
     // Snapshot outgoing transactions before submitting
     const preTransactions = await scrapeOutgoingTransactions(page);
@@ -449,16 +397,26 @@ async function performWebSend({ type, name, amount, debug }) {
       needsApproval,
       actions: debug ? actions : undefined
     };
+  } catch (err) {
+    if (err instanceof PPUSAAuthError) {
+      const details = err.details || {};
+      if (Array.isArray(details.actions)) {
+        for (const action of details.actions) actions.push({ phase: 'auth-error', ...action });
+      }
+      note('auth-error', err.message, details);
+      return { ok: false, step: 'auth', reason: err.message, actions };
+    }
+    throw err;
   } finally {
-    note('cleanup', 'Closing browser.');
-    await browser.close();
+    if (browser) {
+      try {
+        note('cleanup', 'Closing browser.');
+        await browser.close();
+      } catch (closeErr) {
+        note('cleanup', 'Browser close failed.', { error: closeErr?.message ?? String(closeErr) });
+      }
+    }
   }
-}
-
-function pickFirst(page, selectors) {
-  return Promise.any(
-    selectors.map(sel => page.waitForSelector(sel, { timeout: 3000 }).then(() => sel))
-  ).catch(() => null);
 }
 
 async function scrapeOutgoingTransactions(page) {

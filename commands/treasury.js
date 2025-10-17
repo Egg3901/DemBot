@@ -1,150 +1,36 @@
-﻿// commands/treasury.js
-// Uses Puppeteer to perform a real browser login, then scrapes the treasury balance.
-// Requirements: discord.js v14, Node 18+, `npm i puppeteer`
-//
-// .env needed:
-//   PPUSA_BASE_URL=https://powerplayusa.net
-//   PPUSA_LOGIN_PAGE=/login
-//   TREASURY_URL=https://powerplayusa.net/parties/1/treasury
-//   PPUSA_EMAIL=you@example.com
-//   PPUSA_PASSWORD=your_password
-//
-// Optional (for slower servers):
-//   PPUSA_NAV_TIMEOUT_MS=20000
-//
-// Run: /treasury  (or /treasury debug:true)
+// commands/treasury.js
+// Fetches the party treasury page via Puppeteer and reports totals.
 
 const { SlashCommandBuilder } = require('discord.js');
 const cheerio = require('cheerio');
-const { launch } = require('../lib/puppeteer-launch');
+const { authenticateAndNavigate, PPUSAAuthError } = require('../lib/ppusa-auth');
+const { config, getEnv, toAbsoluteUrl } = require('../lib/ppusa-config');
 
-const E = (k, d = '') => process.env[k] ?? d;
+const BASE = config.baseUrl;
+const DEFAULT_DEBUG = config.debug;
+const TREASURY_URL = toAbsoluteUrl(getEnv('TREASURY_URL', '/parties/1/treasury'));
+const DEMS_TREASURY_URL = toAbsoluteUrl(getEnv('DEMS_TREASURY_URL', TREASURY_URL));
+const GOP_TREASURY_URL = toAbsoluteUrl(getEnv('GOP_TREASURY_URL', '/parties/2'));
 
-const BASE         = E('PPUSA_BASE_URL', 'https://powerplayusa.net');
-const LOGIN_PAGE   = E('PPUSA_LOGIN_PAGE', '/login');
-const TREASURY_URL = E('TREASURY_URL', `${BASE}/parties/1/treasury`);
-const DEMS_TREASURY_URL = E('DEMS_TREASURY_URL', `${BASE}/parties/1/treasury`);
-const GOP_TREASURY_URL  = E('GOP_TREASURY_URL', `${BASE}/parties/2`);
-const EMAIL        = E('PPUSA_EMAIL');
-const PASSWORD     = E('PPUSA_PASSWORD');
-const NAV_TIMEOUT  = Number(E('PPUSA_NAV_TIMEOUT_MS', '20000'));
-
-// common selectors on that site + fallbacks
-const EMAIL_CANDIDATES = [
-  'input[type="email"]',
-  'input[name="email"]',
-  'input[name="username"]',
-  'input[name*="email" i]',
-  'input[name*="user" i]'
-];
-
-const PASS_CANDIDATES = [
-  'input[type="password"]',
-  'input[name="password"]',
-  'input[name*="pass" i]'
-];
-
-const SUBMIT_CANDIDATES = [
-  'button[type="submit"]',
-  'input[type="submit"]',
-  'button[name="login"]',
-  'button:has-text("Login")',
-  'button:has-text("Sign in")'
-];
-
-function pickFirst(page, selectors) {
-  return Promise.any(
-    selectors.map(sel => page.waitForSelector(sel, { timeout: 3000 }).then(() => sel))
-  ).catch(() => null);
-}
-
-// replace your existing extractBalance(html) with this:
-function extractBalance(html) {
-  // 1) Narrow to the â€œParty Financesâ€ block
-  const financesBlockMatch = html.match(
-    /<h3>\s*Party\s+Finances\s*<\/h3>[\s\S]*?<\/div>\s*<\/div>\s*<\/div>/i
-  );
-  if (!financesBlockMatch) return null;
-  const block = financesBlockMatch[0];
-
-  // 2) In that block, find the â€œNational Partyâ€ card and its <h5 class="ppusa-money-color">â€¦</h5>
-  const nationalCardMatch = block.match(
-    /<div[^>]*class="[^"]*col-md-3[^"]*text-center[^"]*"[^>]*>\s*<h5>\s*National\s+Party\s*<\/h5>\s*<h5[^>]*class="[^"]*\bppusa-money-color\b[^"]*"[^>]*>\s*([^<]+)\s*<\/h5>/i
-  );
-  if (nationalCardMatch) {
-    return nationalCardMatch[1].trim(); // e.g. "$125,932,248"
+const buildDebugArtifacts = (enabled, data) => {
+  if (!enabled || !data) return { suffix: '', files: undefined };
+  const payload = JSON.stringify(data, null, 2);
+  if (payload.length > 1500) {
+    return {
+      suffix: '\n\nDebug details attached (treasury_debug.json)',
+      files: [{ attachment: Buffer.from(payload, 'utf8'), name: 'treasury_debug.json' }],
+    };
   }
+  return { suffix: `\n\nDebug: ${payload}` };
+};
 
-  // 3) Fallbacks (still avoid the bottom bar):
-  // Try any ppusa-money-color right under Party Finances grid
-  const anyMoneyInBlock = block.match(
-    /<h5[^>]*class="[^"]*\bppusa-money-color\b[^"]*"[^>]*>\s*([^<]+)\s*<\/h5>/i
-  );
-  if (anyMoneyInBlock) return anyMoneyInBlock[1].trim();
-
-  // DO NOT look at #ppusa-bottombar â€” that is the personal HUD. (e.g., "$1,885,405") :contentReference[oaicite:2]{index=2}
-  return null;
-}
-
-
-async function loginAndGrabTreasuryHTML(debug = false) {
-  if (!EMAIL || !PASSWORD) throw new Error('Missing PPUSA_EMAIL or PPUSA_PASSWORD in .env');
-
-  const browser = await launch();
+async function fetchTreasuryHtml(targetUrl, debug) {
+  const session = await authenticateAndNavigate({ url: targetUrl, debug });
+  const { browser, html, finalUrl, actions } = session;
   try {
-    const page = await browser.newPage();
-    await page.setUserAgent('Mozilla/5.0');
-    page.setDefaultNavigationTimeout(NAV_TIMEOUT);
-
-    // 1) Go to login
-    const loginUrl = LOGIN_PAGE.startsWith('http') ? LOGIN_PAGE : BASE + LOGIN_PAGE;
-    await page.goto(loginUrl, { waitUntil: 'networkidle2' });
-
-    // 2) Find email/password inputs
-    const emailSel = await pickFirst(page, EMAIL_CANDIDATES);
-    const passSel  = await pickFirst(page, PASS_CANDIDATES);
-    if (!emailSel || !passSel) {
-      throw new Error('Could not find email/password fields on the login page.');
-    }
-
-    // 3) Type credentials
-    await page.focus(emailSel);
-    await page.keyboard.type(EMAIL, { delay: 15 });
-    await page.focus(passSel);
-    await page.keyboard.type(PASSWORD, { delay: 15 });
-
-    // 4) Submit (button if present, else press Enter)
-    const submitSel = await pickFirst(page, SUBMIT_CANDIDATES);
-    if (submitSel) {
-      await Promise.all([
-        page.waitForNavigation({ waitUntil: 'networkidle2', timeout: NAV_TIMEOUT }),
-        page.click(submitSel),
-      ]);
-    } else {
-      await Promise.all([
-        page.waitForNavigation({ waitUntil: 'networkidle2', timeout: NAV_TIMEOUT }),
-        page.keyboard.press('Enter'),
-      ]);
-    }
-
-    // 5) Navigate to the treasury page (if not already there)
-    const treasUrl = TREASURY_URL.startsWith('http') ? TREASURY_URL : BASE + TREASURY_URL;
-    if (!page.url().startsWith(treasUrl)) {
-      await page.goto(treasUrl, { waitUntil: 'networkidle2' });
-    }
-
-    // 6) Verify we didnâ€™t get bounced back to login
-    if (/\/login\b/i.test(page.url())) {
-      throw new Error('Still on login page after submitting credentials (auth rejected).');
-    }
-
-    const html = await page.content();
-    if (debug) {
-      console.log('[DEBUG] Final URL:', page.url());
-    }
-    return { html, finalUrl: page.url() };
+    return { html, finalUrl, actions };
   } finally {
-    await browser.close();
+    try { await browser.close(); } catch (_) {}
   }
 }
 
@@ -152,42 +38,42 @@ module.exports = {
   data: new SlashCommandBuilder()
     .setName('treasury')
     .setDescription('Show a party treasury total')
-    .addStringOption(o =>
+    .addStringOption((o) =>
       o.setName('party')
         .setDescription('Choose party (dems=1, gop=2)')
         .setRequired(false)
         .addChoices(
           { name: 'Dems', value: 'dems' },
-          { name: 'GOP', value: 'gop' }
-        )
+          { name: 'GOP', value: 'gop' },
+        ),
     )
-    .addBooleanOption(o =>
+    .addBooleanOption((o) =>
       o.setName('debug')
         .setDescription('Include diagnostics (ephemeral)')
-        .setRequired(false)
+        .setRequired(false),
     ),
 
   /** @param {import('discord.js').ChatInputCommandInteraction} interaction */
   async execute(interaction) {
-    const debug = interaction.options.getBoolean('debug') ?? false;
+    const userDebug = interaction.options.getBoolean('debug') ?? false;
+    const debugFlag = userDebug || DEFAULT_DEBUG;
     const choice = interaction.options.getString('party') ?? 'dems';
     const treasUrl = choice === 'gop' ? GOP_TREASURY_URL : DEMS_TREASURY_URL;
-    await interaction.deferReply(); // public
+    await interaction.deferReply();
 
     try {
-      const { html, finalUrl } = await loginAndGrabTreasuryHTMLForUrl(treasUrl, debug);
+      const { html, finalUrl, actions } = await fetchTreasuryHtml(treasUrl, debugFlag);
       const total = extractTreasuryTotal(html);
 
       if (!total) {
-        return interaction.editReply(
-          debug
-            ? `Fetched treasury page but could not find a $ amount. Final URL: ${finalUrl}`
-            : 'Could not find a balance on the page.'
-        );
+        const message = userDebug
+          ? `Fetched treasury page but could not find a $ amount. Final URL: ${finalUrl}`
+          : 'Could not find a balance on the page.';
+        const { suffix, files } = buildDebugArtifacts(userDebug, { finalUrl, actions });
+        return interaction.editReply({ content: `${message}${suffix}`, files });
       }
 
-      // For Dems, include "Caucuses" and "Members" amounts from the Party Finances grid
-      let fields = [];
+      const fields = [];
       let embedDesc = `**${total}**`;
       if (choice !== 'gop') {
         const dem = extractDemFinances(html);
@@ -204,74 +90,41 @@ module.exports = {
         timestamp: new Date().toISOString(),
       };
 
-      await interaction.editReply({ embeds: [embed] });
+      const { suffix, files } = buildDebugArtifacts(userDebug, { finalUrl, actions });
+      const payload = { embeds: [embed] };
+      if (suffix) payload.content = suffix;
+      if (files) payload.files = files;
+
+      await interaction.editReply(payload);
     } catch (err) {
-      await interaction.editReply(`Error: ${err?.message ?? String(err)}`);
+      const isAuthError = err instanceof PPUSAAuthError;
+      const baseMessage = `Error: ${err.message}`;
+      const details = isAuthError ? (err.details || {}) : {};
+      const debugData = userDebug ? {
+        finalUrl: details.finalUrl ?? null,
+        actions: details.actions ?? [],
+        screenshot: details.screenshot ?? null,
+      } : null;
+      const { suffix, files } = buildDebugArtifacts(userDebug, debugData);
+      const note = details.screenshot && userDebug
+        ? `${suffix}\nScreenshot saved at ${details.screenshot}`.trim()
+        : suffix;
+      const content = note ? `${baseMessage}${note}` : baseMessage;
+      await interaction.editReply({ content, files });
     }
   },
 };
 
-// New: target a specific treasury URL and fetch HTML
-async function loginAndGrabTreasuryHTMLForUrl(targetUrl, debug = false) {
-  if (!EMAIL || !PASSWORD) throw new Error('Missing PPUSA_EMAIL or PPUSA_PASSWORD in .env');
-
-  const browser = await launch();
-  try {
-    const page = await browser.newPage();
-    await page.setUserAgent('Mozilla/5.0');
-    page.setDefaultNavigationTimeout(NAV_TIMEOUT);
-
-    const loginUrl = LOGIN_PAGE.startsWith('http') ? LOGIN_PAGE : BASE + LOGIN_PAGE;
-    await page.goto(loginUrl, { waitUntil: 'networkidle2' });
-
-    const emailSel = await pickFirst(page, EMAIL_CANDIDATES);
-    const passSel = await pickFirst(page, PASS_CANDIDATES);
-    if (!emailSel || !passSel) throw new Error('Could not find email/password fields on the login page.');
-
-    await page.focus(emailSel); await page.keyboard.type(EMAIL, { delay: 15 });
-    await page.focus(passSel);  await page.keyboard.type(PASSWORD, { delay: 15 });
-
-    const submitSel = await pickFirst(page, SUBMIT_CANDIDATES);
-    if (submitSel) {
-      await Promise.all([
-        page.waitForNavigation({ waitUntil: 'networkidle2', timeout: NAV_TIMEOUT }),
-        page.click(submitSel),
-      ]);
-    } else {
-      await Promise.all([
-        page.waitForNavigation({ waitUntil: 'networkidle2', timeout: NAV_TIMEOUT }),
-        page.keyboard.press('Enter'),
-      ]);
-    }
-
-    if (/\/login\b/i.test(page.url())) throw new Error('Still on login page after submitting credentials (auth rejected).');
-
-    const treasUrl = targetUrl.startsWith('http') ? targetUrl : BASE + targetUrl;
-    await page.goto(treasUrl, { waitUntil: 'networkidle2' });
-
-    const html = await page.content();
-    if (debug) console.log('[DEBUG] Final URL:', page.url());
-    return { html, finalUrl: page.url() };
-  } finally {
-    await browser.close();
-  }
-}
-
-// New: extract only the treasury total robustly across pages
 function extractTreasuryTotal(html) {
   const $ = cheerio.load(html);
-
-  // Remove personal HUD/bottom bar to avoid picking personal balance
   $('#ppusa-bottombar, .ppusa-bottombar, #ppusa-topbar, .ppusa-topbar, nav, header, footer').remove();
 
-  // 1) Try the National Party card under Party Finances
   const financesH3 = $('h3').filter((_, el) => /party\s*finances/i.test($(el).text())).first();
   if (financesH3.length) {
     const container = financesH3.closest('.container, .container-fluid, .row').length
       ? financesH3.closest('.container, .container-fluid, .row')
       : financesH3.parent();
 
-    // Prefer a money value whose preceding h5 label contains "Party"
     let labeled = null;
     container.find('h5.ppusa-money-color, .ppusa-money-color').each((_, el) => {
       if (labeled) return;
@@ -284,46 +137,40 @@ function extractTreasuryTotal(html) {
     });
     if (labeled) return labeled;
 
-    // Fallback: any currency-looking value within this section; choose the largest
     const sectionText = container.text().replace(/\s+/g, ' ');
-    const m = [...sectionText.matchAll(/\$\s*([0-9]{1,3}(?:,[0-9]{3})*(?:\.[0-9]{2})?)/g)].map(x => x[0]);
+    const m = [...sectionText.matchAll(/\$\s*([0-9]{1,3}(?:,[0-9]{3})*(?:\.[0-9]{2})?)/g)].map((x) => x[0]);
     if (m.length) {
-      const withVal = m.map(s => ({ s, v: Number(s.replace(/[^0-9.]/g, '').replace(/,(?=\d{3}(\D|$))/g, '')) }));
+      const withVal = m.map((s) => ({ s, v: Number(s.replace(/[^0-9.]/g, '').replace(/,(?=\d{3}(\D|$))/g, '')) }));
       withVal.sort((a, b) => b.v - a.v);
       return withVal[0].s;
     }
   }
 
-  // 2) Any ppusa-money-color that looks like currency
   const moneyCandidate = $('*.ppusa-money-color').map((_, el) => ($(el).text() || '').trim()).get()
-    .find(t => /\$\s*\d/.test(t));
+    .find((t) => /\$\s*\d/.test(t));
   if (moneyCandidate) return moneyCandidate;
 
-  // 3) Fallback: find all currency-looking numbers and pick the max
   const text = $('body').text().replace(/\s+/g, ' ');
-  const matches = [...text.matchAll(/\$\s*([0-9]{1,3}(?:,[0-9]{3})*(?:\.[0-9]{2})?)/g)].map(m => m[0]);
+  const matches = [...text.matchAll(/\$\s*([0-9]{1,3}(?:,[0-9]{3})*(?:\.[0-9]{2})?)/g)].map((m) => m[0]);
   if (matches.length) {
-    const withVal = matches.map(s => ({ s, v: Number(s.replace(/[^0-9.]/g, '').replace(/,(?=\d{3}(\D|$))/g, '')) }));
+    const withVal = matches.map((s) => ({ s, v: Number(s.replace(/[^0-9.]/g, '').replace(/,(?=\d{3}(\D|$))/g, '')) }));
     withVal.sort((a, b) => b.v - a.v);
     return withVal[0].s;
   }
 
-  // 4) Final fallback: original regex method looking for Party Finances/National Party in raw HTML
   const financesBlockMatch = html.match(/<h3>\s*Party\s+Finances\s*<\/h3>[\s\S]*?<\/div>\s*<\/div>\s*<\/div>/i);
   if (financesBlockMatch) {
     const block = financesBlockMatch[0];
-    const nationalCardMatch = block.match(/<div[^>]*class=\"[^\"]*col-md-3[^\"]*text-center[^\"]*\"[^>]*>\s*<h5>\s*National\s+Party\s*<\/h5>\s*<h5[^>]*class=\"[^\"]*\bppusa-money-color\b[^\"]*\"[^>]*>\s*([^<]+)\s*<\/h5>/i);
+    const nationalCardMatch = block.match(/<div[^>]*class="[^"]*col-md-3[^"]*text-center[^"]*"[^>]*>\s*<h5>\s*National\s+Party\s*<\/h5>\s*<h5[^>]*class="[^"]*\bppusa-money-color\b[^"]*"[^>]*>\s*([^<]+)\s*<\/h5>/i);
     if (nationalCardMatch) return nationalCardMatch[1].trim();
-    const anyMoneyInBlock = block.match(/<h5[^>]*class=\"[^\"]*\bppusa-money-color\b[^\"]*\"[^>]*>\s*([^<]+)\s*<\/h5>/i);
+    const anyMoneyInBlock = block.match(/<h5[^>]*class="[^"]*\bppusa-money-color\b[^"]*"[^>]*>\s*([^<]+)\s*<\/h5>/i);
     if (anyMoneyInBlock) return anyMoneyInBlock[1].trim();
   }
 
   return null;
 }
 
-// Extract members and caucuses counts from page text
 function extractDemFinances(html) {
-  // First try a DOM-driven parse
   try {
     const $ = cheerio.load(html);
     $('#ppusa-bottombar, .ppusa-bottombar, #ppusa-topbar, .ppusa-topbar, nav, header, footer').remove();
@@ -348,11 +195,8 @@ function extractDemFinances(html) {
 
       if (total || caucuses || members) return { total, caucuses, members };
     }
-  } catch (_) {
-    // fall through to regex
-  }
+  } catch (_) {}
 
-  // Fallback: regex parse using known Dem structure
   const financesBlockMatch = html.match(/<h3>\s*Party\s*Finances\s*<\/h3>[\s\S]*?<\/div>\s*<\/div>\s*<\/div>/i);
   if (!financesBlockMatch) return null;
   const block = financesBlockMatch[0];
@@ -360,7 +204,7 @@ function extractDemFinances(html) {
   const getLabeledMoney = (label) => {
     const re = new RegExp(
       `<h5>\\s*${label}\\s*<\\/h5>\\s*<h5[^>]*class=\\"[^\\"]*\\bppusa-money-color\\b[^\\"]*\\"[^>]*>\\s*([^<]+)\\s*<\\/h5>`,
-      'i'
+      'i',
     );
     const m = block.match(re);
     return m ? m[1].trim() : null;
@@ -373,11 +217,3 @@ function extractDemFinances(html) {
   if (total || caucuses || members) return { total, caucuses, members };
   return null;
 }
-/**
- * Project: DemBot (Discord automation for Power Play USA)
- * File: commands/treasury.js
- * Purpose: Login and display party treasury totals (Dems/GOP) in embeds
- * Author: egg3901
- * Created: 2025-10-16
- * Last Updated: 2025-10-16
- */
