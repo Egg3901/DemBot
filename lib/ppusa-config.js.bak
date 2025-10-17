@@ -1,4 +1,4 @@
-﻿const DEFAULT_UA =
+const DEFAULT_UA =
   'Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36';
 
 const getEnv = (key, fallback = '') => {
@@ -15,7 +15,7 @@ const config = Object.freeze({
   navTimeout: Number(getEnv('PPUSA_NAV_TIMEOUT_MS', '20000')) || 20000,
   debug: String(getEnv('PPUSA_DEBUG', 'false')).toLowerCase() === 'true',
   userAgent: getEnv('PPUSA_LOGIN_UA', DEFAULT_UA),
-  userAgent: getEnv('PPUSA_LOGIN_UA', DEFAULT_UA),\n  cookieUserAgent: getEnv('PPUSA_COOKIE_UA', ''),\n  acceptLanguage: getEnv('PPUSA_ACCEPT_LANGUAGE', 'en-US,en;q=0.9'),\n  timezone: getEnv('PPUSA_TZ', ''),\n});
+});
 
 const selectors = Object.freeze({
   email: [
@@ -47,7 +47,7 @@ const selectors = Object.freeze({
     'button:has-text("Login")',
     'button[id*="login" i]',
   ],
-  userAgent: getEnv('PPUSA_LOGIN_UA', DEFAULT_UA),\n  cookieUserAgent: getEnv('PPUSA_COOKIE_UA', ''),\n  acceptLanguage: getEnv('PPUSA_ACCEPT_LANGUAGE', 'en-US,en;q=0.9'),\n  timezone: getEnv('PPUSA_TZ', ''),\n});
+});
 
 const toAbsoluteUrl = (maybeUrl) => {
   if (!maybeUrl) throw new Error('Target URL is required');
