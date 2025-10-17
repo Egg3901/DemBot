@@ -1,4 +1,4 @@
-#!/usr/bin/env node
+﻿#!/usr/bin/env node
 /**
  * Quick helper to update PPUSA_COOKIE (and optional cf_clearance) in .env.
  * Usage: npm run cookie:update
@@ -88,7 +88,7 @@ async function main() {
     process.exit(1);
   }
 
-  const cookieString = buildCookieString(sessionRaw, clearanceRaw);
+  let cookieString;\n  if (sessionRaw.includes('=') || sessionRaw.includes(';')) {\n    // User pasted full cookie(s) like 'ppusa_session=...; cf_clearance=...'\n    cookieString = sessionRaw;\n  } else {\n    cookieString = buildCookieString(sessionRaw, clearanceRaw);\n  }\n  // Normalize accidental double 'ppusa_session=ppusa_session=VALUE'\n  cookieString = cookieString.replace(/ppusa_session=ppusa_session=/i, 'ppusa_session=');
   const lines = readEnvLines();
   let foundIndex = -1;
 
@@ -116,4 +116,5 @@ main().catch((err) => {
   console.error(err.message || err);
   process.exit(1);
 });
+
 
