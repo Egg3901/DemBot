@@ -13,6 +13,15 @@ const {
   Partials,
 } = require('discord.js');
 
+const { File, Blob, FormData, fetch, Headers, Request, Response } = require('undici');
+globalThis.File ??= File;
+globalThis.Blob ??= Blob;
+globalThis.FormData ??= FormData;
+globalThis.fetch ??= fetch;
+globalThis.Headers ??= Headers;
+globalThis.Request ??= Request;
+globalThis.Response ??= Response;
+
 // ---- Env ----
 const DISCORD_TOKEN = process.env.DISCORD_TOKEN;
 const DISCORD_GUILD_ID = process.env.DISCORD_GUILD_ID || process.env.GUILD_ID; // supports both

@@ -1,4 +1,5 @@
 // commands/profile.js
+// Shows a player's current Power Play USA profile by Discord mention, username, name, or numeric id.
 const { SlashCommandBuilder } = require('discord.js');
 const fs = require('node:fs');
 const path = require('node:path');
@@ -7,9 +8,16 @@ const { loginAndGet, parseProfile, BASE } = require('../lib/ppusa');
 module.exports = {
   data: new SlashCommandBuilder()
     .setName('profile')
-    .setDescription('Show a player\'s current Power Play USA profile by Discord mention')
+    .setDescription('Show a player\'s current Power Play USA profile by Discord mention, name, or id')
     .addUserOption(opt =>
-      opt.setName('user').setDescription('Discord user to look up').setRequired(true)
+      opt.setName('user')
+        .setDescription('Discord user to look up')
+        .setRequired(false)
+    )
+    .addStringOption(opt =>
+      opt.setName('query')
+        .setDescription('Profile name, Discord username, mention, or numeric id')
+        .setRequired(false)
     ),
 
   /**
@@ -22,8 +30,12 @@ module.exports = {
   async execute(interaction) {
     await interaction.deferReply();
 
-    const discordUser = interaction.options.getUser('user', true);
-    const username = discordUser.username.toLowerCase();
+    const discordUser = interaction.options.getUser('user');
+    const queryRaw = (interaction.options.getString('query') || '').trim();
+
+    if (!discordUser && !queryRaw) {
+      return interaction.editReply('Provide a Discord user, mention, name, or numeric profile id.');
+    }
 
     const jsonPath = path.join(process.cwd(), 'data', 'profiles.json');
     if (!fs.existsSync(jsonPath)) {
@@ -34,18 +46,86 @@ module.exports = {
     try { db = JSON.parse(fs.readFileSync(jsonPath, 'utf8')); } catch (e) {
       return interaction.editReply('Failed to read profiles.json.');
     }
+    const profiles = db.profiles || {};
     const byDiscord = db.byDiscord || {};
-    let ids = byDiscord[username];
-    if (typeof ids === 'number') ids = [ids];
-    if (!Array.isArray(ids) || ids.length === 0) {
-      // Fallback: scan full map
-      const profiles = db.profiles || {};
-      ids = Object.entries(profiles)
-        .filter(([pid, info]) => (info.discord || '').toLowerCase() === username)
-        .map(([pid]) => Number(pid));
+
+    const idSet = new Set();
+
+    const addIds = (value) => {
+      const addOne = (v) => {
+        const num = typeof v === 'number' ? v : Number(v);
+        if (!Number.isNaN(num)) idSet.add(num);
+      };
+      if (Array.isArray(value)) value.forEach(addOne);
+      else addOne(value);
+    };
+
+    const lookupDiscord = (name) => {
+      if (!name) return;
+      const key = name.toLowerCase();
+      if (byDiscord[key]) addIds(byDiscord[key]);
+      else {
+        for (const [pid, info] of Object.entries(profiles)) {
+          if ((info.discord || '').toLowerCase() === key) addIds(Number(pid));
+        }
+      }
+    };
+
+    if (discordUser) {
+      lookupDiscord(discordUser.username);
+      if (discordUser.discriminator && discordUser.discriminator !== '0') {
+        lookupDiscord(`${discordUser.username}#${discordUser.discriminator}`);
+      }
+      if (discordUser.globalName) lookupDiscord(discordUser.globalName);
     }
-    if (!Array.isArray(ids) || ids.length === 0) {
-      return interaction.editReply(`No profile found for Discord user "${discordUser.username}". Try /update to refresh the cache.`);
+
+    const handleQuery = async () => {
+      if (!queryRaw) return;
+      const mentionMatch = queryRaw.match(/^<@!?([0-9]{5,})>$/);
+      if (mentionMatch) {
+        try {
+          const fetched = await interaction.client.users.fetch(mentionMatch[1]);
+          if (fetched) {
+            lookupDiscord(fetched.username);
+            if (fetched.discriminator && fetched.discriminator !== '0') {
+              lookupDiscord(`${fetched.username}#${fetched.discriminator}`);
+            }
+            if (fetched.globalName) lookupDiscord(fetched.globalName);
+          }
+        } catch (_) {}
+        return;
+      }
+
+      const plain = queryRaw.replace(/^@/, '').trim();
+
+      if (/^\d+$/.test(plain)) {
+        addIds(Number(plain));
+        return;
+      }
+
+      lookupDiscord(plain);
+      if (idSet.size) return;
+
+      const nameNorm = plain.toLowerCase();
+      const exact = Object.entries(profiles)
+        .filter(([, info]) => (info.name || '').toLowerCase() === nameNorm)
+        .map(([pid]) => Number(pid));
+      exact.forEach(addIds);
+      if (idSet.size) return;
+
+      const partial = Object.entries(profiles)
+        .filter(([, info]) => (info.name || '').toLowerCase().includes(nameNorm))
+        .slice(0, 10)
+        .map(([pid]) => Number(pid));
+      partial.forEach(addIds);
+    };
+
+    await handleQuery();
+
+    const ids = Array.from(idSet).slice(0, 10);
+    if (ids.length === 0) {
+      const label = discordUser ? `Discord user "${discordUser.username}"` : `"${queryRaw}"`;
+      return interaction.editReply(`No profile found for ${label}. Try /update to refresh the cache.`);
     }
 
     let browser, page;
