@@ -42,6 +42,7 @@ const formatAuthErrorMessage = (err, commandLabel) => {
     lines.push('Cloudflare Turnstile is blocking automated login.');
     lines.push('Workaround: sign in manually in a browser, copy the `ppusa_session=...` cookie, and set it as PPUSA_COOKIE.');
     lines.push('The bot will reuse that session and skip the challenge.');
+    lines.push('Helper: run `npm run cookie:update`, paste the cookie values, then restart the bot.');
   }
   lines.push(`Tip: run ${commandLabel} debug:true to attach the full action log (no .env change needed).`);
   return lines.join('\n');

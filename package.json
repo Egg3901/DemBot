@@ -8,6 +8,7 @@
     "bootstrap:chrome": "bash scripts/install_chrome_deps.sh",
     "docker:build": "docker build -t dembot .",
     "docker:run": "docker run --rm --env-file .env --name dembot dembot",
+    "cookie:update": "node scripts/set_ppusa_cookie.js",
     "test": "echo \"Error: no test specified\" && exit 1"
   },
   "keywords": [],
