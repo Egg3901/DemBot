@@ -14,12 +14,14 @@
   "keywords": [],
   "author": "",
   "license": "ISC",
-  "dependencies": {\n    "puppeteer-extra": "^3.3.6",\n    "puppeteer-extra-plugin-stealth": "^2.11.2",
+  "dependencies": {
     "cheerio": "^1.1.2",
     "chromium": "^3.0.3",
     "discord.js": "^14.23.2",
     "dotenv": "^17.2.3",
     "puppeteer": "^24.25.0",
+    "puppeteer-extra": "^3.3.6",
+    "puppeteer-extra-plugin-stealth": "^2.11.2",
     "set-cookie-parser": "^2.7.1",
     "tough-cookie": "^6.0.0"
   }
