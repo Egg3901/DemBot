@@ -1,4 +1,4 @@
-// commands/treasury.js
+﻿// commands/treasury.js
 // Uses Puppeteer to perform a real browser login, then scrapes the treasury balance.
 // Requirements: discord.js v14, Node 18+, `npm i puppeteer`
 //
@@ -16,7 +16,7 @@
 
 const { SlashCommandBuilder } = require('discord.js');
 const cheerio = require('cheerio');
-const puppeteer = require('puppeteer');
+const { launch } = require('../lib/puppeteer-launch');
 
 const E = (k, d = '') => process.env[k] ?? d;
 
@@ -60,14 +60,14 @@ function pickFirst(page, selectors) {
 
 // replace your existing extractBalance(html) with this:
 function extractBalance(html) {
-  // 1) Narrow to the “Party Finances” block
+  // 1) Narrow to the â€œParty Financesâ€ block
   const financesBlockMatch = html.match(
     /<h3>\s*Party\s+Finances\s*<\/h3>[\s\S]*?<\/div>\s*<\/div>\s*<\/div>/i
   );
   if (!financesBlockMatch) return null;
   const block = financesBlockMatch[0];
 
-  // 2) In that block, find the “National Party” card and its <h5 class="ppusa-money-color">…</h5>
+  // 2) In that block, find the â€œNational Partyâ€ card and its <h5 class="ppusa-money-color">â€¦</h5>
   const nationalCardMatch = block.match(
     /<div[^>]*class="[^"]*col-md-3[^"]*text-center[^"]*"[^>]*>\s*<h5>\s*National\s+Party\s*<\/h5>\s*<h5[^>]*class="[^"]*\bppusa-money-color\b[^"]*"[^>]*>\s*([^<]+)\s*<\/h5>/i
   );
@@ -82,7 +82,7 @@ function extractBalance(html) {
   );
   if (anyMoneyInBlock) return anyMoneyInBlock[1].trim();
 
-  // DO NOT look at #ppusa-bottombar — that is the personal HUD. (e.g., "$1,885,405") :contentReference[oaicite:2]{index=2}
+  // DO NOT look at #ppusa-bottombar â€” that is the personal HUD. (e.g., "$1,885,405") :contentReference[oaicite:2]{index=2}
   return null;
 }
 
@@ -90,10 +90,7 @@ function extractBalance(html) {
 async function loginAndGrabTreasuryHTML(debug = false) {
   if (!EMAIL || !PASSWORD) throw new Error('Missing PPUSA_EMAIL or PPUSA_PASSWORD in .env');
 
-  const browser = await puppeteer.launch({
-    headless: 'new',
-    args: ['--no-sandbox', '--disable-setuid-sandbox'],
-  });
+  const browser = await launch();
   try {
     const page = await browser.newPage();
     await page.setUserAgent('Mozilla/5.0');
@@ -136,7 +133,7 @@ async function loginAndGrabTreasuryHTML(debug = false) {
       await page.goto(treasUrl, { waitUntil: 'networkidle2' });
     }
 
-    // 6) Verify we didn’t get bounced back to login
+    // 6) Verify we didnâ€™t get bounced back to login
     if (/\/login\b/i.test(page.url())) {
       throw new Error('Still on login page after submitting credentials (auth rejected).');
     }
@@ -218,10 +215,7 @@ module.exports = {
 async function loginAndGrabTreasuryHTMLForUrl(targetUrl, debug = false) {
   if (!EMAIL || !PASSWORD) throw new Error('Missing PPUSA_EMAIL or PPUSA_PASSWORD in .env');
 
-  const browser = await puppeteer.launch({
-    headless: 'new',
-    args: ['--no-sandbox', '--disable-setuid-sandbox'],
-  });
+  const browser = await launch();
   try {
     const page = await browser.newPage();
     await page.setUserAgent('Mozilla/5.0');

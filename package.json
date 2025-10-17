@@ -4,6 +4,10 @@
   "description": "",
   "main": "index.js",
   "scripts": {
+    "start": "node index.js",
+    "bootstrap:chrome": "bash scripts/install_chrome_deps.sh",
+    "docker:build": "docker build -t dembot .",
+    "docker:run": "docker run --rm --env-file .env --name dembot dembot",
     "test": "echo \"Error: no test specified\" && exit 1"
   },
   "keywords": [],

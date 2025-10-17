@@ -1,6 +1,6 @@
 // commands/send.js
 const { SlashCommandBuilder } = require('discord.js');
-const puppeteer = require('puppeteer');
+const { launch } = require('../lib/puppeteer-launch');
 
 // Env helpers and config
 const E = (k, d = '') => process.env[k] ?? d;
@@ -141,7 +141,7 @@ async function performWebSend({ type, name, amount, debug }) {
   };
   note('start', 'Initiating web send.', { type, name, amount });
 
-  const browser = await puppeteer.launch({ headless: 'new', args: ['--no-sandbox', '--disable-setuid-sandbox'] });
+  const browser = await launch();
   try {
     const page = await browser.newPage();
     await page.setUserAgent('Mozilla/5.0');
