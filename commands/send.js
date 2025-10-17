@@ -38,6 +38,11 @@ const formatAuthErrorMessage = (err, commandLabel) => {
     const last = details.actions[details.actions.length - 1];
     lines.push(`Last recorded step: ${last.step || 'unknown'} (${last.success ? 'ok' : 'failed'})`);
   }
+  if (details.challenge === 'cloudflare-turnstile') {
+    lines.push('Cloudflare Turnstile is blocking automated login.');
+    lines.push('Workaround: sign in manually in a browser, copy the `ppusa_session=...` cookie, and set it as PPUSA_COOKIE.');
+    lines.push('The bot will reuse that session and skip the challenge.');
+  }
   lines.push(`Tip: run ${commandLabel} debug:true to attach the full action log (no .env change needed).`);
   return lines.join('\n');
 };
