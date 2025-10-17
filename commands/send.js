@@ -8,6 +8,40 @@ const DEFAULT_DEBUG = config.debug;
 const DEMS_TREASURY_URL = toAbsoluteUrl(getEnv('DEMS_TREASURY_URL', '/parties/1/treasury'));
 const SEND_USE_AUTOSUGGEST = String(getEnv('SEND_USE_AUTOSUGGEST', 'false')).toLowerCase() === 'true';
 
+const formatAuthErrorMessage = (err, commandLabel) => {
+  if (!(err instanceof PPUSAAuthError)) return err.message;
+  const details = err.details || {};
+  const lines = [`Error: ${err.message}`];
+  if (details.finalUrl) lines.push(`Page: ${details.finalUrl}`);
+
+  const tried = details.triedSelectors || {};
+  if (Array.isArray(tried.email) && tried.email.length) {
+    lines.push(`Email selectors tried: ${tried.email.join(', ')}`);
+  }
+  if (Array.isArray(tried.password) && tried.password.length) {
+    lines.push(`Password selectors tried: ${tried.password.join(', ')}`);
+  }
+
+  if (Array.isArray(details.inputSnapshot) && details.inputSnapshot.length) {
+    const sample = details.inputSnapshot.slice(0, 4).map((input) => {
+      const bits = [];
+      if (input.type) bits.push(`type=${input.type}`);
+      if (input.name) bits.push(`name=${input.name}`);
+      if (input.id) bits.push(`id=${input.id}`);
+      if (input.placeholder) bits.push(`placeholder=${input.placeholder}`);
+      bits.push(input.visible ? 'visible' : 'hidden');
+      return bits.join(' ');
+    });
+    lines.push(`Detected inputs: ${sample.join(' | ')}`);
+  }
+  if (Array.isArray(details.actions) && details.actions.length) {
+    const last = details.actions[details.actions.length - 1];
+    lines.push(`Last recorded step: ${last.step || 'unknown'} (${last.success ? 'ok' : 'failed'})`);
+  }
+  lines.push(`Tip: run ${commandLabel} debug:true to attach the full action log (no .env change needed).`);
+  return lines.join('\n');
+};
+
 // Committee roles (reused from funds.js)
 const ROLE_NATIONAL = '1257715735090954270';
 const ROLE_SECOND = '1408832907707027547';
@@ -106,8 +140,12 @@ module.exports = {
         diag = `\n\nDebug: ${full}`;
       }
     }
+    const extraNotes = [];
     const statusLine = (() => {
       if (!webResult?.ok) {
+        if (webResult?.reasonDetail && webResult.reasonDetail !== webResult.reason) {
+          extraNotes.push(webResult.reasonDetail);
+        }
         return `Status: Failed (${webResult?.reason ?? 'unknown error'})`;
       }
       if (webResult?.approved) return 'Status: Sent and approved on website';
@@ -123,6 +161,7 @@ module.exports = {
       `Recipient: ${name}\n` +
       `Amount: ${formattedAmount}\n` +
       `${statusLine}` +
+      `${extraNotes.length ? `\n${extraNotes.join('\n')}` : ''}` +
       `${diag}`;
 
     await interaction.editReply({ content: completedMsg, allowedMentions: { parse: [] }, files });
@@ -404,7 +443,8 @@ async function performWebSend({ type, name, amount, debug }) {
         for (const action of details.actions) actions.push({ phase: 'auth-error', ...action });
       }
       note('auth-error', err.message, details);
-      return { ok: false, step: 'auth', reason: err.message, actions };
+      const reasonDetail = formatAuthErrorMessage(err, '/send');
+      return { ok: false, step: 'auth', reason: err.message, reasonDetail, actions, authDetails: details };
     }
     throw err;
   } finally {

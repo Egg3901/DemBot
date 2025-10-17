@@ -12,6 +12,42 @@ const TREASURY_URL = toAbsoluteUrl(getEnv('TREASURY_URL', '/parties/1/treasury')
 const DEMS_TREASURY_URL = toAbsoluteUrl(getEnv('DEMS_TREASURY_URL', TREASURY_URL));
 const GOP_TREASURY_URL = toAbsoluteUrl(getEnv('GOP_TREASURY_URL', '/parties/2'));
 
+const formatAuthErrorMessage = (err, commandLabel) => {
+  if (!(err instanceof PPUSAAuthError)) return `Error: ${err.message}`;
+  const details = err.details || {};
+  const lines = [`Error: ${err.message}`];
+  if (details.finalUrl) lines.push(`Page: ${details.finalUrl}`);
+
+  const tried = details.triedSelectors || {};
+  if (Array.isArray(tried.email) && tried.email.length) {
+    lines.push(`Email selectors tried: ${tried.email.join(', ')}`);
+  }
+  if (Array.isArray(tried.password) && tried.password.length) {
+    lines.push(`Password selectors tried: ${tried.password.join(', ')}`);
+  }
+
+  if (Array.isArray(details.inputSnapshot) && details.inputSnapshot.length) {
+    const sample = details.inputSnapshot.slice(0, 4).map((input) => {
+      const bits = [];
+      if (input.type) bits.push(`type=${input.type}`);
+      if (input.name) bits.push(`name=${input.name}`);
+      if (input.id) bits.push(`id=${input.id}`);
+      if (input.placeholder) bits.push(`placeholder=${input.placeholder}`);
+      bits.push(input.visible ? 'visible' : 'hidden');
+      return bits.join(' ');
+    });
+    lines.push(`Detected inputs: ${sample.join(' | ')}`);
+  }
+
+  if (Array.isArray(details.actions) && details.actions.length) {
+    const last = details.actions[details.actions.length - 1];
+    lines.push(`Last recorded step: ${last.step || 'unknown'} (${last.success ? 'ok' : 'failed'})`);
+  }
+
+  lines.push(`Tip: run ${commandLabel} debug:true to attach the full action log (no .env change needed).`);
+  return lines.join('\n');
+};
+
 const buildDebugArtifacts = (enabled, data) => {
   if (!enabled || !data) return { suffix: '', files: undefined };
   const payload = JSON.stringify(data, null, 2);
@@ -98,7 +134,6 @@ module.exports = {
       await interaction.editReply(payload);
     } catch (err) {
       const isAuthError = err instanceof PPUSAAuthError;
-      const baseMessage = `Error: ${err.message}`;
       const details = isAuthError ? (err.details || {}) : {};
       const debugData = userDebug ? {
         finalUrl: details.finalUrl ?? null,
@@ -106,6 +141,9 @@ module.exports = {
         screenshot: details.screenshot ?? null,
       } : null;
       const { suffix, files } = buildDebugArtifacts(userDebug, debugData);
+      const baseMessage = isAuthError
+        ? formatAuthErrorMessage(err, '/treasury')
+        : `Error: ${err.message}`;
       const note = details.screenshot && userDebug
         ? `${suffix}\nScreenshot saved at ${details.screenshot}`.trim()
         : suffix;
