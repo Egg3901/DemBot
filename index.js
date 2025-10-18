@@ -12,6 +12,14 @@ const {
   ActivityType,
   Partials,
 } = require('discord.js');
+const {
+  markBotReady,
+  markBotLoginError,
+  markHeartbeat,
+  recordCommandSuccess,
+  recordCommandError,
+} = require('./lib/status-tracker');
+const { startDashboardServer } = require('./lib/dashboard-server');
 
 const { File, Blob, FormData, fetch, Headers, Request, Response } = require('undici');
 globalThis.File ??= File;
@@ -27,6 +35,8 @@ const DISCORD_TOKEN = process.env.DISCORD_TOKEN;
 const DISCORD_GUILD_ID = process.env.DISCORD_GUILD_ID || process.env.GUILD_ID; // supports both
 const REGISTER_GLOBAL = String(process.env.REGISTER_GLOBAL).toLowerCase() === 'true';
 const ALLOWED_DM_USER = process.env.ALLOWED_DM_USER || '333052320252297216';
+const DASHBOARD_PORT = Number(process.env.STATUS_PORT || process.env.DASHBOARD_PORT || 3000);
+const DASHBOARD_HOST = process.env.STATUS_HOST || process.env.DASHBOARD_HOST || '0.0.0.0';
 
 if (!DISCORD_TOKEN) {
   console.error('❌ Missing DISCORD_TOKEN in .env');
@@ -49,6 +59,9 @@ const client = new Client({
 client.commands = new Collection();
 const commandsJSON = [];
 
+// Periodic heartbeat (keeps dashboard status fresh even without command traffic)
+setInterval(() => markHeartbeat(), 60_000).unref();
+
 // ---- Load commands ----
 const commandsPath = path.join(__dirname, 'commands');
 if (!fs.existsSync(commandsPath)) {
@@ -70,9 +83,14 @@ if (!fs.existsSync(commandsPath)) {
 }
 
 const rest = new REST({ version: '10' }).setToken(DISCORD_TOKEN);
+
+// Lightweight status dashboard (HTML + JSON endpoints) for ops visibility
+startDashboardServer({ port: DASHBOARD_PORT, host: DASHBOARD_HOST });
+
 // ---- Ready → register + verify ----
 client.once(Events.ClientReady, async (c) => {
   console.log(`🤖 Logged in as ${c.user.tag}`);
+  markBotReady();
   const applicationId = c.user.id;
 
   // Presence (why: quick visual that bot is alive)
@@ -138,7 +156,9 @@ client.on(Events.InteractionCreate, async (interaction) => {
 
   try {
     await cmd.execute(interaction);
+    recordCommandSuccess(interaction.commandName);
   } catch (err) {
+    recordCommandError(interaction.commandName, err);
     console.error(err);
     const msg = { content: 'There was an error executing that command.', ephemeral: true };
     if (interaction.deferred || interaction.replied) await interaction.followUp(msg);
@@ -146,7 +166,10 @@ client.on(Events.InteractionCreate, async (interaction) => {
   }
 });
 
-client.login(DISCORD_TOKEN);
+client.login(DISCORD_TOKEN).catch((err) => {
+  markBotLoginError(err);
+  console.error('Client login failed:', err);
+});
 /**
  * Project: DemBot (Discord automation for Power Play USA)
  * File: index.js
