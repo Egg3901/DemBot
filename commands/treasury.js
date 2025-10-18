@@ -123,6 +123,11 @@ module.exports = {
         const message = userDebug
           ? `Fetched treasury page but could not find a $ amount. Final URL: ${finalUrl}`
           : 'Could not find a balance on the page.';
+        console.warn(`[treasury] No balance found at ${finalUrl}`);
+        try {
+          recordCommandError(interaction.commandName, new Error(`Treasury total not found (${finalUrl || 'unknown'})`));
+        } catch (_) {}
+        interaction._dembotHandledError = true;
         const { suffix, files } = buildDebugArtifacts(userDebug, { finalUrl, actions });
         return interaction.editReply({ content: `${message}${suffix}`, files });
       }
