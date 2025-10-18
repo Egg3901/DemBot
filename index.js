@@ -157,6 +157,7 @@ client.on(Events.InteractionCreate, async (interaction) => {
 
   try {
     await cmd.execute(interaction);
+    if (interaction._dembotHandledError) return;
     if (!interaction.deferred && !interaction.replied) {
       console.warn(`Command ${interaction.commandName} returned without responding (maybe interaction expired).`);
       return;

@@ -5,6 +5,7 @@ const { SlashCommandBuilder } = require('discord.js');
 const cheerio = require('cheerio');
 const { authenticateAndNavigate, PPUSAAuthError } = require('../lib/ppusa-auth');
 const { config, getEnv, toAbsoluteUrl } = require('../lib/ppusa-config');
+const { recordCommandError } = require('../lib/status-tracker');
 
 const BASE = config.baseUrl;
 const DEFAULT_DEBUG = config.debug;
@@ -158,6 +159,8 @@ module.exports = {
         }
       }
     } catch (err) {
+      interaction._dembotHandledError = true;
+      recordCommandError(interaction.commandName, err);
       const isAuthError = err instanceof PPUSAAuthError;
       const details = isAuthError ? (err.details || {}) : {};
       const debugData = userDebug ? {
