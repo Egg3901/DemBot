@@ -1,4 +1,4 @@
-﻿// commands/treasury.js
+// commands/treasury.js
 // Fetches the party treasury page via Puppeteer and reports totals.
 
 const { SlashCommandBuilder } = require('discord.js');
