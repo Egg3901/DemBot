@@ -11,6 +11,7 @@ const {
   Events,
   ActivityType,
   Partials,
+  MessageFlags,
 } = require('discord.js');
 const {
   markBotReady,
@@ -156,13 +157,25 @@ client.on(Events.InteractionCreate, async (interaction) => {
 
   try {
     await cmd.execute(interaction);
+    if (!interaction.deferred && !interaction.replied) {
+      console.warn(`Command ${interaction.commandName} returned without responding (maybe interaction expired).`);
+      return;
+    }
     recordCommandSuccess(interaction.commandName);
   } catch (err) {
     recordCommandError(interaction.commandName, err);
     console.error(err);
-    const msg = { content: 'There was an error executing that command.', ephemeral: true };
-    if (interaction.deferred || interaction.replied) await interaction.followUp(msg);
-    else await interaction.reply(msg);
+    const msg = { content: 'There was an error executing that command.', flags: MessageFlags.Ephemeral };
+    try {
+      if (interaction.deferred || interaction.replied) await interaction.followUp(msg);
+      else await interaction.reply(msg);
+    } catch (sendErr) {
+      if (sendErr?.code === 10062) {
+        console.warn('Skipped error follow-up: interaction token expired.');
+      } else {
+        console.error('Failed to notify user about the error:', sendErr);
+      }
+    }
   }
 });
 

@@ -102,7 +102,17 @@ module.exports = {
     const debugFlag = userDebug || DEFAULT_DEBUG;
     const choice = interaction.options.getString('party') ?? 'dems';
     const treasUrl = choice === 'gop' ? GOP_TREASURY_URL : DEMS_TREASURY_URL;
-    await interaction.deferReply();
+    let deferred = false;
+    try {
+      await interaction.deferReply();
+      deferred = true;
+    } catch (err) {
+      if (err?.code === 10062) {
+        console.warn('treasury: interaction token expired before defer; skipping response.');
+        return;
+      }
+      throw err;
+    }
 
     try {
       const { html, finalUrl, actions } = await fetchTreasuryHtml(treasUrl, debugFlag);
@@ -138,7 +148,15 @@ module.exports = {
       if (suffix) payload.content = suffix;
       if (files) payload.files = files;
 
-      await interaction.editReply(payload);
+      try {
+        await interaction.editReply(payload);
+      } catch (editErr) {
+        if (editErr?.code === 10062) {
+          console.warn('treasury: interaction expired before final reply could be sent.');
+        } else {
+          throw editErr;
+        }
+      }
     } catch (err) {
       const isAuthError = err instanceof PPUSAAuthError;
       const details = isAuthError ? (err.details || {}) : {};
@@ -147,15 +165,25 @@ module.exports = {
         actions: details.actions ?? [],
         screenshot: details.screenshot ?? null,
       } : null;
-      const { suffix, files } = buildDebugArtifacts(userDebug, debugData);
-      const baseMessage = isAuthError
-        ? formatAuthErrorMessage(err, '/treasury')
-        : `Error: ${err.message}`;
-      const note = details.screenshot && userDebug
-        ? `${suffix}\nScreenshot saved at ${details.screenshot}`.trim()
-        : suffix;
-      const content = note ? `${baseMessage}${note}` : baseMessage;
-      await interaction.editReply({ content, files });
+      if (deferred) {
+        const { suffix, files } = buildDebugArtifacts(userDebug, debugData);
+        const baseMessage = isAuthError
+          ? formatAuthErrorMessage(err, '/treasury')
+          : `Error: ${err.message}`;
+        const note = details.screenshot && userDebug
+          ? `${suffix}\nScreenshot saved at ${details.screenshot}`.trim()
+          : suffix;
+        const content = note ? `${baseMessage}${note}` : baseMessage;
+        try {
+          await interaction.editReply({ content, files });
+        } catch (editErr) {
+          if (editErr?.code === 10062) {
+            console.warn('treasury: unable to edit reply because the interaction expired.');
+          } else {
+            throw editErr;
+          }
+        }
+      }
     }
   },
 };
