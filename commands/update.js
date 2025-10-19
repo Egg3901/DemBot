@@ -2,7 +2,7 @@
 const { SlashCommandBuilder, PermissionsBitField } = require('discord.js');
 const fs = require('node:fs');
 const path = require('node:path');
-const { loginAndGet, parseProfile, BASE } = require('../lib/ppusa');
+const { loginAndGet, parseProfile, parseStateData, BASE } = require('../lib/ppusa');
 const { canManageBot } = require('../lib/permissions');
 const { ensureDbShape, mergeProfileRecord } = require('../lib/profile-cache');
 
@@ -11,12 +11,15 @@ const INACTIVE_ROLE_ID = '1427236595345522708';
 const OFFLINE_THRESHOLD_DAYS = 4;
 const WARNING_THRESHOLD_DAYS = 3;
 
-const TYPE_CHOICES = new Set(['all', 'dems', 'gop', 'new']);
+const TYPE_CHOICES = new Set(['all', 'dems', 'gop', 'new', 'states', 'races', 'primaries']);
 const TYPE_LABELS = {
   all: 'All Profiles',
   dems: 'Democratic Profiles',
   gop: 'Republican Profiles',
   new: 'New Accounts',
+  states: 'State Data',
+  races: 'Race Data',
+  primaries: 'Primary Data',
 };
 
 const isDemocratic = (party = '') => /democratic/i.test(String(party));
@@ -355,6 +358,83 @@ const MAX_CONSECUTIVE_MISSES = 20;
 const DEFAULT_MAX_ID = Number(process.env.PPUSA_MAX_USER_ID || '0');
 const DEFAULT_START_ID = Number(process.env.PPUSA_START_USER_ID || '1000');
 
+/**
+ * Scrape state data from all states
+ */
+async function scrapeStatesData(interaction, page, writeDb) {
+  const statesData = {};
+  let found = 0;
+  let checked = 0;
+  
+  // List of US states with their typical IDs (these would need to be determined from the site)
+  const stateIds = [
+    1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20,
+    21, 22, 23, 24, 25, 26, 27, 28, 29, 30, 31, 32, 33, 34, 35, 36, 37, 38, 39, 40,
+    41, 42, 43, 44, 45, 46, 47, 48, 49, 50
+  ];
+  
+  for (const stateId of stateIds) {
+    checked++;
+    try {
+      const resp = await page.goto(`${BASE}/states/${stateId}`, { waitUntil: 'networkidle2' });
+      const status = resp?.status?.() ?? 200;
+      const finalUrl = page.url();
+      const html = await page.content();
+      
+      const isStateUrl = /\/states\//i.test(finalUrl);
+      if (status >= 400 || !isStateUrl) continue;
+      
+      const stateData = parseStateData(html);
+      if (stateData && stateData.stateName) {
+        statesData[stateId] = {
+          id: stateId,
+          ...stateData,
+          scrapedAt: new Date().toISOString()
+        };
+        found++;
+        
+        if (found % 5 === 0) {
+          await interaction.editReply(`Scraping state data... found ${found}/${checked} states. Latest: ${stateData.stateName}`);
+        }
+      }
+    } catch (err) {
+      console.error(`Error scraping state ${stateId}:`, err);
+    }
+  }
+  
+  // Update the database with state data
+  const dataDir = path.join(process.cwd(), 'data');
+  const statesPath = path.join(dataDir, 'states.json');
+  
+  let existingStates = {};
+  if (fs.existsSync(statesPath)) {
+    try {
+      existingStates = JSON.parse(fs.readFileSync(statesPath, 'utf8'));
+    } catch (err) {
+      console.error('Error reading existing states data:', err);
+    }
+  }
+  
+  const updatedStates = { ...existingStates, ...statesData };
+  fs.writeFileSync(statesPath, JSON.stringify(updatedStates, null, 2));
+  
+  await interaction.editReply(`Scraped ${found} states successfully.`);
+}
+
+/**
+ * Scrape race data
+ */
+async function scrapeRacesData(interaction, page, writeDb) {
+  await interaction.editReply('Race data scraping not yet implemented.');
+}
+
+/**
+ * Scrape primary data
+ */
+async function scrapePrimariesData(interaction, page, writeDb) {
+  await interaction.editReply('Primary data scraping not yet implemented.');
+}
+
 module.exports = {
   data: new SlashCommandBuilder()
     .setName('update')
@@ -362,13 +442,16 @@ module.exports = {
     .addStringOption((opt) =>
       opt
         .setName('type')
-        .setDescription('Which profiles to refresh (all, dems, gop, or new)')
+        .setDescription('Which data to refresh (profiles, states, races, or primaries)')
         .setRequired(false)
         .addChoices(
           { name: 'All profiles', value: 'all' },
           { name: 'Democrats', value: 'dems' },
           { name: 'Republicans', value: 'gop' },
           { name: 'New accounts only', value: 'new' },
+          { name: 'State data', value: 'states' },
+          { name: 'Race data', value: 'races' },
+          { name: 'Primary data', value: 'primaries' },
         )
     )
     .addBooleanOption(opt =>
@@ -482,6 +565,35 @@ module.exports = {
 
       await interaction.editReply('Syncing roles from profiles.json...');
       await performRoleSync({ interaction, guild, db, clearRoles, useFollowUpForStatus: false });
+      return;
+    }
+
+    // Handle new command types (states, races, primaries)
+    if (updateType === 'states' || updateType === 'races' || updateType === 'primaries') {
+      await interaction.editReply(`Scraping ${typeLabel.toLowerCase()}...`);
+      
+      let browser, page;
+      try {
+        const sess = await loginAndGet(`${BASE}/`);
+        browser = sess.browser;
+        page = sess.page;
+
+        if (updateType === 'states') {
+          await scrapeStatesData(interaction, page, writeDb);
+        } else if (updateType === 'races') {
+          await scrapeRacesData(interaction, page, writeDb);
+        } else if (updateType === 'primaries') {
+          await scrapePrimariesData(interaction, page, writeDb);
+        }
+
+        const secs = Math.round((Date.now() - start) / 1000);
+        await interaction.editReply(`Updated ${typeLabel.toLowerCase()} data. Time: ${secs}s.`);
+        
+      } catch (err) {
+        try { await interaction.editReply(`Error during ${typeLabel.toLowerCase()} update: ${err?.message || String(err)}`); } catch {}
+      } finally {
+        try { await browser?.close(); } catch {}
+      }
       return;
     }
 
