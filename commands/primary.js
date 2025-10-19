@@ -120,47 +120,91 @@ function resolveStateIdFromIndex(html, stateName) {
   return found;
 }
 
-function extractRacePrimariesFromStatePage(html, raceLabel) {
+function extractPrimaryCandidates(html) {
   const $ = cheerio.load(html || '');
-  const raceName = String(raceLabel || '').trim().toLowerCase();
+  const items = [];
 
-  let header = null;
-  $('h4').each((_, el) => {
-    const t = ($(el).text() || '').trim().toLowerCase();
-    if (t === raceName) { header = $(el); return false; }
+  // Helper: pull metrics like ES/CO/NR/AR/CR from any nearby text
+  const pickMetrics = (txt) => {
+    const out = {};
+    const re = /\b(ES|CO|NR|AR|CR)\s*[:\-]\s*([0-9]+(?:\.[0-9]+)?)\b/gi;
+    let m;
+    while ((m = re.exec(String(txt || '')))) {
+      out[m[1].toUpperCase()] = m[2];
+    }
+    return out;
+  };
+
+  // ---------- Layout A: legacy "progress-wrapper" blocks ----------
+  let scope = $('#electionresult');
+  if (!scope.length) scope = $('body');
+  scope.find('.progress-wrapper').each((_, pw) => {
+    const wrap = $(pw);
+    const label = wrap.find('.progress-label a').first();
+    const nameFull = (label.text() || '').replace(/\s+/g, ' ').trim();
+    if (!nameFull) return;
+
+    // Name and inline metrics "(ES: 20, CO: 30, ...)"
+    let name = nameFull;
+    const paren = nameFull.match(/^(.+?)\s*\(([^)]+)\)\s*$/);
+    const metrics = paren ? pickMetrics(paren[2]) : pickMetrics(nameFull);
+    if (paren) name = paren[1].trim();
+
+    // Percent (either text or style width)
+    let percent = null;
+    const pctText = (wrap.find('.progress-percentage .text-primary').first().text() || '').trim();
+    const mp = pctText.match(/([0-9]+(?:\.[0-9]+)?)/);
+    if (mp) percent = mp[1];
+    if (percent == null) {
+      const w = wrap.find('.progress-bar').attr('style') || '';
+      const mw = w.match(/width:\s*([0-9.]+)%/i);
+      if (mw) percent = mw[1];
+    }
+
+    items.push({ name, metrics, percent });
   });
-  if (!header) return null;
 
-  const container = header.closest('.container, .container-fluid, .bg-white').length
-    ? header.closest('.container, .container-fluid, .bg-white')
-    : header.parent();
+  if (items.length) return items;
 
-  const table = container.find('table').first();
-  if (!table.length) return null;
+  // ---------- Layout B: new "Primary Registration" table ----------
+  // Looks like: <h3>Primary Registration</h3> ... <table> <tbody><tr>...</tr></tbody>
+  // Candidate name is inside an <a href="/users/..."><h5>NAME</h5></a>
+  const regBlock = $('h3').filter((_, el) => /primary\s+registration/i.test($(el).text())).first()
+    .closest('.container-fluid, .bg-white, .rounded, .ppusa_background, .row, .col-sm-6');
+  const regTable = regBlock.find('table tbody');
+  if (regTable.length) {
+    regTable.find('tr').each((_, tr) => {
+      const row = $(tr);
+      // Prefer h5 text, fallback to anchor text
+      const name =
+        row.find('a[href^="/users/"] h5').first().text().trim() ||
+        row.find('a[href^="/users/"]').first().text().trim();
 
-  const result = { dem: null, gop: null };
-  table.find('tbody tr').each((_, tr) => {
-    const row = $(tr);
-    const a = row.find('a[href*="/primaries/"]').first();
-    if (!a.length) return;
+      if (!name) return;
 
-    const href = a.attr('href') || '';
-    const url = href.startsWith('http') ? href : new URL(href, BASE).toString();
-    const tds = row.find('td');
+      // Look for any inline “(ES:…, CO:…, NR:…, AR:…, CR:…)” in row text
+      const rowText = row.text().replace(/\s+/g, ' ');
+      const metrics = pickMetrics(rowText);
 
-    const partyText = (a.text() || '').toLowerCase();
-    const deadlineText = (tds.eq(1).text() || '').replace(/\s+/g, ' ').trim() || null;
-    const countText = (tds.eq(2).text() || '').trim();
-    const count = countText && /\d+/.test(countText) ? Number((countText.match(/\d+/) || [])[0]) : null;
+      items.push({ name, metrics, percent: null });
+    });
+  }
 
-    const obj = { url, deadline: deadlineText, count };
-    if (partyText.includes('democrat')) result.dem = obj;
-    if (partyText.includes('republican')) result.gop = obj;
+  if (items.length) return items;
+
+  // ---------- Layout C: very defensive fallback ----------
+  // Any user links with an h5 name elsewhere on the page
+  $('a[href^="/users/"] h5').each((_, h5) => {
+    const name = ($(h5).text() || '').trim();
+    if (!name) return;
+    const blockText = $(h5).closest('tr, .container-fluid, .bg-white, .rounded, .row').text().replace(/\s+/g, ' ');
+    const metrics = pickMetrics(blockText);
+    items.push({ name, metrics, percent: null });
   });
 
-  if (!result.dem && !result.gop) return null;
-  return result;
+  return items;
 }
+
 
 function extractPrimaryCandidates(html) {
   const $ = cheerio.load(html || '');
