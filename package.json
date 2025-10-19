@@ -1,4 +1,4 @@
-﻿{
+{
   "name": "dembot",
   "version": "1.0.0",
   "description": "",
@@ -9,7 +9,10 @@
     "docker:build": "docker build -t dembot .",
     "docker:run": "docker run --rm --env-file .env --name dembot dembot",
     "cookie:update": "node scripts/set_ppusa_cookie.js",
-    "test": "echo \"Error: no test specified\" && exit 1"
+    "test": "echo \"Error: no test specified\" && exit 1",
+    "boot": "powershell -ExecutionPolicy Bypass -File scripts/boot.ps1",
+    "setup:boot": "powershell -ExecutionPolicy Bypass -File scripts/register-boot-task.ps1",
+    "restart": "powershell -ExecutionPolicy Bypass -File scripts/restart.ps1"
   },
   "keywords": [],
   "author": "",
@@ -26,4 +29,3 @@
     "tough-cookie": "^6.0.0"
   }
 }
-

@@ -142,12 +142,32 @@ module.exports = {
         } catch (_) {}
       }
 
-      // Fallback to local HTML (American States) if not found
+      // Fallback to local HTML (try any saved States listing in repo root) if not found
       if (!stateId) {
-        const local = readLocalHtml('American States _ Power Play USA.html');
+        const candidates = [
+          'American States _ Power Play USA.html',
+          'Power Play USA.html',
+          'American States _ Power Play USA.mhtml',
+        ];
+        let local = null;
+        for (const fname of candidates) {
+          const html = readLocalHtml(fname);
+          if (html && looksLikeStatesList(html)) { local = html; break; }
+        }
+        if (!local) {
+          // As a last resort, scan cwd for any .html containing many /states/<id> links
+          try {
+            const dir = process.cwd();
+            const files = fs.readdirSync(dir).filter(f => /\.html?$/i.test(f));
+            for (const f of files) {
+              const html = readLocalHtml(f);
+              if (html && looksLikeStatesList(html)) { local = html; break; }
+            }
+          } catch (_) {}
+        }
         if (local) {
           stateId = extractStateIdFromStatesHtml(local, stateName);
-          finalLogs.push('Resolved state ID via local American States HTML.');
+          finalLogs.push('Resolved state ID via local saved States HTML.');
         }
       }
 
@@ -263,8 +283,12 @@ function normalizeStateName(s) {
   // Try abbr
   const abbr = raw.toLowerCase();
   if (US_STATE_ABBR[abbr]) return US_STATE_ABBR[abbr];
-  // Try name normalization
-  const name = raw.replace(/\s+/g, ' ').toLowerCase();
+  // Try name normalization (strip prefixes like "State of ")
+  const name = raw
+    .replace(/^\s+|\s+$/g, '')
+    .replace(/\s+/g, ' ')
+    .replace(/^(state|commonwealth|territory)\s+of\s+/i, '')
+    .toLowerCase();
   const match = Object.values(US_STATE_ABBR).find(n => n.toLowerCase() === name);
   return match || null;
 }
@@ -300,7 +324,8 @@ function extractStateIdFromStatesHtml(html, stateName) {
       const text = ($(a).text() || '').trim();
       if (!/^\/states\/\d+/.test(href)) return;
       if (!text) return;
-      if (normalizeText(text) === target) {
+      const normText = normalizeText(text);
+      if (normText === target || normText.includes(target) || target.includes(normText)) {
         const m = href.match(/\/states\/(\d+)/);
         if (m) { id = Number(m[1]); return false; }
       }
