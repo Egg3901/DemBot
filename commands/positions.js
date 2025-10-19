@@ -72,6 +72,16 @@ function cleanPositionText(text) {
     .trim();
 }
 
+function extractStateFromPosition(positionText) {
+  if (!positionText) return null;
+  const text = String(positionText).trim();
+  const match = text.match(/\b(?:from|of)\s+([A-Za-z][A-Za-z\s\.'-]*?)$/i);
+  if (match && match[1]) {
+    return match[1].replace(/\s+/g, ' ').trim();
+  }
+  return null;
+}
+
 function extractStateInfo(html, { baseUrl }) {
   const $ = cheerio.load(html || '');
   const heading = $('h4')
@@ -385,7 +395,14 @@ module.exports = {
     const profileId = profileIds.length ? profileIds[0] : null;
     const cachedProfile = profileId ? profiles[profileId] || null : null;
 
-    let stateTargetName = stateRawInput ? normalizeStateName(stateRawInput) : null;
+    let stateTargetName = stateRawInput || null;
+    if (!stateTargetName && cachedProfile?.state) {
+      stateTargetName = cachedProfile.state;
+    }
+    if (!stateTargetName && cachedProfile?.position) {
+      stateTargetName = extractStateFromPosition(cachedProfile.position);
+    }
+
     let deferred = false;
     try {
       await interaction.deferReply();
@@ -420,17 +437,17 @@ module.exports = {
         const profilePage = await fetchHtmlWithSession(`${BASE}/users/${profileId}`, page, 'load');
         playerInfo = extractPlayerPoliticalInfo(profilePage.html, { baseUrl: BASE, profileId });
         if (!stateTargetName && playerInfo?.stateName) {
-          stateTargetName = normalizeStateName(playerInfo.stateName) || playerInfo.stateName;
+          stateTargetName = playerInfo.stateName;
         }
       } else if (!stateTargetName && cachedProfile?.state) {
-        stateTargetName = normalizeStateName(cachedProfile.state) || cachedProfile.state;
+        stateTargetName = cachedProfile.state;
       }
 
       if (!stateTargetName) {
         return interaction.editReply('Could not determine which state to inspect. Provide a state explicitly.');
       }
 
-      const normalizedStateName = normalizeStateName(stateTargetName);
+      const normalizedStateName = normalizeStateName(stateTargetName) || stateTargetName;
       if (!normalizedStateName) {
         return interaction.editReply(`Unknown state "${stateTargetName}". Use a two-letter code or full state name.`);
       }
@@ -471,6 +488,10 @@ module.exports = {
         ? buildComparisonLines(stateInfo, playerInfo.positions)
         : null;
 
+      const playerNormalizedState = normalizeStateName(
+        playerInfo?.stateName || cachedProfile?.state || stateTargetName || ''
+      );
+
       const player = profileId
         ? {
             label: playerInfo?.name
@@ -478,7 +499,11 @@ module.exports = {
               : `Player Alignment — [Profile ${profileId}](${BASE}/users/${profileId})`,
             stateName: playerInfo?.stateName || cachedProfile?.state || null,
             stateMismatch:
-              !!(playerInfo?.stateName && playerInfo.stateName.toLowerCase() !== normalizedStateName.toLowerCase()),
+              !!(
+                playerNormalizedState &&
+                normalizedStateName &&
+                playerNormalizedState.toLowerCase() !== normalizedStateName.toLowerCase()
+              ),
             party: playerInfo?.party || cachedProfile?.party || null,
             comparisonLines,
           }
