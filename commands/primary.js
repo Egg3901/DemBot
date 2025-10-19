@@ -208,8 +208,13 @@ function buildDebugArtifacts(enabled, data) {
 }
 
 // -------------------- Network helpers (reuse session) --------------------
-async function fetchHtmlWithSession(url, sessionPage, waitUntil = 'domcontentloaded') {
-  await sessionPage.goto(url, { waitUntil }).catch(() => {});
+async function fetchHtmlWithSession(url, sessionPage, waitUntil = 'domcontentloaded', timeout = 8000) {
+  try {
+    await sessionPage.goto(url, { waitUntil, timeout });
+  } catch (err) {
+    // If timeout or navigation error, still try to get what we have
+    console.warn(`Navigation warning for ${url}:`, err.message);
+  }
   await delay(150); // small paint window
   return { html: await sessionPage.content(), finalUrl: sessionPage.url() };
 }
@@ -275,37 +280,59 @@ module.exports = {
     let page = null;
 
     try {
-      // Authenticate once and reuse session/page
-      const session = await authenticateAndNavigate({ url: `${BASE}/national/states`, debug: debugFlag });
+      // Try to resolve stateId from cached states index first
+      let stateId = null;
+      const cachedStatesPath = path.join(process.cwd(), 'data', 'states_index_cache.json');
+      
+      try {
+        if (fs.existsSync(cachedStatesPath)) {
+          const cached = JSON.parse(fs.readFileSync(cachedStatesPath, 'utf8'));
+          // Cache valid for 24 hours
+          if (cached.timestamp && Date.now() - cached.timestamp < 24 * 60 * 60 * 1000) {
+            stateId = resolveStateIdFromIndex(cached.html, stateName);
+          }
+        }
+      } catch (err) {
+        console.warn('Failed to read cached states index:', err.message);
+      }
+
+      // Authenticate to a lightweight page first (faster than /national/states)
+      const session = await authenticateAndNavigate({ url: `${BASE}/`, debug: debugFlag });
       browser = session.browser;
       page = session.page;
 
-      let statesHtml = session.html;
-      let statesUrlFinal = session.finalUrl || `${BASE}/national/states`;
-
-      // If tiny (blocked/interstitial), try a harder load
-      if ((statesHtml || '').length < 400) {
-        const refetched = await fetchHtmlWithSession(`${BASE}/national/states`, page, 'load');
-        statesHtml = refetched.html;
-        statesUrlFinal = refetched.finalUrl;
-      }
-
-      // Resolve state id from the index
-      const stateId = resolveStateIdFromIndex(statesHtml, stateName);
+      // If we don't have stateId from cache, fetch it now
       if (!stateId) {
-        const dbgPath = path.join(process.cwd(), `states_index_${Date.now()}.html`);
-        try { fs.writeFileSync(dbgPath, statesHtml || '', 'utf8'); } catch {}
-        const { suffix, files } = buildDebugArtifacts(userDebug, {
-          finalUrl: statesUrlFinal,
-          saved: dbgPath
-        });
-        const msg = `Could not find a state matching "${stateName}" on the states listing.${suffix}`;
-        await interaction.editReply({ content: msg, files });
-        return;
+        const statesPage = await fetchHtmlWithSession(`${BASE}/national/states`, page, 'domcontentloaded');
+        let statesHtml = statesPage.html;
+        
+        // Cache the states index for future use
+        try {
+          const dataDir = path.join(process.cwd(), 'data');
+          if (!fs.existsSync(dataDir)) fs.mkdirSync(dataDir, { recursive: true });
+          fs.writeFileSync(cachedStatesPath, JSON.stringify({
+            html: statesHtml,
+            timestamp: Date.now()
+          }), 'utf8');
+        } catch (err) {
+          console.warn('Failed to cache states index:', err.message);
+        }
+
+        stateId = resolveStateIdFromIndex(statesHtml, stateName);
+        if (!stateId) {
+          const dbgPath = path.join(process.cwd(), `states_index_${Date.now()}.html`);
+          try { fs.writeFileSync(dbgPath, statesHtml || '', 'utf8'); } catch {}
+          const { suffix, files } = buildDebugArtifacts(userDebug, {
+            finalUrl: statesPage.finalUrl,
+            saved: dbgPath
+          });
+          const msg = `Could not find a state matching "${stateName}" on the states listing.${suffix}`;
+          await interaction.editReply({ content: msg, files });
+          return;
+        }
       }
 
-      // Visit state page (best-effort), then primaries page
-      await fetchHtmlWithSession(`${BASE}/states/${stateId}`, page, 'domcontentloaded');
+      // Visit primaries page directly (skip state page for speed)
       const primaries = await fetchHtmlWithSession(`${BASE}/states/${stateId}/primaries`, page, 'domcontentloaded');
       const primariesHtml = primaries.html;
       const primariesUrl = primaries.finalUrl;
@@ -318,7 +345,7 @@ module.exports = {
         return;
       }
 
-      // Fetch party pages and parse candidates
+      // Fetch party pages and parse candidates (with shorter timeout)
       const parties = party === 'both' ? ['dem', 'gop'] : [party];
       const results = [];
 
@@ -331,7 +358,8 @@ module.exports = {
           continue;
         }
 
-        const partyPage = await fetchHtmlWithSession(meta.url, page, 'domcontentloaded');
+        // Use shorter timeout for party pages (6s instead of 8s)
+        const partyPage = await fetchHtmlWithSession(meta.url, page, 'domcontentloaded', 6000);
         const candidates = extractPrimaryCandidates(partyPage.html) || [];
         results.push({
           label,

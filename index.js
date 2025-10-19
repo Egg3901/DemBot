@@ -56,6 +56,8 @@ const DASHBOARD_PORT = Number(process.env.STATUS_PORT || process.env.DASHBOARD_P
 const DASHBOARD_HOST = process.env.STATUS_HOST || process.env.DASHBOARD_HOST || '0.0.0.0';
 // Welcome channel: prefer .env WELCOME_CHANNEL_ID, fallback to provided channel id
 const WELCOME_CHANNEL_ID = process.env.WELCOME_CHANNEL_ID || '1257518076123939017';
+// Command timeout: Discord allows 15 minutes, default to 10 minutes for safety
+const COMMAND_TIMEOUT_MS = Number(process.env.COMMAND_TIMEOUT_MS || '600000'); // 10 minutes
 
 if (!DISCORD_TOKEN) {
   console.error('❌ Missing DISCORD_TOKEN in .env');
@@ -319,10 +321,11 @@ client.on(Events.InteractionCreate, async (interaction) => {
   }
 
   try {
-    // Execute command with timeout protection
+    // Execute command with timeout protection (default 10 minutes, configurable via COMMAND_TIMEOUT_MS)
     const executionPromise = cmd.execute(interaction);
+    const timeoutMs = COMMAND_TIMEOUT_MS;
     const timeoutPromise = new Promise((_, reject) => 
-      setTimeout(() => reject(new Error('Command execution timeout (30s)')), 30000)
+      setTimeout(() => reject(new Error(`Command execution timeout (${timeoutMs/1000}s)`)), timeoutMs)
     );
     
     await Promise.race([executionPromise, timeoutPromise]);
