@@ -1,461 +1,712 @@
-// commands/primary.js
-// View a state primary race (Senate class 1/2/3, Governor, or House) and candidate stats.
-// Examples:
-//   /primary state:ca race:s1
-//   /primary state:california race:gov party:both
-//   /primary state:tx race:house party:gop
-
+// commands/send.js
 const { SlashCommandBuilder } = require('discord.js');
-const cheerio = require('cheerio');
-const fs = require('node:fs');
-const path = require('node:path');
-
 const { authenticateAndNavigate, PPUSAAuthError } = require('../lib/ppusa-auth');
-const { config } = require('../lib/ppusa-config');
-const { recordCommandError } = require('../lib/status-tracker');
+const { config, getEnv, toAbsoluteUrl } = require('../lib/ppusa-config');
 
-const BASE = config.baseUrl;
-const DEFAULT_DEBUG = !!config.debug;
+const NAV_TIMEOUT = config.navTimeout;
+const DEFAULT_DEBUG = config.debug;
+const DEMS_TREASURY_URL = toAbsoluteUrl(getEnv('DEMS_TREASURY_URL', '/parties/1/treasury'));
+const SEND_USE_AUTOSUGGEST = String(getEnv('SEND_USE_AUTOSUGGEST', 'false')).toLowerCase() === 'true';
 
-// -------------------- Mappings --------------------
-const US_STATE_ABBR = {
-  al: 'Alabama', ak: 'Alaska', az: 'Arizona', ar: 'Arkansas', ca: 'California', co: 'Colorado',
-  ct: 'Connecticut', de: 'Delaware', fl: 'Florida', ga: 'Georgia', hi: 'Hawaii', id: 'Idaho',
-  il: 'Illinois', in: 'Indiana', ia: 'Iowa', ks: 'Kansas', ky: 'Kentucky', la: 'Louisiana',
-  me: 'Maine', md: 'Maryland', ma: 'Massachusetts', mi: 'Michigan', mn: 'Minnesota', ms: 'Mississippi',
-  mo: 'Missouri', mt: 'Montana', ne: 'Nebraska', nv: 'Nevada', nh: 'New Hampshire', nj: 'New Jersey',
-  nm: 'New Mexico', ny: 'New York', nc: 'North Carolina', nd: 'North Dakota', oh: 'Ohio', ok: 'Oklahoma',
-  or: 'Oregon', pa: 'Pennsylvania', ri: 'Rhode Island', sc: 'South Carolina', sd: 'South Dakota',
-  tn: 'Tennessee', tx: 'Texas', ut: 'Utah', vt: 'Vermont', va: 'Virginia', wa: 'Washington',
-  wv: 'West Virginia', wi: 'Wisconsin', wy: 'Wyoming', dc: 'District of Columbia', pr: 'Puerto Rico'
-};
+const formatAuthErrorMessage = (err, commandLabel) => {
+  if (!(err instanceof PPUSAAuthError)) return err.message;
+  const details = err.details || {};
+  const lines = [`Error: ${err.message}`];
+  if (details.finalUrl) lines.push(`Page: ${details.finalUrl}`);
 
-const RACE_ALIASES = {
-  s1: 'Senate Class 1', sen1: 'Senate Class 1', senate1: 'Senate Class 1', class1: 'Senate Class 1',
-  s2: 'Senate Class 2', sen2: 'Senate Class 2', senate2: 'Senate Class 2', class2: 'Senate Class 2',
-  s3: 'Senate Class 3', sen3: 'Senate Class 3', senate3: 'Senate Class 3', class3: 'Senate Class 3',
-  gov: 'Governor', governor: 'Governor', gubernatorial: 'Governor',
-  rep: 'House of Representatives', reps: 'House of Representatives', house: 'House of Representatives', representatives: 'House of Representatives'
-};
-
-const PARTY_ALIASES = {
-  dem: 'dem', dems: 'dem', d: 'dem', democratic: 'dem', democrat: 'dem',
-  gop: 'gop', r: 'gop', rep: 'gop', republican: 'gop', republicans: 'gop',
-  both: 'both', all: 'both'
-};
-
-// -------------------- Small utils --------------------
-const delay = (ms) => new Promise((r) => setTimeout(r, ms));
-const normalizeParty = (p) => PARTY_ALIASES[String(p || '').toLowerCase()] || 'both';
-
-function normalizeRace(r) {
-  const key = String(r || '').toLowerCase().replace(/[^a-z0-9]/g, '');
-  return RACE_ALIASES[key] || null;
-}
-
-function normalizeStateName(s) {
-  const raw = String(s || '').trim();
-  if (!raw) return null;
-
-  const abbr = raw.toLowerCase();
-  if (US_STATE_ABBR[abbr]) return US_STATE_ABBR[abbr];
-
-  const alias = new Map([
-    ['cal', 'California'], ['cali', 'California'],
-    ['wash', 'Washington'], ['wash state', 'Washington'],
-    ['mass', 'Massachusetts'], ['jersey', 'New Jersey'],
-    ['carolina', 'North Carolina'],
-    ['dc', 'District of Columbia'], ['d.c.', 'District of Columbia'], ['d.c', 'District of Columbia'], ['d c', 'District of Columbia'],
-    ['pr', 'Puerto Rico'],
-  ]);
-  if (alias.has(abbr)) return alias.get(abbr);
-
-  const name = raw
-    .replace(/^\s+|\s+$/g, '')
-    .replace(/\s+/g, ' ')
-    .replace(/^(state|commonwealth|territory)\s+of\s+/i, '')
-    .replace(/\b(st|st\.)\b/ig, 'saint')
-    .toLowerCase();
-
-  const match = Object.values(US_STATE_ABBR).find((n) => n.toLowerCase() === name);
-  return match || null;
-}
-
-// -------------------- Parsing --------------------
-// /national/states -> resolve numeric stateId
-function resolveStateIdFromIndex(html, stateName) {
-  const $ = cheerio.load(html || '');
-  const norm = (t) => String(t || '')
-    .replace(/\u00A0/g, ' ')
-    .normalize('NFKD')
-    .trim()
-    .toLowerCase()
-    .replace(/\s+/g, ' ')
-    .replace(/^(state|commonwealth|territory)\s+of\s+/i, '');
-
-  const target = norm(stateName);
-  let found = null;
-
-  $('a[href^="/states/"]').each((_, a) => {
-    if (found) return;
-    const href = String($(a).attr('href') || '');
-    const m = href.match(/\/states\/(\d+)\b/);
-    if (!m) return;
-
-    const texts = [
-      ($(a).text() || '').trim(),
-      $(a).attr('title') || '',
-      $(a).closest('tr,li,div').text().trim(),
-    ].filter(Boolean);
-
-    for (const t of texts) {
-      const nt = norm(t);
-      if (nt === target || nt.includes(target) || target.includes(nt)) {
-        found = Number(m[1]);
-        break;
-      }
-    }
-  });
-
-  return found;
-}
-
-// /states/:id/primaries -> locate the race row, return party links/meta
-function extractRacePrimariesFromStatePage(html, raceLabel) {
-  const $ = cheerio.load(html || '');
-  const raceName = String(raceLabel || '').trim().toLowerCase();
-
-  let header = null;
-  $('h4').each((_, el) => {
-    const t = ($(el).text() || '').trim().toLowerCase();
-    if (t === raceName) { header = $(el); return false; }
-  });
-  if (!header) return null;
-
-  const container = header.closest('.container, .container-fluid, .bg-white').length
-    ? header.closest('.container, .container-fluid, .bg-white')
-    : header.parent();
-
-  const table = container.find('table').first();
-  if (!table.length) return null;
-
-  const result = { dem: null, gop: null };
-  table.find('tbody tr').each((_, tr) => {
-    const row = $(tr);
-    const a = row.find('a[href*="/primaries/"]').first();
-    if (!a.length) return;
-
-    const href = a.attr('href') || '';
-    const url = href.startsWith('http') ? href : new URL(href, BASE).toString();
-    const tds = row.find('td');
-
-    const partyText = (a.text() || '').toLowerCase();
-    const deadlineText = (tds.eq(1).text() || '').replace(/\s+/g, ' ').trim() || null;
-    const countText = (tds.eq(2).text() || '').trim();
-    const count = countText && /\d+/.test(countText) ? Number((countText.match(/\d+/) || [])[0]) : null;
-
-    const obj = { url, deadline: deadlineText, count };
-    if (partyText.includes('democrat')) result.dem = obj;
-    if (partyText.includes('republican')) result.gop = obj;
-  });
-
-  if (!result.dem && !result.gop) return null;
-  return result;
-}
-
-// Primary page -> candidates (supports old progress layout and new "Primary Registration" table)
-function extractPrimaryCandidates(html) {
-  const $ = cheerio.load(html || '');
-  const items = [];
-
-  // Helper: pick metrics (ES/CO/NR/AR/CR) from surrounding text
-  const pickMetrics = (txt) => {
-    const out = {};
-    const re = /\b(ES|CO|NR|AR|CR)\s*[:\-]\s*([0-9]+(?:\.[0-9]+)?)\b/gi;
-    let m;
-    while ((m = re.exec(String(txt || '')))) {
-      out[m[1].toUpperCase()] = m[2];
-    }
-    return out;
-  };
-
-  // Layout A: legacy progress cards
-  let scope = $('#electionresult');
-  if (!scope.length) scope = $('body');
-  scope.find('.progress-wrapper').each((_, pw) => {
-    const wrap = $(pw);
-    const label = wrap.find('.progress-label a, .progress-label').first();
-    const nameFull = (label.text() || '').replace(/\s+/g, ' ').trim();
-    if (!nameFull) return;
-
-    let name = nameFull;
-    let metrics = pickMetrics(nameFull);
-    const paren = nameFull.match(/^(.+?)\s*\(([^)]+)\)\s*$/);
-    if (paren) {
-      name = paren[1].trim();
-      metrics = { ...metrics, ...pickMetrics(paren[2]) };
-    }
-
-    let percent = null;
-    const pctText = (wrap.find('.progress-percentage .text-primary').first().text() || '').trim();
-    const mp = pctText.match(/([0-9]+(?:\.[0-9]+)?)/);
-    if (mp) percent = mp[1];
-    if (percent == null) {
-      const w = wrap.find('.progress-bar').attr('style') || '';
-      const mw = w.match(/width:\s*([0-9.]+)%/i);
-      if (mw) percent = mw[1];
-    }
-
-    items.push({ name, metrics, percent });
-  });
-
-  if (items.length) return items;
-
-  // Layout B: new "Primary Registration" table
-  const regHeader = $('h3').filter((_, el) => /primary\s+registration/i.test($(el).text())).first();
-  const regBlock = regHeader.length
-    ? regHeader.closest('.container-fluid, .bg-white, .rounded, .ppusa_background, .row, .col-sm-6')
-    : $();
-  const regTable = regBlock.find('table tbody');
-  if (regTable.length) {
-    regTable.find('tr').each((_, tr) => {
-      const row = $(tr);
-      const name =
-        row.find('a[href^="/users/"] h5').first().text().trim() ||
-        row.find('a[href^="/users/"]').first().text().trim();
-      if (!name) return;
-
-      const rowText = row.text().replace(/\s+/g, ' ');
-      const metrics = pickMetrics(rowText);
-
-      items.push({ name, metrics, percent: null });
-    });
+  const tried = details.triedSelectors || {};
+  if (Array.isArray(tried.email) && tried.email.length) {
+    lines.push(`Email selectors tried: ${tried.email.join(', ')}`);
+  }
+  if (Array.isArray(tried.password) && tried.password.length) {
+    lines.push(`Password selectors tried: ${tried.password.join(', ')}`);
   }
 
-  if (items.length) return items;
-
-  // Fallback: any user names we can see, grab nearby metrics text
-  $('a[href^="/users/"] h5').each((_, h5) => {
-    const name = ($(h5).text() || '').trim();
-    if (!name) return;
-    const nearText = $(h5).closest('tr, .container-fluid, .bg-white, .rounded, .row').text().replace(/\s+/g, ' ');
-    const metrics = pickMetrics(nearText);
-    items.push({ name, metrics, percent: null });
-  });
-
-  return items;
-}
-
-function compactMetrics(metrics) {
-  if (!metrics) return '';
-  const order = ['ES', 'CO', 'NR', 'AR', 'CR']; // include CR when present
-  const parts = order.filter((k) => metrics[k] != null).map((k) => `${k} ${metrics[k]}`);
-  return parts.length ? `(${parts.join(', ')})` : '';
-}
-
-// -------------------- Debug helpers --------------------
-function formatAuthErrorMessage(err, cmdLabel) {
-  if (!(err instanceof PPUSAAuthError)) return `Error: ${err.message}`;
-  const d = err.details || {};
-  const lines = [`Error: ${err.message}`];
-  if (d.finalUrl) lines.push(`Page: ${d.finalUrl}`);
-  if (Array.isArray(d.actions) && d.actions.length) {
-    const last = d.actions[d.actions.length - 1];
+  if (Array.isArray(details.inputSnapshot) && details.inputSnapshot.length) {
+    const sample = details.inputSnapshot.slice(0, 4).map((input) => {
+      const bits = [];
+      if (input.type) bits.push(`type=${input.type}`);
+      if (input.name) bits.push(`name=${input.name}`);
+      if (input.id) bits.push(`id=${input.id}`);
+      if (input.placeholder) bits.push(`placeholder=${input.placeholder}`);
+      bits.push(input.visible ? 'visible' : 'hidden');
+      return bits.join(' ');
+    });
+    lines.push(`Detected inputs: ${sample.join(' | ')}`);
+  }
+  if (Array.isArray(details.actions) && details.actions.length) {
+    const last = details.actions[details.actions.length - 1];
     lines.push(`Last recorded step: ${last.step || 'unknown'} (${last.success ? 'ok' : 'failed'})`);
   }
-  if (d.challenge === 'cloudflare-turnstile') {
+  if (details.challenge === 'cloudflare-turnstile') {
     lines.push('Cloudflare Turnstile is blocking automated login.');
-    lines.push('Workaround: sign in manually and set PPUSA_COOKIE with your session; restart the bot.');
+    lines.push('Workaround: sign in manually in a browser, copy the `ppusa_session=...` cookie, and set it as PPUSA_COOKIE.');
+    lines.push('The bot will reuse that session and skip the challenge.');
+    lines.push('Helper: run `npm run cookie:update`, paste the cookie values, then restart the bot.');
   }
-  lines.push(`Tip: run ${cmdLabel} debug:true to include a debug trail.`);
+  lines.push(`Tip: run ${commandLabel} debug:true to attach the full action log (no .env change needed).`);
   return lines.join('\n');
-}
+};
 
-function buildDebugArtifacts(enabled, data) {
-  if (!enabled || !data) return { suffix: '', files: undefined };
-  const payload = JSON.stringify(data, null, 2);
-  if (payload.length > 1500) {
-    return {
-      suffix: '\n\nDebug details attached (primary_debug.json)',
-      files: [{ attachment: Buffer.from(payload, 'utf8'), name: 'primary_debug.json' }],
-    };
-  }
-  return { suffix: `\n\nDebug: ${payload}` };
-}
+// Committee roles (reused from funds.js)
+const ROLE_NATIONAL = '1257715735090954270';
+const ROLE_SECOND = '1408832907707027547';
+const ROLE_THIRD = '1257715382287073393';
 
-// -------------------- Network helpers (reuse session) --------------------
-async function fetchHtmlWithSession(url, sessionPage, waitUntil = 'domcontentloaded') {
-  await sessionPage.goto(url, { waitUntil }).catch(() => {});
-  await delay(150); // small paint window
-  return { html: await sessionPage.content(), finalUrl: sessionPage.url() };
-}
+// Default amount: 2,000,000 USD
+const DEFAULT_AMOUNT = 2_000_000;
 
-// -------------------- Command --------------------
 module.exports = {
   data: new SlashCommandBuilder()
-    .setName('primary')
-    .setDescription('View a state primary race (Senate class, Governor, or House) and candidate stats')
-    .addStringOption((o) =>
-      o.setName('state').setDescription('State code (e.g., ca) or full name').setRequired(true)
+    .setName('send')
+    .setDescription('Send funds to a specified name and auto-approve')
+    .addStringOption(opt =>
+      opt
+        .setName('name')
+        .setDescription('Recipient name (can be multiple words)')
+        .setRequired(true)
     )
-    .addStringOption((o) =>
-      o.setName('race').setDescription('Race: s1, s2, s3, gov, rep/house').setRequired(true)
-    )
-    .addStringOption((o) =>
-      o.setName('party')
-        .setDescription('Filter party: dem, gop, or both (default: both)')
+    .addStringOption(opt =>
+      opt
+        .setName('type')
+        .setDescription('Recipient type')
         .addChoices(
-          { name: 'Both', value: 'both' },
-          { name: 'Democratic', value: 'dem' },
-          { name: 'Republican', value: 'gop' }
+          { name: 'Player', value: 'player' },
+          { name: 'Caucus', value: 'caucus' },
+          { name: 'State Party', value: 'state_party' }
         )
         .setRequired(false)
     )
-    .addBooleanOption((o) =>
-      o.setName('debug').setDescription('Include diagnostics (ephemeral)').setRequired(false)
+    .addNumberOption(opt =>
+      opt
+        .setName('amount')
+        .setDescription('Dollar amount to send (defaults to 2,000,000)')
+        .setRequired(false)
+        .setMinValue(0.01)
+    )
+    .addBooleanOption(opt =>
+      opt
+        .setName('debug')
+        .setDescription('Include diagnostics in the response')
+        .setRequired(false)
     ),
 
   /** @param {import('discord.js').ChatInputCommandInteraction} interaction */
+  /**
+   * Execute the /send command (posts Discord status and performs a live web send).
+   * @param {import('discord.js').ChatInputCommandInteraction} interaction
+   */
   async execute(interaction) {
-    const userDebug = interaction.options.getBoolean('debug') ?? false;
-    const debugFlag = userDebug || DEFAULT_DEBUG;
+    const name = interaction.options.getString('name', true);
+    const type = interaction.options.getString('type') ?? 'player';
+    const amount = interaction.options.getNumber('amount') ?? DEFAULT_AMOUNT;
+    const debug = interaction.options.getBoolean('debug') ?? false;
 
-    const stateRaw = (interaction.options.getString('state', true) || '').trim();
-    const raceRaw  = (interaction.options.getString('race', true)  || '').trim();
-    const partyRaw = (interaction.options.getString('party') || 'both').trim();
+    const formattedAmount = new Intl.NumberFormat('en-US', {
+      style: 'currency',
+      currency: 'USD',
+      minimumFractionDigits: 2,
+      maximumFractionDigits: 2,
+    }).format(amount);
 
-    const party = normalizeParty(partyRaw);
-    const raceLabel = normalizeRace(raceRaw);
-    const stateName = normalizeStateName(stateRaw);
+    // Initial message
+    const requestMsg =
+      `SEND FUNDS REQUEST\n\n` +
+      `Type: ${type}\n` +
+      `Recipient: ${name}\n` +
+      `Amount: ${formattedAmount}\n\n` +
+      `Processing...`;
 
-    if (!raceLabel) {
-      return interaction.reply({ content: `Unknown race "${raceRaw}". Try: s1, s2, s3, gov, rep/house.`, ephemeral: true });
-    }
-    if (!stateName) {
-      return interaction.reply({ content: `Unknown state "${stateRaw}". Use two-letter code or full state name.`, ephemeral: true });
-    }
+    await interaction.reply({
+      content: requestMsg,
+      allowedMentions: { parse: [] },
+    });
 
-    let deferred = false;
+    // Attempt the website send if configured
+    let webResult = null;
     try {
-      await interaction.deferReply();
-      deferred = true;
-    } catch (e) {
-      if (e?.code === 10062) {
-        console.warn('primary: token expired before defer.');
-        return;
+      if (!config.email || !config.password) {
+        webResult = { ok: false, reason: 'Missing PPUSA_EMAIL/PASSWORD' };
+      } else {
+        webResult = await performWebSend({ type, name, amount, debug });
       }
-      throw e;
-    }
-
-    let browser = null;
-    let page = null;
-
-    try {
-      // Authenticate once and reuse session/page
-      const session = await authenticateAndNavigate({ url: `${BASE}/national/states`, debug: debugFlag });
-      browser = session.browser;
-      page = session.page;
-
-      let statesHtml = session.html;
-      let statesUrlFinal = session.finalUrl || `${BASE}/national/states`;
-
-      // If tiny (blocked/interstitial), try a harder load
-      if ((statesHtml || '').length < 400) {
-        const refetched = await fetchHtmlWithSession(`${BASE}/national/states`, page, 'load');
-        statesHtml = refetched.html;
-        statesUrlFinal = refetched.finalUrl;
-      }
-
-      // Resolve state id from the index
-      const stateId = resolveStateIdFromIndex(statesHtml, stateName);
-      if (!stateId) {
-        const dbgPath = path.join(process.cwd(), `states_index_${Date.now()}.html`);
-        try { fs.writeFileSync(dbgPath, statesHtml || '', 'utf8'); } catch {}
-        const { suffix, files } = buildDebugArtifacts(userDebug, {
-          finalUrl: statesUrlFinal,
-          saved: dbgPath
-        });
-        const msg = `Could not find a state matching "${stateName}" on the states listing.${suffix}`;
-        await interaction.editReply({ content: msg, files });
-        return;
-      }
-
-      // Visit state page (best-effort), then primaries page
-      await fetchHtmlWithSession(`${BASE}/states/${stateId}`, page, 'domcontentloaded');
-      const primaries = await fetchHtmlWithSession(`${BASE}/states/${stateId}/primaries`, page, 'domcontentloaded');
-      const primariesHtml = primaries.html;
-      const primariesUrl = primaries.finalUrl;
-
-      // Extract requested race section
-      const raceInfo = extractRacePrimariesFromStatePage(primariesHtml, raceLabel);
-      if (!raceInfo) {
-        const { suffix, files } = buildDebugArtifacts(userDebug, { stateId, primariesUrl });
-        await interaction.editReply({ content: `No "${raceLabel}" primary found for ${stateName}.${suffix}`, files });
-        return;
-      }
-
-      // Fetch party pages and parse candidates
-      const parties = party === 'both' ? ['dem', 'gop'] : [party];
-      const results = [];
-
-      for (const p of parties) {
-        const meta = p === 'dem' ? raceInfo.dem : raceInfo.gop;
-        const label = p === 'dem' ? 'Democratic Primary' : 'Republican Primary';
-
-        if (!meta || !meta.url) {
-          results.push({ label, error: 'No primary link found', candidates: [], count: meta?.count ?? null, deadline: meta?.deadline ?? null });
-          continue;
-        }
-
-        const partyPage = await fetchHtmlWithSession(meta.url, page, 'domcontentloaded');
-        const candidates = extractPrimaryCandidates(partyPage.html) || [];
-        results.push({
-          label,
-          url: partyPage.finalUrl,
-          candidates,
-          count: meta.count ?? null,
-          deadline: meta.deadline ?? null
-        });
-      }
-
-      // Build embed
-      const fields = results.map((r) => {
-        let value;
-        if (r.error) value = `Error: ${r.error}`;
-        else if (!r.candidates || r.candidates.length === 0) value = 'No candidates filed.';
-        else {
-          value = r.candidates.map((c) => {
-            const m = compactMetrics(c.metrics);
-            const pct = c.percent != null ? ` – ${c.percent}%` : '';
-            return `- ${c.name}${m ? ` ${m}` : ''}${pct}`;
-          }).join('\n');
-        }
-        const extras = [];
-        if (typeof r.count === 'number') extras.push(`${r.count} filed`);
-        if (r.deadline) extras.push(`Deadline: ${r.deadline}`);
-        if (extras.length) value += `\n${extras.join(' | ')}`;
-        return { name: r.label, value: value || '—' };
-      });
-
-      const embed = {
-        title: `${stateName} – ${raceLabel}`,
-        url: primariesUrl,
-        fields,
-        footer: { text: new URL(BASE).hostname },
-        timestamp: new Date().toISOString()
-      };
-
-      await interaction.editReply({ embeds: [embed] });
     } catch (err) {
-      recordCommandError(interaction.commandName, err);
-      const isAuth = err instanceof PPUSAAuthError;
-      const msg = isAuth ? formatAuthErrorMessage(err, '/primary') : `Error: ${err.message}`;
-      if (deferred) {
-        try { await interaction.editReply({ content: msg }); }
-        catch (e) { if (e?.code !== 10062) throw e; }
+      webResult = { ok: false, reason: err?.message ?? String(err) };
+    }
+
+    const includeDebug = (debug || !webResult?.ok);
+    let diag = '';
+    let files;
+    if (includeDebug && webResult) {
+      const full = JSON.stringify(webResult);
+      if (full.length > 1500) {
+        diag = `\n\nDebug: attached as send_debug.json`;
+        files = [{ attachment: Buffer.from(JSON.stringify(webResult, null, 2), 'utf8'), name: 'send_debug.json' }];
+      } else {
+        diag = `\n\nDebug: ${full}`;
       }
-    } finally {
-      try { await browser?.close(); } catch {}
+    }
+    const extraNotes = [];
+    const statusLine = (() => {
+      if (!webResult?.ok) {
+        if (webResult?.reasonDetail && webResult.reasonDetail !== webResult.reason) {
+          extraNotes.push(webResult.reasonDetail);
+        }
+        return `Status: Failed (${webResult?.reason ?? 'unknown error'})`;
+      }
+      if (webResult?.approved) return 'Status: Sent and approved on website';
+      if (webResult?.needsApproval) return 'Status: Submitted on website — manual approval still required';
+      if (webResult?.verified) return 'Status: Sent on website (verified)';
+      if (webResult?.submitted) return 'Status: Sent on website (verification pending)';
+      return 'Status: Sent on website';
+    })();
+
+    const completedMsg =
+      `SEND FUNDS - COMPLETED\n\n` +
+      `Type: ${type}\n` +
+      `Recipient: ${name}\n` +
+      `Amount: ${formattedAmount}\n` +
+      `${statusLine}` +
+      `${extraNotes.length ? `\n${extraNotes.join('\n')}` : ''}` +
+      `${diag}`;
+
+    await interaction.editReply({ content: completedMsg, allowedMentions: { parse: [] }, files });
+  },
+};
+
+async function performWebSend({ type, name, amount, debug }) {
+  const actions = [];
+  const note = (step, detail, extra = {}) => {
+    actions.push({ step, detail, timestamp: new Date().toISOString(), ...extra });
+  };
+  note('start', 'Initiating web send.', { type, name, amount });
+
+  let session;
+  let browser;
+  let page;
+  let finalUrl = null;
+  try {
+    const authDebug = debug || DEFAULT_DEBUG;
+    session = await authenticateAndNavigate({ url: DEMS_TREASURY_URL, debug: authDebug });
+    browser = session.browser;
+    page = session.page;
+    finalUrl = session.finalUrl;
+    const authActions = Array.isArray(session.actions) ? session.actions : [];
+    for (const action of authActions) actions.push({ phase: 'auth', ...action });
+    note('login-success', 'Authenticated and ready on treasury page.', { finalUrl });
+
+    // Snapshot outgoing transactions before submitting
+    const preTransactions = await scrapeOutgoingTransactions(page);
+    const preData = await captureOutgoingData(page);
+    note('snapshot', 'Captured pre-submit outgoing transactions.', {
+      countDom: preTransactions.length,
+      countData: preData.length,
+    });
+
+    // Set recipient type if selector exists
+    const selectSel = '#partyTransactions select#target, #target';
+    if (await page.$(selectSel)) {
+      await page.select(selectSel, type);
+      note('form', 'Recipient type selected.', { selectSel, type });
+    } else {
+      note('form', 'Recipient type selector missing.', { selectSel });
+    }
+
+    // Name input
+    const nameSel = '#partyTransactions #target_id, #target_id';
+    if (!(await page.$(nameSel))) {
+      note('form', 'Name field missing.', { nameSel });
+      return { ok: false, step: 'locate-name', reason: 'Name field not found', actions };
+    }
+    await page.$eval(nameSel, el => (el.value = ''));
+    await page.type(nameSel, name, { delay: 10 });
+    // Ensure site receives input/change events
+    await page.$eval(nameSel, el => {
+      el.dispatchEvent(new Event('input', { bubbles: true }));
+      el.dispatchEvent(new Event('change', { bubbles: true }));
+    });
+    note('form', 'Recipient name filled.', { value: name });
+
+    // Try to select from autosuggest (some pages require committing a suggestion)
+    try {
+      if (!SEND_USE_AUTOSUGGEST) throw new Error('autosuggest disabled');
+      const SUGGESTION_SELECTORS = [
+        '.tt-menu .tt-suggestion',
+        '.autocomplete-suggestions .autocomplete-suggestion',
+        'div[role="listbox"] [role="option"]',
+        '.dropdown-menu .dropdown-item',
+        'ul[role="listbox"] li',
+        '.list-group .list-group-item',
+      ];
+
+      if (typeof page.waitForTimeout === 'function') {
+        await page.waitForTimeout(300);
+      } else {
+        await new Promise(r => setTimeout(r, 300));
+      }
+
+      let picked = null;
+      for (const sel of SUGGESTION_SELECTORS) {
+        const exists = await page.$(sel);
+        if (!exists) continue;
+
+        const candidate = await page.evaluateHandle((s, want) => {
+          const wantLower = (want || '').toLowerCase();
+          const items = Array.from(document.querySelectorAll(s));
+          let el = items.find(n => (n.innerText || '').toLowerCase().includes(wantLower));
+          if (!el) el = items[0] || null;
+          if (el) {
+            el.setAttribute('data-suggest-picked', '1');
+            return el;
+          }
+          return null;
+        }, sel, name);
+
+        const el = candidate && candidate.asElement && candidate.asElement();
+        if (el) {
+          await page.click('[data-suggest-picked="1"]');
+          picked = sel;
+          break;
+        }
+      }
+
+      if (!picked) {
+        // Fallback: press Enter to commit the current text if suggestions not found
+        await page.focus(nameSel);
+        await page.keyboard.press('Enter');
+      }
+
+      // Log the value after commit
+      const committed = await page.$eval(nameSel, el => el.value);
+      note('form', 'Recipient commit attempt finished.', { pickedSelector: picked, committedValue: committed });
+    } catch (e) {
+      note('form', 'Autosuggest selection step failed (continuing).', { error: e?.message || String(e) });
+    }
+
+    // Amount input (type="money" used by site)
+    const amountSel = '#partyTransactions #money, #money, #partyTransactions input[type="money"]';
+    if (!(await page.$(amountSel))) {
+      note('form', 'Amount field missing.', { amountSel });
+      return { ok: false, step: 'locate-amount', reason: 'Amount field not found', actions };
+    }
+    const plain = String(Math.round(Number(amount))).replace(/[^0-9]/g, '');
+    await page.$eval(amountSel, el => (el.value = ''));
+    await page.type(amountSel, plain, { delay: 10 });
+    await page.$eval(amountSel, el => {
+      el.dispatchEvent(new Event('input', { bubbles: true }));
+      el.dispatchEvent(new Event('change', { bubbles: true }));
+    });
+    note('form', 'Amount filled.', { amountDigits: plain });
+
+    // ======== SUBMISSION REWORK: use form.requestSubmit()/submit() instead of clicking button ========
+    const formSel = '#partyTransactions form, form#partyTransactions';
+    if (!(await page.$(formSel))) {
+      note('form', 'Form element not found for submission.', { formSel });
+      return { ok: false, step: 'locate-form', reason: 'Form not found', actions };
+    }
+
+    // Capture the expected POST target (best-effort)
+    const postTarget = await page.$eval(formSel, (form) => {
+      const action = (form.getAttribute('action') || '').trim();
+      try {
+        const u = new URL(action, window.location.origin);
+        return u.pathname + (u.search || '');
+      } catch {
+        return action || '/parties/1/treasury';
+      }
+    }).catch(() => '/parties/1/treasury');
+
+    note('form', 'Submitting via form.requestSubmit()/form.submit().', { formSel, postTarget });
+
+    const postRespPromise = page
+      .waitForResponse(
+        (resp) =>
+          resp.request().method() === 'POST' &&
+          (resp.url().includes(postTarget) || /\/parties\/1\/treasury(?!\S)/.test(resp.url())),
+        { timeout: NAV_TIMEOUT }
+      )
+      .catch(() => null);
+
+    // Use requestSubmit if available to trigger validation/submit handlers; fall back to submit()
+    await page.$eval(
+      formSel,
+      (form) => {
+        const f = /** @type {HTMLFormElement} */ (form);
+        if (typeof f.requestSubmit === 'function') {
+          f.requestSubmit(); // preserves constraints & onsubmit listeners
+        } else {
+          f.submit(); // native submission without validation
+        }
+      }
+    );
+
+    // Many apps redirect or reload after POST
+    const navPromise = page.waitForNavigation({ waitUntil: 'networkidle2', timeout: NAV_TIMEOUT }).catch(() => null);
+    const [postResp] = await Promise.all([postRespPromise, navPromise]);
+
+    if (postResp) {
+      note('post-response', 'Captured POST response.', { url: postResp.url(), status: postResp.status(), ok: postResp.ok() });
+    } else {
+      note('post-response', 'No POST response captured (may still have submitted).');
+    }
+
+    // Quick verification pass; if nothing obvious, try one safe re-submit ONLY if requestSubmit wasn’t available
+    let afterHtml = await page.content();
+    let amountRounded = Math.round(Number(amount));
+    let amountDigits = String(amountRounded);
+    let amountFmt = new Intl.NumberFormat('en-US').format(amountRounded);
+    let verifiedSubmit = afterHtml.includes(name) || afterHtml.includes(amountFmt);
+
+    // If neither POST nor heuristic confirmation, and requestSubmit wasn't supported, try a single retry via submit()
+    if (!postResp && !verifiedSubmit) {
+      const retried = await page.$eval(
+        formSel,
+        (form) => {
+          try {
+            const f = /** @type {HTMLFormElement} */ (form);
+            if (typeof f.requestSubmit !== 'function') {
+              f.submit();
+              return 'submit()';
+            }
+          } catch {}
+          return 'skipped';
+        }
+      ).catch(() => 'error');
+
+      note('retry', 'Retrying native submission once.', { mode: retried });
+      await page.waitForNavigation({ waitUntil: 'networkidle2', timeout: NAV_TIMEOUT }).catch(() => null);
+      if (typeof page.waitForTimeout === 'function') await page.waitForTimeout(500);
+      afterHtml = await page.content();
+      verifiedSubmit = afterHtml.includes(name) || afterHtml.includes(amountFmt);
+      note('retry', 'Post-retry verification.', { verifiedSubmit, matchName: afterHtml.includes(name), matchAmount: afterHtml.includes(amountFmt) });
+    }
+
+    note('form', 'Submission sequence finished.', { currentUrl: page.url() });
+
+    // Heuristic: check page contains recipient or amount post-submit
+    if (typeof page.waitForTimeout === 'function') {
+      await page.waitForTimeout(1000);
+    } else {
+      await new Promise(resolve => setTimeout(resolve, 1000));
+    }
+    note('post-submit', 'Waited after submit for UI updates.');
+
+    // Recompute after possible retry
+    afterHtml = await page.content();
+    verifiedSubmit = afterHtml.includes(name) || afterHtml.includes(amountFmt);
+    note('post-submit', 'Verified submission heuristics.', {
+      verifiedSubmit,
+      matchName: afterHtml.includes(name),
+      matchAmount: afterHtml.includes(amountFmt),
+    });
+
+    // Scan for any inline error messages around the form
+    const formIssues = await scanFormIssues(page);
+    if (formIssues && (formIssues.invalids.length || formIssues.alerts.length)) {
+      note('form-issues', 'Detected form errors after submit.', formIssues);
+      const firstAlert = formIssues.alerts[0]?.text || formIssues.invalids[0]?.text;
+      if (firstAlert) {
+        return {
+          ok: false,
+          step: 'submit',
+          reason: firstAlert,
+          actions
+        };
+      }
+    }
+
+    // Refresh to pick up pending approvals
+    await page.reload({ waitUntil: 'networkidle2' });
+    note('reload', 'Page reloaded to capture pending approvals.');
+
+    const recipientLower = name.toLowerCase();
+    const matched = await waitForTransactionEntry(page, recipientLower, amountDigits, 15000, note, false);
+    if (!matched) {
+      note('verify', 'Timed out waiting for new transaction row.', { recipientLower, amountDigits });
+      return {
+        ok: false,
+        step: 'verify',
+        reason: 'No new transaction detected after submit. Amount or recipient may not have matched exactly.',
+        actions
+      };
+    }
+    note('diff', 'Matched transaction identified.', matched);
+
+    let approved = false;
+    let needsApproval = false;
+    let approvalSelector = null;
+
+    if (matched.hasApproveButton && matched.approveSelector) {
+      approvalSelector = matched.approveSelector;
+      await Promise.all([
+        page.waitForNavigation({ waitUntil: 'networkidle2', timeout: NAV_TIMEOUT }).catch(() => null),
+        page.click(approvalSelector)
+      ]);
+      note('approval', 'Clicked approval button.', { approvalSelector });
+
+      // Give the page a moment and reload to confirm approval status
+      if (typeof page.waitForTimeout === 'function') {
+        await page.waitForTimeout(800);
+      } else {
+        await new Promise(resolve => setTimeout(resolve, 800));
+      }
+      await page.reload({ waitUntil: 'networkidle2' });
+      note('approval', 'Reloaded after approval click to confirm.');
+
+      const approvedRow = await waitForTransactionEntry(page, recipientLower, amountDigits, 8000, note, true);
+      approved = Boolean(approvedRow);
+      if (!approved) {
+        needsApproval = true;
+        note('approval', 'Approval still pending after click.');
+      }
+    } else {
+      if (matched.hasApproveButton) {
+        // Should not happen, but guard.
+        needsApproval = true;
+        note('approval', 'Approve button expected but selector missing.', matched);
+      } else {
+        // No approval needed (already auto-approved).
+        approved = /approved/i.test(matched.approvalText || '');
+        note('approval', 'No approval button present; assuming auto approval.', { approved });
+      }
+    }
+
+    return {
+      ok: true,
+      submitted: true,
+      verified: verifiedSubmit,
+      approved,
+      needsApproval,
+      actions: debug ? actions : undefined
+    };
+  } catch (err) {
+    if (err instanceof PPUSAAuthError) {
+      const details = err.details || {};
+      if (Array.isArray(details.actions)) {
+        for (const action of details.actions) actions.push({ phase: 'auth-error', ...action });
+      }
+      note('auth-error', err.message, details);
+      const reasonDetail = formatAuthErrorMessage(err, '/send');
+      return { ok: false, step: 'auth', reason: err.message, reasonDetail, actions, authDetails: details };
+    }
+    throw err;
+  } finally {
+    if (browser) {
+      try {
+        note('cleanup', 'Closing browser.');
+        await browser.close();
+      } catch (closeErr) {
+        note('cleanup', 'Browser close failed.', { error: closeErr?.message ?? String(closeErr) });
+      }
     }
   }
-};
+}
+
+async function scrapeOutgoingTransactions(page) {
+  return page.evaluate(() => {
+    const rows = Array.from(document.querySelectorAll('#partyOutgoingTableBody tr'));
+    return rows.map((row, idx) => {
+      const identifier = row.getAttribute('data-tx-id') || `tx-${Date.now()}-${idx}`;
+      row.setAttribute('data-tx-id', identifier);
+
+      const cells = row.querySelectorAll('td');
+      const timeText = cells[0]?.innerText?.trim() ?? '';
+      const senderText = cells[1]?.innerText?.trim() ?? '';
+      const recipientText = cells[2]?.innerText?.trim() ?? '';
+      const recipientLower = recipientText.toLowerCase();
+      const amountText = cells[3]?.innerText?.trim() ?? '';
+      const amountDigits = amountText.replace(/[^0-9]/g, '');
+      const approvalCell = cells[4];
+      const approvalText = approvalCell?.innerText?.trim() ?? '';
+
+      const approveButton = approvalCell?.querySelector('form button[name="decision"][value="1"]');
+      let approveSelector = null;
+      if (approveButton) {
+        approveButton.setAttribute('data-approve-click', identifier);
+        approveSelector = `[data-approve-click="${identifier}"]`;
+      }
+
+      return {
+        id: identifier,
+        timeText,
+        senderText,
+        recipientText,
+        recipientLower,
+        amountText,
+        amountDigits,
+        approvalText,
+        hasApproveButton: Boolean(approveButton),
+        approveSelector,
+      };
+    });
+  });
+}
+
+async function captureOutgoingData(page) {
+  try {
+    return await page.evaluate(() => {
+      const data = Array.isArray(window.partyOutgoingData) ? window.partyOutgoingData : [];
+      return data.map((item, idx) => {
+        const name = item.recipientName || item.recipient?.name || '';
+        const lower = name.toLowerCase();
+        const amountNum = typeof item.amountNum === 'number' ? item.amountNum : Number(item.amount);
+        const amountDigits = Number.isFinite(amountNum)
+          ? String(Math.round(amountNum)).replace(/[^0-9]/g, '')
+          : String(item.amount || '').replace(/[^0-9]/g, '');
+        const approvalText = typeof item.approval === 'string' ? item.approval : '';
+
+        const amountPretty = Number.isFinite(amountNum)
+          ? `$${Number(amountNum).toLocaleString('en-US')}`
+          : String(item.amount ?? '');
+
+        return {
+          source: 'data',
+          id: item.id ?? `data-${Date.now()}-${idx}`,
+          recipientText: name,
+          recipientLower: lower,
+          amountText,
+          amountDigits,
+          approvalText,
+          hasApproveButton: /decision/.test(approvalText || ''),
+          approveSelector: null,
+          raw: item,
+        };
+      });
+    });
+  } catch (err) {
+    return [];
+  }
+}
+
+async function waitForTransactionEntry(page, recipientLower, amountDigits, timeoutMs, note, requireApproved) {
+  try {
+    const handle = await page.waitForFunction(
+      (recipient, digits, requireApproved) => {
+        const rows = Array.from(document.querySelectorAll('#partyOutgoingTableBody tr'));
+        const matches = [];
+
+        for (const row of rows) {
+          const cells = row.querySelectorAll('td');
+          if (cells.length < 4) continue;
+          const recipientText = cells[2]?.innerText?.trim() ?? '';
+          const lower = recipientText.toLowerCase();
+          if (!lower.includes(recipient)) continue;
+
+          const amountText = cells[3]?.innerText?.trim() ?? '';
+          const digitsOnly = amountText.replace(/[^0-9]/g, '');
+          if (digitsOnly !== digits) continue;
+
+          const approvalCell = cells[4];
+          const approvalText = approvalCell?.innerText?.trim() ?? '';
+
+          if (requireApproved && !/approved/i.test(approvalText)) {
+            continue;
+          }
+
+          const approveButton = approvalCell?.querySelector('form button[name="decision"][value="1"]');
+          let approveSelector = null;
+          if (approveButton) {
+            const existingId = approveButton.getAttribute('data-approve-click');
+            const identifier = existingId || `approve-${Date.now()}`;
+            approveButton.setAttribute('data-approve-click', identifier);
+            approveSelector = `[data-approve-click="${identifier}"]`;
+          }
+
+          matches.push({
+            source: 'dom',
+            recipientText,
+            amountText,
+            approvalText,
+            hasApproveButton: Boolean(approveButton),
+            approveSelector,
+          });
+        }
+
+        const dataEntries = Array.isArray(window.partyOutgoingData) ? window.partyOutgoingData : [];
+        for (const item of dataEntries) {
+          const name = (item.recipientName || item.recipient?.name || '').trim();
+          const lower = name.toLowerCase();
+          if (!lower.includes(recipient)) continue;
+
+          const amountNum = typeof item.amountNum === 'number' ? item.amountNum : Number(item.amount);
+          const amountDigits = Number.isFinite(amountNum)
+            ? String(Math.round(amountNum)).replace(/[^0-9]/g, '')
+            : String(item.amount || '').replace(/[^0-9]/g, '');
+          if (amountDigits !== digits) continue;
+
+          const approvalText = typeof item.approval === 'string' ? item.approval : '';
+
+          const amountPretty = Number.isFinite(amountNum)
+            ? `$${Number(amountNum).toLocaleString('en-US')}`
+            : String(item.amount ?? '');
+
+          matches.push({
+            source: 'data',
+            recipientText: name,
+            amountText: amountPretty,
+            approvalText,
+            hasApproveButton: /decision/.test(approvalText || ''),
+            approveSelector: null,
+            raw: item,
+          });
+        }
+
+        for (const entry of matches) {
+          if (requireApproved && !/approved/i.test(entry.approvalText || '')) continue;
+          return entry;
+        }
+
+        return null;
+      },
+      { timeout: timeoutMs },
+      recipientLower,
+      amountDigits,
+      requireApproved
+    );
+
+    const value = await handle.jsonValue();
+    if (value && typeof note === 'function') {
+      note('wait-row', 'Transaction row located.', { value, requireApproved });
+    }
+    return value;
+  } catch (err) {
+    if (typeof note === 'function') {
+      note('wait-row-timeout', 'Failed to locate transaction row within timeout.', {
+        recipientLower,
+        amountDigits,
+        requireApproved,
+        error: err?.message ?? String(err),
+      });
+    }
+    return null;
+  }
+}
+
+async function scanFormIssues(page) {
+  try {
+    return await page.evaluate(() => {
+      const within = document.querySelector('#partyTransactions') || document;
+      const invalids = Array.from(within.querySelectorAll('.is-invalid, .invalid-feedback'))
+        .map(el => ({ text: el.textContent?.trim() || '', id: el.id || null, for: el.getAttribute('for') || null }))
+        .filter(x => x.text);
+      const alerts = Array.from(document.querySelectorAll('.alert.alert-danger, .alert.alert-warning'))
+        .map(el => ({ text: el.textContent?.trim() || '' }))
+        .filter(x => x.text);
+      return { invalids, alerts };
+    });
+  } catch (_) {
+    return { invalids: [], alerts: [] };
+  }
+}
+/**
+ * Project: DemBot (Discord automation for Power Play USA)
+ * File: commands/send.js
+ * Purpose: Perform treasury send + optional approval via headless browser
+ * Author: egg3901
+ * Created: 2025-10-16
+ * Last Updated: 2025-10-18
+ * Notes:
+ *   - Now submits using form.requestSubmit()/form.submit() (no button click).
+ *   - Defaults to simple type+amount+submit flow (autosuggest disabled). Enable autosuggest with SEND_USE_AUTOSUGGEST=true.
+ *   - Returns detailed diagnostics on failure; attaches send_debug.json when large.
+ */
