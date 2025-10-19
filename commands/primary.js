@@ -6,7 +6,7 @@
 //   /primary state:tx race:house party:gop
 //
 // Handles:
-//  - Mapping state code/name to state id (live via /states; fallback to local HTML if present)
+//  - Mapping state code/name to state id (live via /national/states; fallback to local HTML if present)
 //  - Finding the target race block on the state's primaries page
 //  - Getting both Dem and GOP primary pages and extracting candidate stats
 //  - Graceful handling of empty primaries, missing races, auth/CF interstitials, SPA rendering delays
@@ -104,21 +104,23 @@ module.exports = {
 
     try {
       // 1) Login and load the states index to resolve state id
-      const statesUrl = `${BASE}/states`;
+      // NOTE: the game lists states at /national/states; individual state pages remain /states/:id
+      const statesUrl = `${BASE}/national/states`;
       const sess = await loginAndGet(statesUrl);
       browser = sess.browser;
       page = sess.page;
       let statesHtml = sess.html;
-      addLog(`Fetched /states (length=${statesHtml?.length || 0})`);
+      addLog(`Fetched /national/states (length=${statesHtml?.length || 0})`);
       stage = 'resolve_state_id';
 
-      // --- helpers for /states hardening ---
+      // --- helpers for states-list detection (supports /national/states and /states) ---
       function looksLikeStatesList(html) {
         const $ = cheerio.load(html || '');
         const title = ($('title').first().text() || '').toLowerCase();
+        const linkCount = $('a[href^="/states/"], a[href^="/national/states/"]').length;
         if (/\bamerican\s+states\b/.test(title)) return true;
-        if (/\bstates\b/.test(title) && $('a[href^="/states/"]').length >= 5) return true;
-        return $('a[href^="/states/"]').length >= 10;
+        if (/\bstates\b/.test(title) && linkCount >= 5) return true;
+        return linkCount >= 10;
       }
 
       async function getAuthCookies() {
@@ -133,7 +135,7 @@ module.exports = {
         const { sessCookie } = await getAuthCookies();
         const urlNow = page.url() || '';
         if (!sessCookie || /\/login\b/i.test(urlNow)) {
-          throw new Error('Not authenticated for /states (missing session cookie or redirected to login).');
+          throw new Error('Not authenticated for /national/states (missing session cookie or redirected to login).');
         }
       }
 
@@ -157,8 +159,8 @@ module.exports = {
 
       // STEP C: wait briefly for anchors if it’s a SPA
       if (!looksLikeStatesList(statesHtml)) {
-        addLog('Waiting up to 8s for SPA to render /states anchors...');
-        try { await page.waitForSelector('a[href^="/states/"]', { timeout: 8000 }); } catch {}
+        addLog('Waiting up to 8s for SPA to render states anchors...');
+        try { await page.waitForSelector('a[href^="/states/"], a[href^="/national/states/"]', { timeout: 8000 }); } catch {}
         statesHtml = await page.content();
         addLog(`After SPA wait: length=${statesHtml?.length || 0}`);
       }
@@ -207,11 +209,11 @@ module.exports = {
         return;
       }
 
-      // Resolve state id (HTML first)
+      // Resolve state id (HTML first) — supports /national/states and /states link forms
       stateId = extractStateIdFromStatesHtml(statesHtml, stateName);
       if (stateId) addLog(`Resolved state ID ${stateId} from HTML.`);
 
-      // If still not found, resolve via LIVE DOM
+      // If still not found, resolve via LIVE DOM (supports both link forms)
       if (!stateId) {
         addLog('Trying live DOM resolution for state id...');
         const idLive = await page.evaluate((targetName) => {
@@ -223,25 +225,25 @@ module.exports = {
             .replace(/\s+/g, ' ')
             .replace(/^(state|commonwealth|territory)\s+of\s+/i, '')
             .replace(/\s*\(.*?\)\s*$/, '');
-          const target = norm(targetName);
-          const anchors = Array.from(document.querySelectorAll('a[href^="/states/"]'));
-          for (const a of anchors) {
-            const href = a.getAttribute('href') || '';
-            const m = href.match(/\/states\/(\d+)\b/);
-            if (!m) continue;
-            const texts = [
-              (a.textContent || '').trim(),
-              a.getAttribute('title') || '',
-              a.closest('tr,li,div')?.textContent || ''
-            ].filter(Boolean);
-            for (const t of texts) {
-              const nt = norm(t);
-              if (nt === target || nt.includes(target) || target.includes(nt)) {
-                return Number(m[1]);
-              }
+        const target = norm(targetName);
+        const anchors = Array.from(document.querySelectorAll('a[href^="/states/"], a[href^="/national/states/"]'));
+        for (const a of anchors) {
+          const href = a.getAttribute('href') || '';
+          const m = href.match(/\/(?:national\/)?states\/(\d+)\b/);
+          if (!m) continue;
+          const texts = [
+            (a.textContent || '').trim(),
+            a.getAttribute('title') || '',
+            a.closest('tr,li,div')?.textContent || ''
+          ].filter(Boolean);
+          for (const t of texts) {
+            const nt = norm(t);
+            if (nt === target || nt.includes(target) || target.includes(nt)) {
+              return Number(m[1]);
             }
           }
-          return null;
+        }
+        return null;
         }, stateName);
 
         if (idLive) {
@@ -255,7 +257,7 @@ module.exports = {
         try {
           const snapPath = path.join(process.cwd(), `debug_states_${Date.now()}.html`);
           fs.writeFileSync(snapPath, statesHtml || (await page.content()) || '', 'utf8');
-          addLog(`Saved /states snapshot to ${snapPath}`);
+          addLog(`Saved states snapshot to ${snapPath}`);
         } catch {}
 
         // Local HTML fallback
@@ -305,6 +307,7 @@ module.exports = {
       addLog(`State ID confirmed: ${stateId}.`);
 
       // 2) Go to state page first, then primaries page
+      // NOTE: individual state & primaries pages are still at /states/:id paths
       const stateUrl = `${BASE}/states/${stateId}`;
       try {
         stage = 'visit_state_page';
@@ -522,14 +525,14 @@ function extractStateIdFromStatesHtml(html, stateName) {
     const target = normalizeText(stateName);
     let id = null;
 
-    $('a[href^="/states/"]').each((_, a) => {
+    $('a[href^="/states/"], a[href^="/national/states/"]').each((_, a) => {
       const href = String($(a).attr('href') || '');
       const text = ($(a).text() || '').trim();
-      if (!/^\/states\/\d+/.test(href)) return;
+      if (!/\/(?:national\/)?states\/\d+/.test(href)) return;
       if (!text) return;
       const nt = normalizeText(text);
       if (nt === target || nt.includes(target) || target.includes(nt)) {
-        const m = href.match(/\/states\/(\d+)/);
+        const m = href.match(/\/(?:national\/)?states\/(\d+)/);
         if (m) { id = Number(m[1]); return false; }
       }
     });
@@ -539,8 +542,8 @@ function extractStateIdFromStatesHtml(html, stateName) {
     // Fallback: look for any heading matching the state and pick id from nearby links
     const heading = $('h5,h4,h3').filter((_, el) => normalizeText($(el).text()) === target).first();
     if (heading.length) {
-      const near = heading.closest('.container, .container-fluid').find('a[href^="/states/"]').first();
-      const m = String(near.attr('href') || '').match(/\/states\/(\d+)/);
+      const near = heading.closest('.container, .container-fluid').find('a[href^="/states/"], a[href^="/national/states/"]').first();
+      const m = String(near.attr('href') || '').match(/\/(?:national\/)?states\/(\d+)/);
       if (m) return Number(m[1]);
     }
   } catch {}
