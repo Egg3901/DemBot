@@ -1,5 +1,5 @@
 // commands/funds.js
-const { SlashCommandBuilder, EmbedBuilder } = require('discord.js');
+const { SlashCommandBuilder, EmbedBuilder, PermissionFlagsBits } = require('discord.js');
 
 // ===== CONFIG =====
 const ALLOWED_CHANNEL = '1426053522113433770';
@@ -7,7 +7,7 @@ const ROLE_NATIONAL = '1257715735090954270';
 const ROLE_SECOND = '1408832907707027547';
 const ROLE_THIRD = '1257715382287073393';
 
-// ✅ The only role that should be pinged
+// ✅ Only this role gets pinged
 const ROLE_PING = '1406063223475535994';
 
 const COOLDOWN_MS = 15 * 60 * 1000; // 15 minutes
@@ -68,7 +68,7 @@ module.exports = {
 
   /**
    * Execute the /funds command.
-   * Sends a ping message (mentions only ROLE_PING), then a follow-up embed that gets edited on approval.
+   * Sends a SEPARATE ping message (mentions only ROLE_PING) and a SEPARATE embed message that gets edited on approval.
    * @param {import('discord.js').ChatInputCommandInteraction} interaction
    */
   async execute(interaction) {
@@ -104,32 +104,49 @@ module.exports = {
     const requester = interaction.user;
     const requesterTag = requester.tag ?? requester.id;
 
-    // 1) 📣 Ping message (mentions ONLY ROLE_PING, guild-only)
-    let pingMessage;
+    // We will always create TWO messages in guilds:
+    //   1) A ping message (content-only) that mentions ROLE_PING
+    //   2) A follow-up embed message (no mentions) which will be edited on approval
+    // In DMs: only the embed is sent.
+
+    let embedMessage;
+
     if (interaction.inGuild()) {
-      pingMessage = await interaction.reply({
+      // 1) 📣 PING MESSAGE (separate message; content-only)
+      // Use channel.send so it's fully separate from the embed reply.
+      await interaction.channel.send({
         content: `📣 Attention: <@&${ROLE_PING}> — a new fund request has been submitted.`,
-        allowedMentions: { parse: [], roles: [ROLE_PING], users: [] }, // restrict mention to ROLE_PING
+        allowedMentions: { parse: [], roles: [ROLE_PING], users: [] }, // restrict mention to ROLE_PING only
       });
-    } else {
-      // In DMs, just send a neutral heads-up
-      pingMessage = await interaction.reply({
-        content: `📣 A new fund request has been submitted.`,
+
+      // 2) 🟡 EMBED MESSAGE (separate message; will be edited later)
+      const requestEmbed = buildRequestEmbed({ amount, requesterTag, reason });
+
+      // We still need to acknowledge the interaction—send a lightweight ephemeral ack to the caller,
+      // then post the actual embed to the channel as a standalone message.
+      await interaction.reply({
+        content: '✅ Fund request posted.',
+        ephemeral: true,
+      });
+
+      embedMessage = await interaction.channel.send({
+        embeds: [requestEmbed],
         allowedMentions: { parse: [], roles: [], users: [] },
       });
+    } else {
+      // In DMs: just send the embed as the reply (no ping possible)
+      const requestEmbed = buildRequestEmbed({ amount, requesterTag, reason });
+      await interaction.reply({
+        embeds: [requestEmbed],
+        allowedMentions: { parse: [], roles: [], users: [] },
+      });
+      embedMessage = await interaction.fetchReply();
     }
-
-    // 2) 🟡 Follow-up embed (no pings) — this is the message we'll later EDIT on approval
-    const requestEmbed = buildRequestEmbed({ amount, requesterTag, reason });
-    const embedMessage = await interaction.followUp({
-      embeds: [requestEmbed],
-      allowedMentions: { parse: [], roles: [], users: [] },
-    });
 
     // Skip reaction collector outside guilds
     if (!interaction.inGuild()) return;
 
-    // Add reaction to the EMBED message and wait for approval from authorized roles
+    // React on the EMBED message and wait for approval from authorized roles
     const approvalEmoji = '💰';
     await embedMessage.react(approvalEmoji);
 
@@ -151,7 +168,7 @@ module.exports = {
 
       collector.stop('approved');
 
-      // 🔁 Edit the embed (not the ping message) to reflect approval
+      // 🔁 Edit ONLY the embed message to reflect approval (ping message remains untouched)
       const approvedEmbed = buildApprovedEmbed({
         amount,
         requesterTag,
@@ -170,12 +187,12 @@ module.exports = {
 /**
  * Project: DemBot (Discord automation for Power Play USA)
  * File: commands/funds.js
- * Purpose: Request funds with cooldown; sends a role-restricted ping, then a follow-up embed that gets edited on approval
+ * Purpose: Request funds with cooldown; sends a SEPARATE role-restricted ping, then a SEPARATE embed that gets edited on approval
  * Author: egg3901
  * Created: 2025-10-16
  * Last Updated: 2025-10-18
  * Notes:
- *   - Only pings role 1406063223475535994 in the initial ping message (guild only).
- *   - Follow-up embed carries details and is the message that gets edited upon approval.
- *   - Approval requires a member reacting with 💰 who has one of the committee roles.
+ *   - Ping message: channel.send with ROLE_PING mention only (no users).
+ *   - Embed message: separate message (no mentions) that is edited upon approval.
+ *   - Interaction is acknowledged ephemerally to keep UX clean and avoid mixing ping/embed.
  */
