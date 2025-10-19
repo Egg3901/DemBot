@@ -12,24 +12,13 @@ const path = require('node:path');
 
 const { authenticateAndNavigate, PPUSAAuthError } = require('../lib/ppusa-auth');
 const { config } = require('../lib/ppusa-config');
+const { normalizeStateName, resolveStateIdFromIndex } = require('../lib/state-utils');
 const { recordCommandError } = require('../lib/status-tracker');
 
 const BASE = config.baseUrl;
 const DEFAULT_DEBUG = !!config.debug;
 
 // -------------------- Mappings --------------------
-const US_STATE_ABBR = {
-  al: 'Alabama', ak: 'Alaska', az: 'Arizona', ar: 'Arkansas', ca: 'California', co: 'Colorado',
-  ct: 'Connecticut', de: 'Delaware', fl: 'Florida', ga: 'Georgia', hi: 'Hawaii', id: 'Idaho',
-  il: 'Illinois', in: 'Indiana', ia: 'Iowa', ks: 'Kansas', ky: 'Kentucky', la: 'Louisiana',
-  me: 'Maine', md: 'Maryland', ma: 'Massachusetts', mi: 'Michigan', mn: 'Minnesota', ms: 'Mississippi',
-  mo: 'Missouri', mt: 'Montana', ne: 'Nebraska', nv: 'Nevada', nh: 'New Hampshire', nj: 'New Jersey',
-  nm: 'New Mexico', ny: 'New York', nc: 'North Carolina', nd: 'North Dakota', oh: 'Ohio', ok: 'Oklahoma',
-  or: 'Oregon', pa: 'Pennsylvania', ri: 'Rhode Island', sc: 'South Carolina', sd: 'South Dakota',
-  tn: 'Tennessee', tx: 'Texas', ut: 'Utah', vt: 'Vermont', va: 'Virginia', wa: 'Washington',
-  wv: 'West Virginia', wi: 'Wisconsin', wy: 'Wyoming', dc: 'District of Columbia', pr: 'Puerto Rico'
-};
-
 const RACE_ALIASES = {
   s1: 'Senate Class 1', sen1: 'Senate Class 1', senate1: 'Senate Class 1', class1: 'Senate Class 1',
   s2: 'Senate Class 2', sen2: 'Senate Class 2', senate2: 'Senate Class 2', class2: 'Senate Class 2',
@@ -53,73 +42,8 @@ function normalizeRace(r) {
   return RACE_ALIASES[key] || null;
 }
 
-function normalizeStateName(s) {
-  const raw = String(s || '').trim();
-  if (!raw) return null;
-
-  const abbr = raw.toLowerCase();
-  if (US_STATE_ABBR[abbr]) return US_STATE_ABBR[abbr];
-
-  const alias = new Map([
-    ['cal', 'California'], ['cali', 'California'],
-    ['wash', 'Washington'], ['wash state', 'Washington'],
-    ['mass', 'Massachusetts'], ['jersey', 'New Jersey'],
-    ['carolina', 'North Carolina'],
-    ['dc', 'District of Columbia'], ['d.c.', 'District of Columbia'], ['d.c', 'District of Columbia'], ['d c', 'District of Columbia'],
-    ['pr', 'Puerto Rico'],
-  ]);
-  if (alias.has(abbr)) return alias.get(abbr);
-
-  const name = raw
-    .replace(/^\s+|\s+$/g, '')
-    .replace(/\s+/g, ' ')
-    .replace(/^(state|commonwealth|territory)\s+of\s+/i, '')
-    .replace(/\b(st|st\.)\b/ig, 'saint')
-    .toLowerCase();
-
-  const match = Object.values(US_STATE_ABBR).find((n) => n.toLowerCase() === name);
-  return match || null;
-}
-
 // -------------------- Parsing --------------------
 // /national/states -> resolve numeric stateId
-function resolveStateIdFromIndex(html, stateName) {
-  const $ = cheerio.load(html || '');
-  const norm = (t) => String(t || '')
-    .replace(/\u00A0/g, ' ')
-    .normalize('NFKD')
-    .trim()
-    .toLowerCase()
-    .replace(/\s+/g, ' ')
-    .replace(/^(state|commonwealth|territory)\s+of\s+/i, '');
-
-  const target = norm(stateName);
-  let found = null;
-
-  $('a[href^="/states/"]').each((_, a) => {
-    if (found) return;
-    const href = String($(a).attr('href') || '');
-    const m = href.match(/\/states\/(\d+)\b/);
-    if (!m) return;
-
-    const texts = [
-      ($(a).text() || '').trim(),
-      $(a).attr('title') || '',
-      $(a).closest('tr,li,div').text().trim(),
-    ].filter(Boolean);
-
-    for (const t of texts) {
-      const nt = norm(t);
-      if (nt === target || nt.includes(target) || target.includes(nt)) {
-        found = Number(m[1]);
-        break;
-      }
-    }
-  });
-
-  return found;
-}
-
 // /states/:id/primaries -> locate the race row, return party links/meta
 function extractRacePrimariesFromStatePage(html, raceLabel) {
   const $ = cheerio.load(html || '');
