@@ -136,6 +136,10 @@ module.exports = {
     .addStringOption((opt) =>
       opt.setName('name').setDescription('Recipient name (can be multiple words)').setRequired(true)
     )
+    // Required: amount
+    .addNumberOption((opt) =>
+      opt.setName('amount').setDescription('Dollar amount to send').setRequired(true).setMinValue(0.01)
+    )
     // Optional: type (defaults to player)
     .addStringOption((opt) =>
       opt
@@ -147,10 +151,6 @@ module.exports = {
           { name: 'State Party', value: 'state_party' }
         )
         .setRequired(false)
-    )
-    // Required: amount
-    .addNumberOption((opt) =>
-      opt.setName('amount').setDescription('Dollar amount to send').setRequired(true).setMinValue(0.01)
     )
     .addBooleanOption((opt) =>
       opt.setName('debug').setDescription('Include diagnostics in the response').setRequired(false)
