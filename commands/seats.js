@@ -63,21 +63,56 @@ const computeControl = (parties) => {
   };
 };
 
+const DIAGRAM_SELECTORS = ['#senate-diagram', '#house-diagram', '#chamber-diagram', '[data-chamber-diagram]'];
+
+const selectDiagramHandle = async (page) => {
+  for (const selector of DIAGRAM_SELECTORS) {
+    const handle = await page.$(selector);
+    if (handle) return { handle, selector };
+  }
+  return { handle: null, selector: null };
+};
+
 const fetchChamber = async (page, id) => {
   const url = `${BASE}/chambers/${id}`;
   const response = await page.goto(url, { waitUntil: 'networkidle2' }).catch(() => null);
   const status = response?.status?.() ?? 200;
   if (status >= 400) throw new Error(`Failed to load chamber page (${status})`);
+  const selectorList = DIAGRAM_SELECTORS.join(', ');
+  await page.waitForSelector(selectorList, { timeout: 5000 }).catch(() => null);
   const html = await page.content();
   const $ = cheerio.load(html);
-  const scriptBlock = $('script[type="module"]').filter((_, el) =>
-    $(el).text().includes('const parties')
-  ).first().text();
+  const scriptBlock = $('script[type="module"]')
+    .filter((_, el) => $(el).text().includes('const parties'))
+    .first()
+    .text();
   const partiesObj = parsePartiesObject(scriptBlock);
   const parties = sortParties(normaliseParties(partiesObj));
   const control = computeControl(parties);
-  const svgHtml = parties.length ? await buildSvg(parties) : null;
-  return { parties, control, svgHtml, url };
+  let svgHtml = null;
+  let pngBuffer = null;
+
+  const { handle: diagramHandle } = await selectDiagramHandle(page);
+  if (diagramHandle) {
+    try {
+      svgHtml = await page.evaluate((el) => el.innerHTML, diagramHandle);
+      const svgHandle = await diagramHandle.$('svg');
+      const targetHandle = svgHandle || diagramHandle;
+      pngBuffer = await targetHandle.screenshot({ type: 'png' });
+      await svgHandle?.dispose();
+    } catch (_) {
+      svgHtml = null;
+      pngBuffer = null;
+    } finally {
+      await diagramHandle.dispose();
+    }
+  }
+
+  if (!svgHtml && parties.length) {
+    svgHtml = await buildSvg(parties);
+  }
+
+  return { parties, control, svgHtml, pngBuffer, url };
 };
 
 let parliamentSvgLib = null;
@@ -160,9 +195,10 @@ module.exports = {
 
       if (choice === 'senate') {
         const senate = await fetchChamber(page, 1);
-        if (senate.svgHtml) {
-          const name = 'senate-seats.svg';
-          attachments.push(new AttachmentBuilder(Buffer.from(senate.svgHtml, 'utf8'), { name }));
+        if (senate.pngBuffer || senate.svgHtml) {
+          const name = senate.pngBuffer ? 'senate-seats.png' : 'senate-seats.svg';
+          const data = senate.pngBuffer || Buffer.from(senate.svgHtml, 'utf8');
+          attachments.push(new AttachmentBuilder(data, { name }));
           senate.attachmentName = name;
         }
         const embed = buildEmbed({ label: config.label, data: senate, attachmentName: senate.attachmentName });
@@ -172,9 +208,10 @@ module.exports = {
 
       if (choice === 'house') {
         const house = await fetchChamber(page, 2);
-        if (house.svgHtml) {
-          const name = 'house-seats.svg';
-          attachments.push(new AttachmentBuilder(Buffer.from(house.svgHtml, 'utf8'), { name }));
+        if (house.pngBuffer || house.svgHtml) {
+          const name = house.pngBuffer ? 'house-seats.png' : 'house-seats.svg';
+          const data = house.pngBuffer || Buffer.from(house.svgHtml, 'utf8');
+          attachments.push(new AttachmentBuilder(data, { name }));
           house.attachmentName = name;
         }
         const embed = buildEmbed({ label: config.label, data: house, attachmentName: house.attachmentName });
@@ -185,14 +222,16 @@ module.exports = {
       // Congress: both chambers
       const senateData = await fetchChamber(page, 1);
       const houseData = await fetchChamber(page, 2);
-      if (senateData.svgHtml) {
-        const name = 'senate-seats.svg';
-        attachments.push(new AttachmentBuilder(Buffer.from(senateData.svgHtml, 'utf8'), { name }));
+      if (senateData.pngBuffer || senateData.svgHtml) {
+        const name = senateData.pngBuffer ? 'senate-seats.png' : 'senate-seats.svg';
+        const data = senateData.pngBuffer || Buffer.from(senateData.svgHtml, 'utf8');
+        attachments.push(new AttachmentBuilder(data, { name }));
         senateData.attachmentName = name;
       }
-      if (houseData.svgHtml) {
-        const name = 'house-seats.svg';
-        attachments.push(new AttachmentBuilder(Buffer.from(houseData.svgHtml, 'utf8'), { name }));
+      if (houseData.pngBuffer || houseData.svgHtml) {
+        const name = houseData.pngBuffer ? 'house-seats.png' : 'house-seats.svg';
+        const data = houseData.pngBuffer || Buffer.from(houseData.svgHtml, 'utf8');
+        attachments.push(new AttachmentBuilder(data, { name }));
         houseData.attachmentName = name;
       }
 
