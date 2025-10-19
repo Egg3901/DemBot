@@ -18,7 +18,7 @@ const RACE_ALIASES = {
   s2: 'Senate Class 2', sen2: 'Senate Class 2', senate2: 'Senate Class 2', class2: 'Senate Class 2',
   s3: 'Senate Class 3', sen3: 'Senate Class 3', senate3: 'Senate Class 3', class3: 'Senate Class 3',
   gov: 'Governor', governor: 'Governor', gubernatorial: 'Governor',
-  rep: 'House of Representatives', reps: 'House of Representatives', house: 'House of Representatives', representatives: 'House of Representatives'
+  rep: 'House of Representatives', reps: 'House of Representatives', house: 'House of Representatives', representatives: 'House of Representatives',
 };
 
 function normalizeRace(r) {
@@ -45,7 +45,7 @@ function pickLatestResults(html) {
       const tds = $(tr).find('td');
       const raw = tds.map((i, el) => ($(el).text() || '').replace(/\s+/g, ' ').trim()).get();
       const name = (raw[0] || '').trim();
-      const pctTxt = (raw.find((t) => /%$/.test(t)) || '').replace(/[\,\s]/g, '');
+      const pctTxt = (raw.find((t) => /%$/.test(t)) || '').replace(/[,"\s]/g, '');
       const percent = pctTxt ? Number((pctTxt.match(/([0-9]+(?:\.[0-9]+)?)%?/) || [])[1]) : null;
       if (name) rows.push({ name, percent });
     });
@@ -78,7 +78,7 @@ function extractNextRaceTime(html) {
   $('*').each((_, el) => {
     const t = ($(el).text() || '').replace(/\s+/g, ' ').trim();
     if (/next\s*race|election\s*day|starts\s*in|next\s*round|polls\s*open|polls\s*close/i.test(t)) {
-      candidates.push(t);
+      candidates.push(t.replace(/(AM|PM)(Week)/, '$1 — $2'));
     }
   });
   candidates.sort((a, b) => b.length - a.length);
@@ -104,13 +104,13 @@ function findRaceInfoFromStateElections(html, raceLabel) {
     rows.each((__, tr) => {
       const row = $(tr);
       const cells = row.find('td');
-      const dateText = (cells.eq(0).text() || '').replace(/\s+/g, ' ').trim();
-      const statusText = (cells.eq(1).text() || '').replace(/\s+/g, ' ').trim();
+      const dateText = (cells.eq(0).text() || '').replace(/\s+/g, ' ').trim().replace(/(AM|PM)(Week)/, '$1 — $2');
+      const statusText = (cells.eq(1).text() || '').replace(/\s+/g, ' ').trim().replace(/(AM|PM)(Week)/, '$1 — $2');
       const anchor = row.find('a[href]').first();
       if (!nextRaceText && dateText) {
         const isEnded = /ended|finished|complete/i.test(statusText);
         if (!isEnded) {
-          nextRaceText = statusText ? `${dateText} â€” ${statusText}` : dateText;
+          nextRaceText = statusText ? `${dateText} — ${statusText}` : dateText;
         }
       }
       if (!raceUrl && anchor.length) {
@@ -125,10 +125,10 @@ function findRaceInfoFromStateElections(html, raceLabel) {
     if (!nextRaceText && rows.length) {
       const firstRow = rows.first();
       const cells = firstRow.find('td');
-      const dateText = (cells.eq(0).text() || '').replace(/\s+/g, ' ').trim();
-      const statusText = (cells.eq(1).text() || '').replace(/\s+/g, ' ').trim();
+      const dateText = (cells.eq(0).text() || '').replace(/\s+/g, ' ').trim().replace(/(AM|PM)(Week)/, '$1 — $2');
+      const statusText = (cells.eq(1).text() || '').replace(/\s+/g, ' ').trim().replace(/(AM|PM)(Week)/, '$1 — $2');
       if (dateText || statusText) {
-        nextRaceText = statusText ? `${dateText} â€” ${statusText}`.trim() : dateText;
+        nextRaceText = statusText ? `${dateText} — ${statusText}`.trim() : dateText;
       }
     }
 
@@ -150,6 +150,14 @@ function findRaceInfoFromStateElections(html, raceLabel) {
   return match;
 }
 
+function formatPollText(text) {
+  if (!text) return null;
+  let formatted = text.replace(/\s+/g, ' ').trim();
+  formatted = formatted.replace(/%(\S)/g, '% $1');
+  formatted = formatted.replace(/(\d)V\s+/i, '$1 | ');
+  return formatted;
+}
+
 function extractLatestPoll(html, stateName, raceLabel) {
   const $ = cheerio.load(html || '');
   let best = null;
@@ -160,9 +168,16 @@ function extractLatestPoll(html, stateName, raceLabel) {
       const matchState = stateName ? rowText.toLowerCase().includes(stateName.toLowerCase()) : true;
       const matchRace = raceLabel ? rowText.toLowerCase().includes(raceLabel.toLowerCase()) : true;
       if (!matchState || !matchRace) return;
-      const cols = $(tr).find('td').map((i, el) => ($(el).text() || '').replace(/\s+/g, ' ').trim()).get();
+      const cols = $(tr).find('td').map((i, el) => {
+        const raw = ($(el).text() || '').replace(/\s+/g, ' ').trim();
+        return formatPollText(raw) || raw;
+      }).get();
       const link = $(tr).find('a[href]').first().attr('href');
-      best = { text: rowText, cols, url: link ? new URL(link, BASE).toString() : null };
+      best = {
+        text: formatPollText(rowText) || rowText,
+        cols,
+        url: link ? new URL(link, BASE).toString() : null,
+      };
       return false;
     });
     if (best) return false;
@@ -170,12 +185,50 @@ function extractLatestPoll(html, stateName, raceLabel) {
   if (best) return best;
   const tr = $('table tbody tr').first();
   if (tr.length) {
-    const rowText = tr.text().replace(/\s+/g, ' ').trim();
-    const cols = tr.find('td').map((i, el) => ($(el).text() || '').replace(/\s+/g, ' ').trim()).get();
+    const rowTextRaw = tr.text().replace(/\s+/g, ' ').trim();
+    const rowText = formatPollText(rowTextRaw) || rowTextRaw;
+    const cols = tr.find('td').map((i, el) => {
+      const raw = ($(el).text() || '').replace(/\s+/g, ' ').trim();
+      return formatPollText(raw) || raw;
+    }).get();
     const link = tr.find('a[href]').first().attr('href');
     return { text: rowText, cols, url: link ? new URL(link, BASE).toString() : null };
   }
   return null;
+}
+
+function extractFinalResultCandidates(html) {
+  const $ = cheerio.load(html || '');
+  const heading = $('h4').filter((_, el) => ($(el).text() || '').trim().toLowerCase().includes('final results')).first();
+  if (!heading.length) return [];
+
+  const sectionTexts = [];
+  let node = heading.parent();
+  while ((node = node.next()).length) {
+    if (node.is('h4')) break;
+    sectionTexts.push(node.text());
+  }
+  const section = sectionTexts.join('\n').replace(/\s+/g, ' ').trim();
+  if (!section) return [];
+
+  const results = [];
+  const regex = /([A-Za-z0-9' .-]+?)\s*\(([^)]*CO:[^)]*)\)\s*\(([^)]*Party)\)\s*\(([^)]+) votes\)\s*([0-9]+(?:\.[0-9]+)?)%/gi;
+  let match;
+  while ((match = regex.exec(section))) {
+    const name = match[1].trim();
+    const stats = match[2].trim();
+    const party = match[3].replace(/^\(|\)$/g, '').trim();
+    const votesRaw = match[4].replace(/,/g, '').trim();
+    const percent = Number(match[5]);
+    results.push({
+      name,
+      stats,
+      party,
+      votes: votesRaw ? Number(votesRaw).toLocaleString('en-US') : null,
+      percent: Number.isFinite(percent) ? percent : null,
+    });
+  }
+  return results;
 }
 
 module.exports = {
@@ -205,12 +258,21 @@ module.exports = {
     }
 
     let deferred = false;
-    try { await interaction.deferReply(); deferred = true; } catch (e) { if (e?.code === 10062) return; else throw e; }
+    try {
+      await interaction.deferReply();
+      deferred = true;
+    } catch (e) {
+      if (e?.code === 10062) return;
+      throw e;
+    }
 
-    let browser = null; let page = null;
+    let browser = null;
+    let page = null;
+
     try {
       const session = await authenticateAndNavigate({ url: `${BASE}/national/states`, debug: !!config.debug });
-      browser = session.browser; page = session.page;
+      browser = session.browser;
+      page = session.page;
       let statesHtml = session.html;
       if (!statesHtml || statesHtml.length < 300) {
         const ref = await fetchHtml(page, `${BASE}/national/states`, 'load');
@@ -230,6 +292,7 @@ module.exports = {
 
       const racePage = await fetchHtml(page, raceMeta.url, 'load');
       const latest = pickLatestResults(racePage.html);
+      const finalCandidates = extractFinalResultCandidates(racePage.html);
       const nextInfo = extractNextRaceTime(racePage.html) || raceMeta.nextRace || null;
 
       let pollResult = null;
@@ -245,16 +308,32 @@ module.exports = {
       }
 
       const fields = [];
-      if (latest && latest.rows.length >= 2) {
+      if (finalCandidates.length >= 2) {
+        const formatted = finalCandidates.slice(0, 2).map((cand) => {
+          const lines = [];
+          lines.push(`**${cand.name}**${cand.percent != null ? ` — ${cand.percent}%` : ''}${cand.votes ? ` (${cand.votes} votes)` : ''}`);
+          if (cand.stats) lines.push(cand.stats);
+          if (cand.party) lines.push(cand.party);
+          return lines.join('\n');
+        }).join('\n\n');
+        fields.push({ name: 'Final Results', value: formatted, inline: false });
+      } else if (latest && latest.rows.length >= 2) {
         const [a, b] = latest.rows;
-        fields.push({ name: 'Latest Finished Round', value: latest.title, inline: false });
-        fields.push({ name: 'Candidate A', value: `${a.name}${a.percent != null ? ` - ${a.percent}%` : ''}`, inline: true });
-        fields.push({ name: 'Candidate B', value: `${b.name}${b.percent != null ? ` - ${b.percent}%` : ''}`, inline: true });
+        fields.push({
+          name: latest.title || 'Latest Finished Round',
+          value: [
+            `**${a.name}**${a.percent != null ? ` — ${a.percent}%` : ''}`,
+            `**${b.name}**${b.percent != null ? ` — ${b.percent}%` : ''}`,
+          ].join('\n'),
+          inline: false,
+        });
       } else {
         fields.push({ name: 'Latest Finished Round', value: 'No finished results found yet', inline: false });
       }
 
-      if (nextInfo) fields.push({ name: 'Next Race', value: nextInfo, inline: false });
+      if (nextInfo) {
+        fields.push({ name: 'Next Race', value: nextInfo, inline: false });
+      }
 
       if (pollResult) {
         const pollText = pollResult.cols && pollResult.cols.length ? pollResult.cols.join(' | ') : pollResult.text;
@@ -279,9 +358,11 @@ module.exports = {
         return;
       }
       await reportCommandError(interaction, err, { message: `Error: ${err.message}`, meta: { command: 'race' } });
-      if (deferred) { try { await interaction.editReply({ content: `Error: ${err.message}` }); } catch (_) {} }
+      if (deferred) {
+        try { await interaction.editReply({ content: `Error: ${err.message}` }); } catch (_) {}
+      }
     } finally {
       try { await browser?.close(); } catch {}
     }
-  }
+  },
 };
