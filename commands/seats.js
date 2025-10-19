@@ -64,6 +64,7 @@ const computeControl = (parties) => {
 };
 
 const DIAGRAM_SELECTORS = ['#senate-diagram', '#house-diagram', '#chamber-diagram', '[data-chamber-diagram]'];
+const DIAGRAM_SCALE = 0.96; // slight zoom-out for clearer fit
 
 const selectDiagramHandle = async (page) => {
   for (const selector of DIAGRAM_SELECTORS) {
@@ -92,18 +93,54 @@ const fetchChamber = async (page, id) => {
   let svgHtml = null;
   let pngBuffer = null;
 
-  const { handle: diagramHandle } = await selectDiagramHandle(page);
+  const { handle: diagramHandle, selector } = await selectDiagramHandle(page);
   if (diagramHandle) {
     try {
       svgHtml = await page.evaluate((el) => el.innerHTML, diagramHandle);
       const svgHandle = await diagramHandle.$('svg');
       const targetHandle = svgHandle || diagramHandle;
+      let originalStyles = null;
+      if (selector) {
+        originalStyles = await page.evaluate(
+          (sel, scale) => {
+            const el = document.querySelector(sel);
+            if (!el) return null;
+            const computed = { transform: el.style.transform || null, transformOrigin: el.style.transformOrigin || null };
+            el.style.transformOrigin = 'center center';
+            el.style.transform = `scale(${scale})`;
+            return computed;
+          },
+          selector,
+          DIAGRAM_SCALE,
+        );
+        await page.waitForTimeout(50);
+      }
       pngBuffer = await targetHandle.screenshot({ type: 'png' });
       await svgHandle?.dispose();
     } catch (_) {
       svgHtml = null;
       pngBuffer = null;
     } finally {
+      if (selector) {
+        await page.evaluate(
+          (sel, styles) => {
+            const el = document.querySelector(sel);
+            if (!el || !styles) return;
+            if (styles.transform !== null) {
+              el.style.transform = styles.transform;
+            } else {
+              el.style.removeProperty('transform');
+            }
+            if (styles.transformOrigin !== null) {
+              el.style.transformOrigin = styles.transformOrigin;
+            } else {
+              el.style.removeProperty('transform-origin');
+            }
+          },
+          selector,
+          originalStyles,
+        ).catch(() => {});
+      }
       await diagramHandle.dispose();
     }
   }
