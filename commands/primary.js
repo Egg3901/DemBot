@@ -243,19 +243,27 @@ function extractStateIdFromStatesHtml(html, stateName) {
     const $ = cheerio.load(html);
     // Prefer main listing table anchors where anchor text equals state name
     let id = null;
+    const target = stateName.toLowerCase();
+    const normalizeText = (txt) => String(txt || '')
+      .trim()
+      .toLowerCase()
+      .replace(/\s+/g, ' ')
+      .replace(/^(state|commonwealth|territory)\s+of\s+/i, '')
+      .trim();
+
     $('a[href^="/states/"]').each((_, a) => {
       const href = String($(a).attr('href') || '');
       const text = ($(a).text() || '').trim();
       if (!/^\/states\/\d+/.test(href)) return;
       if (!text) return;
-      if (text.toLowerCase() === stateName.toLowerCase()) {
+      if (normalizeText(text) === target) {
         const m = href.match(/\/states\/(\d+)/);
         if (m) { id = Number(m[1]); return false; }
       }
     });
     if (id) return id;
     // Fallback: look for any heading like "State of X" and pick id from nearby links
-    const heading = $('h5,h4,h3').filter((_, el) => /state of/i.test(($(el).text() || ''))).first();
+    const heading = $('h5,h4,h3').filter((_, el) => normalizeText($(el).text()) === target).first();
     if (heading.length) {
       const near = heading.closest('.container, .container-fluid').find('a[href^="/states/"]').first();
       const m = String(near.attr('href') || '').match(/\/states\/(\d+)/);
@@ -377,4 +385,3 @@ function readLocalHtml(filename) {
  * Created: 2025-10-16
  * Last Updated: 2025-10-16
  */
-
