@@ -1,4 +1,4 @@
-// commands/update.js
+﻿// commands/update.js
 const { SlashCommandBuilder, PermissionsBitField } = require('discord.js');
 const fs = require('node:fs');
 const path = require('node:path');
@@ -154,7 +154,7 @@ module.exports = {
         return interaction.editReply('Bot lacks Manage Roles permission to apply roles.');
       }
 
-      await interaction.editReply('Syncing roles from profiles.jsonâ€¦');
+      await interaction.editReply('Syncing roles from profiles.json...');
       const rolesStart = Date.now();
       try {
         await guild.members.fetch();
@@ -204,18 +204,18 @@ module.exports = {
           for (const [key, roleId] of Object.entries(ROLE_IDS)) {
             if (member.roles.cache.has(roleId)) {
               try {
-                await member.roles.remove(roleId, 'Republican profile present â€” remove managed office roles');
+                await member.roles.remove(roleId, 'Republican profile present - remove managed office roles');
                 removed++;
-                changeLogs.push(`- ${ROLE_NAMES[key]} â† ${member.user?.tag || member.displayName} (profiles ${g.ids.join(',')}) [reason: Republican profile present]`);
+                changeLogs.push(`- ${ROLE_NAMES[key]} -> ${member.user?.tag || member.displayName} (profiles ${g.ids.join(',')}) [reason: Republican profile present]`);
               } catch (_) {}
             }
           }
           for (const [rk, rid] of Object.entries(REGION_ROLE_IDS)) {
             if (member.roles.cache.has(rid)) {
               try {
-                await member.roles.remove(rid, 'Republican profile present â€” remove region roles');
+                await member.roles.remove(rid, 'Republican profile present - remove region roles');
                 removed++;
-                changeLogs.push(`- ${REGION_NAMES[rk]} Region â† ${member.user?.tag || member.displayName} (profiles ${g.ids.join(',')}) [reason: Republican profile present]`);
+                changeLogs.push(`- ${REGION_NAMES[rk]} Region -> ${member.user?.tag || member.displayName} (profiles ${g.ids.join(',')}) [reason: Republican profile present]`);
               } catch (_) {}
             }
           }
@@ -229,7 +229,7 @@ module.exports = {
               try {
                 await member.roles.add(roleId, 'Auto-assign via /update roles');
                 applied++;
-                changeLogs.push(`+ ${ROLE_NAMES[key]} â†’ ${member.user?.tag || member.displayName} (profiles ${g.ids.join(',')}) [reason: Democratic office requirement]`);
+                changeLogs.push(`+ ${ROLE_NAMES[key]} -> ${member.user?.tag || member.displayName} (profiles ${g.ids.join(',')}) [reason: Democratic office requirement]`);
               } catch (_) {}
             }
           }
@@ -238,7 +238,7 @@ module.exports = {
               try {
                 await member.roles.remove(roleId, 'Auto-remove via /update roles (not needed by any profile)');
                 removed++;
-                changeLogs.push(`- ${ROLE_NAMES[key]} â† ${member.user?.tag || member.displayName} (profiles ${g.ids.join(',')}) [reason: not needed by any profile]`);
+                changeLogs.push(`- ${ROLE_NAMES[key]} -> ${member.user?.tag || member.displayName} (profiles ${g.ids.join(',')}) [reason: not needed by any profile]`);
               } catch (_) {}
             }
           }
@@ -251,7 +251,7 @@ module.exports = {
               try {
                 await member.roles.add(rid, 'Auto-assign region via /update roles');
                 applied++;
-                changeLogs.push(`+ ${REGION_NAMES[rk]} Region â†’ ${member.user?.tag || member.displayName} (profiles ${g.ids.join(',')}) [reason: profile region list includes ${rk}]`);
+                changeLogs.push(`+ ${REGION_NAMES[rk]} Region -> ${member.user?.tag || member.displayName} (profiles ${g.ids.join(',')}) [reason: profile region list includes ${rk}]`);
               } catch (_) {}
             }
           }
@@ -260,14 +260,14 @@ module.exports = {
               try {
                 await member.roles.remove(rid, 'Auto-remove region via /update roles (not needed by any profile)');
                 removed++;
-                changeLogs.push(`- ${REGION_NAMES[rk]} Region â† ${member.user?.tag || member.displayName} (profiles ${g.ids.join(',')}) [reason: not needed by any profile]`);
+                changeLogs.push(`- ${REGION_NAMES[rk]} Region -> ${member.user?.tag || member.displayName} (profiles ${g.ids.join(',')}) [reason: not needed by any profile]`);
               } catch (_) {}
             }
           }
         }
 
         if (processed % 50 === 0) {
-          await interaction.followUp(`Progress: processed ${processed}, matched ${matched}, applied ${applied}, removed ${removed}, skipped ${skipped}â€¦`);
+          await interaction.followUp(`Progress: processed ${processed}, matched ${matched}, applied ${applied}, removed ${removed}, skipped ${skipped}...`);
         }
       }
 
@@ -372,7 +372,7 @@ module.exports = {
         if (found === 1 || (found % 25 === 0) || (checked % 300 === 0) || (now - lastProgressAt > 10_000)) {
           writeDb();
           lastProgressAt = now;
-          await interaction.editReply(`Updating profilesâ€¦ checked ${checked}, found ${found}. Latest: ${info.name} (id ${id})`);
+          await interaction.editReply(`Updating profiles... checked ${checked}, found ${found}. Latest: ${info.name} (id ${id})`);
         }
       }
 
@@ -445,24 +445,24 @@ module.exports = {
           for (const key of desiredOffice) {
             const roleId = ROLE_IDS[key]; if (!roleId) continue;
             if (!member.roles.cache.has(roleId)) {
-              try { await member.roles.add(roleId, 'Auto-assign via /update roles'); applied++; changeLogs.push(`+ ${ROLE_NAMES[key]} â†’ ${member.user?.tag || member.displayName} (profiles ${g.ids.join(',')})`); } catch (_) {}
+              try { await member.roles.add(roleId, 'Auto-assign via /update roles'); applied++; changeLogs.push(`+ ${ROLE_NAMES[key]} -> ${member.user?.tag || member.displayName} (profiles ${g.ids.join(',')})`); } catch (_) {}
             }
           }
           for (const [key, roleId] of Object.entries(ROLE_IDS)) {
             if (member.roles.cache.has(roleId) && !desiredOffice.has(key)) {
-              try { await member.roles.remove(roleId, 'Auto-remove via /update roles (not needed by any profile)'); removed++; changeLogs.push(`- ${ROLE_NAMES[key]} â† ${member.user?.tag || member.displayName} (profiles ${g.ids.join(',')})`); } catch (_) {}
+              try { await member.roles.remove(roleId, 'Auto-remove via /update roles (not needed by any profile)'); removed++; changeLogs.push(`- ${ROLE_NAMES[key]} -> ${member.user?.tag || member.displayName} (profiles ${g.ids.join(',')})`); } catch (_) {}
             }
           }
 
           const desiredRegions = new Set(g.regions);
           for (const rk of desiredRegions) {
             const rid = REGION_ROLE_IDS[rk]; if (rid && !member.roles.cache.has(rid)) {
-              try { await member.roles.add(rid, 'Auto-assign region via /update roles'); applied++; changeLogs.push(`+ ${REGION_NAMES[rk]} Region â†’ ${member.user?.tag || member.displayName} (profiles ${g.ids.join(',')})`); } catch (_) {}
+              try { await member.roles.add(rid, 'Auto-assign region via /update roles'); applied++; changeLogs.push(`+ ${REGION_NAMES[rk]} Region -> ${member.user?.tag || member.displayName} (profiles ${g.ids.join(',')})`); } catch (_) {}
             }
           }
           for (const [rk, rid] of Object.entries(REGION_ROLE_IDS)) {
             if (member.roles.cache.has(rid) && !desiredRegions.has(rk)) {
-              try { await member.roles.remove(rid, 'Auto-remove region via /update roles (not needed by any profile)'); removed++; changeLogs.push(`- ${REGION_NAMES[rk]} Region â† ${member.user?.tag || member.displayName} (profiles ${g.ids.join(',')})`); } catch (_) {}
+              try { await member.roles.remove(rid, 'Auto-remove region via /update roles (not needed by any profile)'); removed++; changeLogs.push(`- ${REGION_NAMES[rk]} Region -> ${member.user?.tag || member.displayName} (profiles ${g.ids.join(',')})`); } catch (_) {}
             }
           }
         }
@@ -515,3 +515,11 @@ module.exports = {
  *   - Early-stop when 20 consecutive non-profile pages are encountered.
  *   - Persists to data/profiles.json and writes a timestamped backup when finished.
  */
+
+
+
+
+
+
+
+

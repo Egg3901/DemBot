@@ -243,13 +243,17 @@ function extractStateIdFromStatesHtml(html, stateName) {
     const $ = cheerio.load(html);
     // Prefer main listing table anchors where anchor text equals state name
     let id = null;
-    const target = stateName.toLowerCase();
     const normalizeText = (txt) => String(txt || '')
+      .replace(/\u00A0/g, ' ')
+      .normalize('NFKD')
       .trim()
       .toLowerCase()
       .replace(/\s+/g, ' ')
       .replace(/^(state|commonwealth|territory)\s+of\s+/i, '')
+      .replace(/\s*\(.*?\)\s*$/, '')
       .trim();
+
+    const target = normalizeText(stateName);
 
     $('a[href^="/states/"]').each((_, a) => {
       const href = String($(a).attr('href') || '');
