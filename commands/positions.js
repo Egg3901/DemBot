@@ -211,7 +211,7 @@ function buildStateEmbed({ stateName, stateId, info }) {
   return embed;
 }
 
-function buildSummaryEmbed({ stateName, stateId, comparison, player }) {
+function buildSummaryEmbed({ stateName, stateId, comparison, player, totalPages = 1 }) {
   const embed = new EmbedBuilder()
     .setTitle(`${stateName} - Alignment Summary`)
     .setURL(`${BASE}/states/${stateId}`)
@@ -232,19 +232,24 @@ function buildSummaryEmbed({ stateName, stateId, comparison, player }) {
   if (player.party) lines.push(`Party: ${player.party}.`);
 
   if (mismatches.length === 0) {
-    lines.push(`✅ ${displayName} matches all recorded positions for ${stateName}.`);
+    lines.push(`✅ **${displayName} matches all recorded positions for ${stateName}.**`);
   } else {
-    lines.push(`⚠️ ${displayName} differs on these positions:`);
+    lines.push(`⚠️ **${displayName} differs on these positions:**`);
     for (const item of mismatches) {
       const emoji = item.emoji ? `${item.emoji} ` : '';
       if (!item.playerValue) {
-        lines.push(`• ${emoji}${item.key}: No player stance recorded (state: ${item.stateValue ?? 'n/a'}).`);
+        lines.push(`• **${emoji}${item.key}** — no player stance recorded (state: ${item.stateValue ?? 'n/a'}).`);
       } else if (!item.stateValue) {
-        lines.push(`• ${emoji}${item.key}: Player is ${item.playerValue}, but the state has no stance recorded.`);
+        lines.push(`• **${emoji}${item.key}** — player is ${item.playerValue}, state has no stance recorded.`);
       } else {
-        lines.push(`• ${emoji}${item.key}: Player ${item.playerValue} vs state ${item.stateValue}. Suggest updating state to ${item.playerValue}.`);
+        lines.push(`• **${emoji}${item.key}** — player ${item.playerValue} vs state ${item.stateValue}. **Ask the player to update to ${item.stateValue}.**`);
       }
     }
+  }
+
+  if (totalPages > 1) {
+    lines.push('');
+    lines.push('Use ⬅️ / ➡️ reactions to switch pages (available for 5 minutes).');
   }
 
   embed.setDescription(lines.join('\n').slice(0, 4000));
@@ -559,12 +564,14 @@ module.exports = {
           comparison: comparisonData,
         };
 
+        const totalPages = 2;
         const pages = [
           buildSummaryEmbed({
             stateName: normalizedStateName,
             stateId,
             comparison: comparisonData,
             player,
+            totalPages,
           }),
           buildDetailsEmbed({
             stateName: normalizedStateName,
@@ -578,9 +585,23 @@ module.exports = {
 
         const message = await interaction.fetchReply();
         if (message && typeof message.react === 'function' && pages.length > 1) {
-          const controls = ['??', '??'];
+          const controls = ['\u2B05\uFE0F', '\u27A1\uFE0F']; // ⬅️, ➡️
+          let reactionsReady = true;
           for (const emoji of controls) {
-            try { await message.react(emoji); } catch (_) {}
+            try {
+              await message.react(emoji);
+            } catch (err) {
+              reactionsReady = false;
+              break;
+            }
+          }
+
+          if (!reactionsReady) {
+            await interaction.followUp({
+              content: 'Unable to add reaction controls for pagination (missing permission to add reactions?). Showing first page only.',
+              ephemeral: true,
+            }).catch(() => {});
+            return;
           }
 
           let index = 0;
@@ -589,8 +610,8 @@ module.exports = {
           const collector = message.createReactionCollector({ filter, time: 5 * 60 * 1000 });
 
           collector.on('collect', async (reaction, user) => {
-            if (reaction.emoji.name === '??') index = (index - 1 + pages.length) % pages.length;
-            else if (reaction.emoji.name === '??') index = (index + 1) % pages.length;
+            if (reaction.emoji.name === controls[0]) index = (index - 1 + pages.length) % pages.length;
+            else if (reaction.emoji.name === controls[1]) index = (index + 1) % pages.length;
             try {
               await interaction.editReply({ embeds: [pages[index]] });
             } catch (_) {}
