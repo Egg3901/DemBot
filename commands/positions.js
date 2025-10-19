@@ -1,5 +1,5 @@
 // commands/positions.js
-// View a state's demographic snapshot and policy positions.
+// View a state's demographic snapshot and policy positions, optionally comparing a player against them.
 
 const { SlashCommandBuilder, EmbedBuilder } = require('discord.js');
 const fs = require('node:fs');
@@ -65,6 +65,13 @@ async function fetchHtmlWithSession(url, page, waitUntil = 'domcontentloaded') {
   return { html: await page.content(), finalUrl: page.url() };
 }
 
+function cleanPositionText(text) {
+  return String(text || '')
+    .replace(/\s+/g, ' ')
+    .replace(/^[^\p{L}\p{N}]+/u, '')
+    .trim();
+}
+
 function extractStateInfo(html, { baseUrl }) {
   const $ = cheerio.load(html || '');
   const heading = $('h4')
@@ -82,7 +89,6 @@ function extractStateInfo(html, { baseUrl }) {
     if (!key) return;
     const cell = $(row).find('td').first();
     const text = cell.text().replace(/\s+/g, ' ').trim();
-    if (!text) return;
     const href = cell.find('a[href]').first().attr('href');
     info[key] = {
       text,
@@ -92,7 +98,78 @@ function extractStateInfo(html, { baseUrl }) {
   return info;
 }
 
-function buildPositionsEmbed({ stateName, stateId, info }) {
+function extractPlayerPoliticalInfo(html, { baseUrl, profileId }) {
+  const $ = cheerio.load(html || '');
+  const title = ($('title').first().text() || '').trim();
+  const name = title.split('|')[0]?.trim() || `ID ${profileId ?? ''}`.trim();
+
+  const heading = $('h4')
+    .filter((_, el) => $(el).text().replace(/\s+/g, ' ').trim().toLowerCase().includes('political info'))
+    .first();
+  if (!heading.length) {
+    return { name, stateName: null, positions: null };
+  }
+
+  const container = heading.closest('.container-fluid');
+  const table = container.find('table').first();
+  if (!table.length) return { name, stateName: null, positions: null };
+
+  const info = {};
+  table.find('tbody tr').each((_, row) => {
+    const key = $(row).find('th').text().replace(/\s+/g, ' ').trim();
+    if (!key) return;
+    const cell = $(row).find('td').first();
+    const text = cell.text().replace(/\s+/g, ' ').trim();
+    const href = cell.find('a[href]').first().attr('href');
+    info[key] = {
+      text,
+      link: href ? new URL(href, baseUrl).toString() : null,
+    };
+  });
+
+  const positions = {};
+  for (const key of POSITION_KEYS) {
+    if (info[key]) positions[key] = info[key].text;
+  }
+
+  const stateName = cleanPositionText(info.State?.text) || null;
+  const party = info.Party?.text || null;
+  return { name, stateName, positions, party };
+}
+
+function buildComparisonLines(stateInfo, playerPositions) {
+  if (!playerPositions) return [];
+  const lines = [];
+
+  for (const key of POSITION_KEYS) {
+    const stateRaw = stateInfo?.[key]?.text ?? '';
+    const playerRaw = playerPositions?.[key] ?? '';
+    const stateValue = cleanPositionText(stateRaw);
+    const playerValue = cleanPositionText(playerRaw);
+    const emoji = POSITION_EMOJIS[key] ? `${POSITION_EMOJIS[key]} ` : '';
+
+    if (!playerValue) {
+      lines.push(`• ${emoji}${key}: No player data`);
+      continue;
+    }
+    if (!stateValue) {
+      lines.push(`• ${emoji}${key}: ${playerValue}`);
+      continue;
+    }
+
+    const matches = playerValue.toLowerCase() === stateValue.toLowerCase();
+    const status = matches ? '✅' : '⚠️';
+    if (matches) {
+      lines.push(`${status} ${emoji}${key}: ${playerValue}`);
+    } else {
+      lines.push(`${status} ${emoji}${key}: ${playerValue} (state: ${stateValue})`);
+    }
+  }
+
+  return lines;
+}
+
+function buildPositionsEmbed({ stateName, stateId, info, player }) {
   const embed = new EmbedBuilder()
     .setTitle(`${stateName} — Positions`)
     .setURL(`${BASE}/states/${stateId}`)
@@ -104,7 +181,8 @@ function buildPositionsEmbed({ stateName, stateId, info }) {
     const entry = info[key];
     if (!entry) return null;
     if (key === 'Politicians' && entry.link) {
-      return `**${key}:** [${entry.text.replace(/\s*\(view\)/i, '').trim()}](${entry.link}) (View)`;
+      const sanitized = entry.text.replace(/\s*\(view\)/i, '').trim();
+      return `**${key}:** [${sanitized}](${entry.link}) (View)`;
     }
     return `**${key}:** ${entry.text}`;
   }).filter(Boolean);
@@ -116,15 +194,33 @@ function buildPositionsEmbed({ stateName, stateId, info }) {
   const positionLines = POSITION_KEYS.map((key) => {
     const entry = info[key];
     if (!entry) return null;
-    const emoji = POSITION_EMOJIS[key] || '•';
-    return `${emoji} **${key}:** ${entry.text}`;
+    const emoji = POSITION_EMOJIS[key] ? `${POSITION_EMOJIS[key]} ` : '';
+    return `${emoji}**${key}:** ${entry.text}`;
   }).filter(Boolean);
 
   if (positionLines.length) {
     embed.addFields({ name: 'Policy Positions', value: positionLines.join('\n') });
   }
 
-  if (!snapshotLines.length && !positionLines.length) {
+  if (player) {
+    const lines = [];
+    if (player.stateName && player.stateMismatch) {
+      lines.push(`⚠️ Registered in ${player.stateName}`);
+    } else if (player.stateName) {
+      lines.push(`State: ${player.stateName}`);
+    }
+    if (player.party) lines.push(`Party: ${player.party}`);
+    if (player.comparisonLines?.length) lines.push(...player.comparisonLines);
+    else lines.push('No political data found for this player.');
+
+    const label = player.label || 'Player Alignment';
+    embed.addFields({
+      name: label,
+      value: lines.join('\n').slice(0, 1024),
+    });
+  }
+
+  if (!snapshotLines.length && !positionLines.length && !player) {
     embed.setDescription('No position data found for this state.');
   }
 
@@ -135,11 +231,23 @@ module.exports = {
   data: new SlashCommandBuilder()
     .setName('positions')
     .setDescription('View a state’s snapshot and policy positions')
+    .addUserOption((opt) =>
+      opt
+        .setName('user')
+        .setDescription('Discord user to compare against the state')
+        .setRequired(false),
+    )
+    .addStringOption((opt) =>
+      opt
+        .setName('player')
+        .setDescription('Player name, profile id, or Discord mention/username')
+        .setRequired(false),
+    )
     .addStringOption((opt) =>
       opt
         .setName('state')
         .setDescription('State code (e.g., ca) or full name')
-        .setRequired(true),
+        .setRequired(false),
     )
     .addBooleanOption((opt) =>
       opt
@@ -150,7 +258,10 @@ module.exports = {
 
   /** @param {import('discord.js').ChatInputCommandInteraction} interaction */
   async execute(interaction) {
-    const stateRaw = (interaction.options.getString('state', true) || '').trim();
+    const discordUser = interaction.options.getUser('user');
+    const playerQueryRaw = (interaction.options.getString('player') || '').trim();
+    const stateRawInput = (interaction.options.getString('state') || '').trim();
+
     const { requested, enabled: debugEnabled, denied } = getDebugChoice(interaction, 'debug');
     if (denied) {
       return interaction.reply({
@@ -160,14 +271,121 @@ module.exports = {
     }
     const debugFlag = debugEnabled || (!requested && DEFAULT_DEBUG);
 
-    const stateName = normalizeStateName(stateRaw);
-    if (!stateName) {
+    if (!discordUser && !playerQueryRaw && !stateRawInput) {
       return interaction.reply({
-        content: `Unknown state "${stateRaw}". Use a two-letter code or full state name.`,
+        content: 'Provide a state or a player (mention, id, or name) to look up.',
         ephemeral: true,
       });
     }
 
+    const jsonPath = path.join(process.cwd(), 'data', 'profiles.json');
+    let profilesDb = null;
+    if (discordUser || playerQueryRaw) {
+      if (!fs.existsSync(jsonPath)) {
+        return interaction.reply({
+          content: 'profiles.json not found. Run /update first to cache player data.',
+          ephemeral: true,
+        });
+      }
+      try {
+        profilesDb = JSON.parse(fs.readFileSync(jsonPath, 'utf8'));
+      } catch (err) {
+        return interaction.reply({
+          content: `Failed to read profiles.json: ${err.message}`,
+          ephemeral: true,
+        });
+      }
+    }
+
+    const profiles = profilesDb?.profiles || {};
+    const byDiscord = profilesDb?.byDiscord || {};
+
+    const idSet = new Set();
+    const addIds = (value) => {
+      const addOne = (v) => {
+        const num = typeof v === 'number' ? v : Number(v);
+        if (!Number.isNaN(num)) idSet.add(num);
+      };
+      if (Array.isArray(value)) value.forEach(addOne);
+      else addOne(value);
+    };
+
+    const lookupDiscord = (name) => {
+      if (!name) return;
+      const key = name.toLowerCase();
+      if (byDiscord[key]) addIds(byDiscord[key]);
+      else {
+        for (const [pid, info] of Object.entries(profiles)) {
+          if ((info.discord || '').toLowerCase() === key) addIds(Number(pid));
+        }
+      }
+    };
+
+    if (discordUser) {
+      lookupDiscord(discordUser.username);
+      if (discordUser.discriminator && discordUser.discriminator !== '0') {
+        lookupDiscord(`${discordUser.username}#${discordUser.discriminator}`);
+      }
+      if (discordUser.globalName) lookupDiscord(discordUser.globalName);
+    }
+
+    const handlePlayerQuery = async () => {
+      if (!playerQueryRaw) return;
+
+      const mentionMatch = playerQueryRaw.match(/^<@!?([0-9]{5,})>$/);
+      if (mentionMatch) {
+        try {
+          const fetched = await interaction.client.users.fetch(mentionMatch[1]);
+          if (fetched) {
+            lookupDiscord(fetched.username);
+            if (fetched.discriminator && fetched.discriminator !== '0') {
+              lookupDiscord(`${fetched.username}#${fetched.discriminator}`);
+            }
+            if (fetched.globalName) lookupDiscord(fetched.globalName);
+          }
+        } catch (_) {}
+        return;
+      }
+
+      const plain = playerQueryRaw.replace(/^@/, '').trim();
+
+      if (/^\d+$/.test(plain)) {
+        addIds(Number(plain));
+        return;
+      }
+
+      lookupDiscord(plain);
+      if (idSet.size) return;
+
+      const nameNorm = plain.toLowerCase();
+      const exact = Object.entries(profiles)
+        .filter(([, info]) => (info.name || '').toLowerCase() === nameNorm)
+        .map(([pid]) => Number(pid));
+      exact.forEach(addIds);
+      if (idSet.size) return;
+
+      const partial = Object.entries(profiles)
+        .filter(([, info]) => (info.name || '').toLowerCase().includes(nameNorm))
+        .slice(0, 5)
+        .map(([pid]) => Number(pid));
+      partial.forEach(addIds);
+    };
+
+    if (playerQueryRaw) await handlePlayerQuery();
+
+    const profileIds = Array.from(idSet);
+    if ((discordUser || playerQueryRaw) && profileIds.length === 0) {
+      const label = discordUser ? `Discord user "${discordUser.username}"` : `"${playerQueryRaw}"`;
+      return interaction.reply({
+        content: `No profile found for ${label}. Try /update to refresh the cache.`,
+        ephemeral: true,
+      });
+    }
+
+    const profileId = profileIds.length ? profileIds[0] : null;
+    const cachedProfile = profileId ? profiles[profileId] || null : null;
+
+    let stateTargetName = stateRawInput ? normalizeStateName(stateRawInput) : null;
     let deferred = false;
     try {
       await interaction.deferReply();
@@ -182,6 +400,7 @@ module.exports = {
 
     let browser = null;
     let page = null;
+
     try {
       const session = await authenticateAndNavigate({ url: `${BASE}/national/states`, debug: debugFlag });
       browser = session.browser;
@@ -196,37 +415,82 @@ module.exports = {
         statesUrl = refreshed.finalUrl;
       }
 
-      const stateId = resolveStateIdFromIndex(statesHtml, stateName);
+      let playerInfo = null;
+      if (profileId) {
+        const profilePage = await fetchHtmlWithSession(`${BASE}/users/${profileId}`, page, 'load');
+        playerInfo = extractPlayerPoliticalInfo(profilePage.html, { baseUrl: BASE, profileId });
+        if (!stateTargetName && playerInfo?.stateName) {
+          stateTargetName = normalizeStateName(playerInfo.stateName) || playerInfo.stateName;
+        }
+      } else if (!stateTargetName && cachedProfile?.state) {
+        stateTargetName = normalizeStateName(cachedProfile.state) || cachedProfile.state;
+      }
+
+      if (!stateTargetName) {
+        return interaction.editReply('Could not determine which state to inspect. Provide a state explicitly.');
+      }
+
+      const normalizedStateName = normalizeStateName(stateTargetName);
+      if (!normalizedStateName) {
+        return interaction.editReply(`Unknown state "${stateTargetName}". Use a two-letter code or full state name.`);
+      }
+
+      const stateId = resolveStateIdFromIndex(statesHtml, normalizedStateName);
       if (!stateId) {
         const dbgPath = path.join(process.cwd(), `states_index_${Date.now()}.html`);
         try { fs.writeFileSync(dbgPath, statesHtml || '', 'utf8'); } catch {}
-        const { suffix, files } = buildDebugArtifacts(debugFlag, { finalUrl: statesUrl, saved: dbgPath });
+        const { suffix, files } = buildDebugArtifacts(debugFlag, {
+          finalUrl: statesUrl,
+          saved: dbgPath,
+        });
         await interaction.editReply({
-          content: `Could not find a state matching "${stateName}" on the states listing.${suffix}`,
+          content: `Could not find a state matching "${normalizedStateName}" on the states listing.${suffix}`,
           files,
         });
         return;
       }
 
-      // Visit overview (required before positions are visible), then fetch final HTML.
       await fetchHtmlWithSession(`${BASE}/states/${stateId}`, page, 'domcontentloaded');
       const statePage = await fetchHtmlWithSession(`${BASE}/states/${stateId}`, page, 'load');
-      const info = extractStateInfo(statePage.html, { baseUrl: BASE });
+      const stateInfo = extractStateInfo(statePage.html, { baseUrl: BASE });
 
-      if (!info) {
+      if (!stateInfo) {
         const { suffix, files } = buildDebugArtifacts(debugFlag, {
           stateId,
           finalUrl: statePage.finalUrl,
           htmlSample: (statePage.html || '').slice(0, 2000),
         });
         await interaction.editReply({
-          content: `Could not locate a positions table for ${stateName}.${suffix}`,
+          content: `Could not locate a positions table for ${normalizedStateName}.${suffix}`,
           files,
         });
         return;
       }
 
-      const embed = buildPositionsEmbed({ stateName, stateId, info });
+      const comparisonLines = playerInfo?.positions
+        ? buildComparisonLines(stateInfo, playerInfo.positions)
+        : null;
+
+      const player = profileId
+        ? {
+            label: playerInfo?.name
+              ? `Player Alignment — [${playerInfo.name}](${BASE}/users/${profileId})`
+              : `Player Alignment — [Profile ${profileId}](${BASE}/users/${profileId})`,
+            stateName: playerInfo?.stateName || cachedProfile?.state || null,
+            stateMismatch:
+              !!(playerInfo?.stateName && playerInfo.stateName.toLowerCase() !== normalizedStateName.toLowerCase()),
+            party: playerInfo?.party || cachedProfile?.party || null,
+            comparisonLines,
+          }
+        : null;
+
+      const embed = buildPositionsEmbed({
+        stateName: normalizedStateName,
+        stateId,
+        info: stateInfo,
+        player,
+      });
+
       await interaction.editReply({ embeds: [embed] });
     } catch (err) {
       if (err instanceof PPUSAAuthError) {
