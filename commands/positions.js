@@ -147,41 +147,33 @@ function extractPlayerPoliticalInfo(html, { baseUrl, profileId }) {
   return { name, stateName, positions, party };
 }
 
-function buildComparisonLines(stateInfo, playerPositions) {
-  if (!playerPositions) return [];
-  const lines = [];
+function buildComparisonData(stateInfo, playerPositions) {
+  const data = [];
 
   for (const key of POSITION_KEYS) {
     const stateRaw = stateInfo?.[key]?.text ?? '';
     const playerRaw = playerPositions?.[key] ?? '';
     const stateValue = cleanPositionText(stateRaw);
     const playerValue = cleanPositionText(playerRaw);
-    const emoji = POSITION_EMOJIS[key] ? `${POSITION_EMOJIS[key]} ` : '';
+    const hasState = !!stateValue;
+    const hasPlayer = !!playerValue;
+    const matches = hasState && hasPlayer && playerValue.toLowerCase() === stateValue.toLowerCase();
 
-    if (!playerValue) {
-      lines.push(`• ${emoji}${key}: No player data`);
-      continue;
-    }
-    if (!stateValue) {
-      lines.push(`• ${emoji}${key}: ${playerValue}`);
-      continue;
-    }
-
-    const matches = playerValue.toLowerCase() === stateValue.toLowerCase();
-    const status = matches ? '✅' : '⚠️';
-    if (matches) {
-      lines.push(`${status} ${emoji}${key}: ${playerValue}`);
-    } else {
-      lines.push(`${status} ${emoji}${key}: ${playerValue} (state: ${stateValue})`);
-    }
+    data.push({
+      key,
+      emoji: POSITION_EMOJIS[key] || null,
+      stateValue: hasState ? stateValue : null,
+      playerValue: hasPlayer ? playerValue : null,
+      matches,
+    });
   }
 
-  return lines;
+  return data;
 }
 
-function buildPositionsEmbed({ stateName, stateId, info, player }) {
+function buildStateEmbed({ stateName, stateId, info }) {
   const embed = new EmbedBuilder()
-    .setTitle(`${stateName} — Positions`)
+    .setTitle(`${stateName} - Positions`)
     .setURL(`${BASE}/states/${stateId}`)
     .setColor(0x2563eb)
     .setFooter({ text: new URL(BASE).hostname })
@@ -212,27 +204,83 @@ function buildPositionsEmbed({ stateName, stateId, info, player }) {
     embed.addFields({ name: 'Policy Positions', value: positionLines.join('\n') });
   }
 
-  if (player) {
-    const lines = [];
-    if (player.stateName && player.stateMismatch) {
-      lines.push(`⚠️ Registered in ${player.stateName}`);
-    } else if (player.stateName) {
-      lines.push(`State: ${player.stateName}`);
-    }
-    if (player.party) lines.push(`Party: ${player.party}`);
-    if (player.comparisonLines?.length) lines.push(...player.comparisonLines);
-    else lines.push('No political data found for this player.');
-
-    const label = player.label || 'Player Alignment';
-    embed.addFields({
-      name: label,
-      value: lines.join('\n').slice(0, 1024),
-    });
-  }
-
-  if (!snapshotLines.length && !positionLines.length && !player) {
+  if (!snapshotLines.length && !positionLines.length) {
     embed.setDescription('No position data found for this state.');
   }
+
+  return embed;
+}
+
+function buildSummaryEmbed({ stateName, stateId, comparison, player }) {
+  const embed = new EmbedBuilder()
+    .setTitle(`${stateName} - Alignment Summary`)
+    .setURL(`${BASE}/states/${stateId}`)
+    .setFooter({ text: new URL(BASE).hostname })
+    .setTimestamp(new Date());
+
+  const mismatches = comparison.filter((item) => !item.matches);
+  embed.setColor(mismatches.length ? 0xf97316 : 0x22c55e);
+
+  const lines = [];
+  const displayName = player.displayName || 'Player';
+
+  if (player.stateName && player.stateMismatch) {
+    lines.push(`⚠️ Player profile lists ${player.stateName}; state analyzed: ${stateName}.`);
+  } else if (player.stateName) {
+    lines.push(`State on profile: ${player.stateName}.`);
+  }
+  if (player.party) lines.push(`Party: ${player.party}.`);
+
+  if (mismatches.length === 0) {
+    lines.push(`✅ ${displayName} matches all recorded positions for ${stateName}.`);
+  } else {
+    lines.push(`⚠️ ${displayName} differs on these positions:`);
+    for (const item of mismatches) {
+      const emoji = item.emoji ? `${item.emoji} ` : '';
+      if (!item.playerValue) {
+        lines.push(`• ${emoji}${item.key}: No player stance recorded (state: ${item.stateValue ?? 'n/a'}).`);
+      } else if (!item.stateValue) {
+        lines.push(`• ${emoji}${item.key}: Player is ${item.playerValue}, but the state has no stance recorded.`);
+      } else {
+        lines.push(`• ${emoji}${item.key}: Player ${item.playerValue} vs state ${item.stateValue}. Suggest updating state to ${item.playerValue}.`);
+      }
+    }
+  }
+
+  embed.setDescription(lines.join('\n').slice(0, 4000));
+  return embed;
+}
+
+function buildDetailsEmbed({ stateName, stateId, comparison, player }) {
+  const embed = new EmbedBuilder()
+    .setTitle(`${stateName} - Detailed Stances`)
+    .setURL(`${BASE}/states/${stateId}`)
+    .setColor(0x2563eb)
+    .setFooter({ text: new URL(BASE).hostname })
+    .setTimestamp(new Date());
+
+  const stateLines = [];
+  const playerLines = [];
+
+  for (const item of comparison) {
+    const emoji = item.emoji ? `${item.emoji} ` : '';
+    stateLines.push(`${emoji}${item.key}: ${item.stateValue ?? '—'}`);
+    const status = item.matches ? '✅ ' : item.playerValue ? '⚠️ ' : '⚪ ';
+    playerLines.push(`${status}${emoji}${item.key}: ${item.playerValue ?? '—'}`);
+  }
+
+  embed.addFields(
+    {
+      name: 'State Positions',
+      value: stateLines.join('\n').slice(0, 1024) || 'No data',
+      inline: true,
+    },
+    {
+      name: player.displayName ? `${player.displayName}'s Positions` : 'Player Positions',
+      value: playerLines.join('\n').slice(0, 1024) || 'No data',
+      inline: true,
+    },
+  );
 
   return embed;
 }
@@ -484,39 +532,85 @@ module.exports = {
         return;
       }
 
-      const comparisonLines = playerInfo?.positions
-        ? buildComparisonLines(stateInfo, playerInfo.positions)
+      const comparisonData = playerInfo?.positions
+        ? buildComparisonData(stateInfo, playerInfo.positions)
         : null;
 
       const playerNormalizedState = normalizeStateName(
         playerInfo?.stateName || cachedProfile?.state || stateTargetName || ''
       );
 
-      const player = profileId
-        ? {
-            label: playerInfo?.name
-              ? `Player Alignment — [${playerInfo.name}](${BASE}/users/${profileId})`
-              : `Player Alignment — [Profile ${profileId}](${BASE}/users/${profileId})`,
-            stateName: playerInfo?.stateName || cachedProfile?.state || null,
-            stateMismatch:
-              !!(
-                playerNormalizedState &&
-                normalizedStateName &&
-                playerNormalizedState.toLowerCase() !== normalizedStateName.toLowerCase()
-              ),
-            party: playerInfo?.party || cachedProfile?.party || null,
-            comparisonLines,
+      if (profileId && comparisonData) {
+        const player = {
+          id: profileId,
+          name: playerInfo?.name || cachedProfile?.name || `Profile ${profileId}`,
+          displayName: playerInfo?.name || cachedProfile?.name || `Profile ${profileId}`,
+          label: playerInfo?.name
+            ? `Player Alignment - [${playerInfo.name}](${BASE}/users/${profileId})`
+            : `Player Alignment - [Profile ${profileId}](${BASE}/users/${profileId})`,
+          stateName: playerInfo?.stateName || cachedProfile?.state || null,
+          stateMismatch:
+            !!(
+              playerNormalizedState &&
+              normalizedStateName &&
+              playerNormalizedState.toLowerCase() !== normalizedStateName.toLowerCase()
+            ),
+          party: playerInfo?.party || cachedProfile?.party || null,
+          comparison: comparisonData,
+        };
+
+        const pages = [
+          buildSummaryEmbed({
+            stateName: normalizedStateName,
+            stateId,
+            comparison: comparisonData,
+            player,
+          }),
+          buildDetailsEmbed({
+            stateName: normalizedStateName,
+            stateId,
+            comparison: comparisonData,
+            player,
+          }),
+        ];
+
+        await interaction.editReply({ embeds: [pages[0]] });
+
+        const message = await interaction.fetchReply();
+        if (message && typeof message.react === 'function' && pages.length > 1) {
+          const controls = ['??', '??'];
+          for (const emoji of controls) {
+            try { await message.react(emoji); } catch (_) {}
           }
-        : null;
 
-      const embed = buildPositionsEmbed({
-        stateName: normalizedStateName,
-        stateId,
-        info: stateInfo,
-        player,
-      });
+          let index = 0;
+          const filter = (reaction, user) =>
+            controls.includes(reaction.emoji.name) && user.id === interaction.user.id;
+          const collector = message.createReactionCollector({ filter, time: 5 * 60 * 1000 });
 
-      await interaction.editReply({ embeds: [embed] });
+          collector.on('collect', async (reaction, user) => {
+            if (reaction.emoji.name === '??') index = (index - 1 + pages.length) % pages.length;
+            else if (reaction.emoji.name === '??') index = (index + 1) % pages.length;
+            try {
+              await interaction.editReply({ embeds: [pages[index]] });
+            } catch (_) {}
+            try {
+              await reaction.users.remove(user.id);
+            } catch (_) {}
+          });
+
+          collector.on('end', async () => {
+            try { await message.reactions.removeAll(); } catch (_) {}
+          });
+        }
+      } else {
+        const embed = buildStateEmbed({
+          stateName: normalizedStateName,
+          stateId,
+          info: stateInfo,
+        });
+        await interaction.editReply({ embeds: [embed] });
+      }
     } catch (err) {
       if (err instanceof PPUSAAuthError) {
         await reportCommandError(interaction, err, {
@@ -535,3 +629,4 @@ module.exports = {
     }
   },
 };
+
