@@ -1,0 +1,237 @@
+const buildQueryString = (state, overrides = {}) => {
+  const params = new URLSearchParams();
+  const merged = { ...state, ...overrides };
+  for (const [key, value] of Object.entries(merged)) {
+    if (value === undefined || value === null || value === '') continue;
+    if (key === 'page' && (Number(value) || 0) <= 1) continue;
+    params.set(key, value);
+  }
+  const str = params.toString();
+  return str ? `?${str}` : '';
+};
+
+const renderPagination = (state, currentPage, totalPages) => {
+  if (totalPages <= 1) return '';
+  const parts = ['<div class="pagination">', `<span class="page-info">Page ${currentPage} of ${totalPages}</span>`];
+  const createLink = (label, page, { disabled = false, current = false } = {}) => {
+    if (disabled) return `<span class="page-link disabled">${label}</span>`;
+    if (current) return `<span class="page-link active">${label}</span>`;
+    return `<a class="page-link" href="${buildQueryString(state, { page })}">${label}</a>`;
+  };
+
+  parts.push(createLink('Prev', Math.max(1, currentPage - 1), { disabled: currentPage === 1 }));
+
+  const pages = new Set([1, totalPages, currentPage, currentPage - 1, currentPage + 1, currentPage - 2, currentPage + 2]);
+  const ordered = Array.from(pages)
+    .filter((p) => p >= 1 && p <= totalPages)
+    .sort((a, b) => a - b);
+
+  for (let i = 0; i < ordered.length; i++) {
+    const page = ordered[i];
+    parts.push(createLink(String(page), page, { current: page === currentPage }));
+    if (i < ordered.length - 1 && ordered[i + 1] - page > 1) {
+      parts.push('<span class="page-link disabled">&#8230;</span>');
+    }
+  }
+
+  parts.push(createLink('Next', Math.min(totalPages, currentPage + 1), { disabled: currentPage === totalPages }));
+  parts.push('</div>');
+  return parts.join('');
+};
+
+const renderTopCard = (title, items, valueFormatter) => `
+  <section class="card">
+    <header class="card-header">
+      <div>
+        <p class="eyebrow">Highlights</p>
+        <h2>${escapeHtml(title)}</h2>
+      </div>
+      <div class="badge-stack"><span class="pill pill-neutral">Top ${items.length}</span></div>
+    </header>
+    <ul class="striped-list">
+      ${items
+        .map(
+          (item, index) =>
+            `<li><span>${index + 1}. ${escapeHtml(item.name || 'Unknown')}</span><span>${escapeHtml(valueFormatter(item))}</span></li>`,
+        )
+        .join('')}
+    </ul>
+  </section>
+`;
+
+const formatLastSeen = (profile) => {
+  if (profile.lastOnlineText) return profile.lastOnlineText;
+  if (typeof profile.lastOnlineDays === 'number') {
+    if (profile.lastOnlineDays === 0) return 'Today';
+    return `${profile.lastOnlineDays} day(s) ago`;
+  }
+  return 'Unknown';
+};
+
+const renderStatsPage = (searchParams = new URLSearchParams()) => {
+  const db = readProfiles();
+  const profiles = db?.profiles ? Object.values(db.profiles) : [];
+  const partyRaw = (searchParams.get('party') || 'both').toLowerCase();
+  const activityRaw = (searchParams.get('activity') || '3').toLowerCase();
+  const requestedPage = Number(searchParams.get('page')) || 1;
+
+  const pageSize = 10;
+  const partyFilter = partyRaw === 'dem' ? 'dem' : partyRaw === 'rep' ? 'rep' : 'both';
+  const activityFilter = activityRaw === '5' ? 5 : activityRaw === 'all' ? null : 3;
+  const filterState = { party: partyFilter, activity: activityFilter === null ? 'all' : String(activityFilter) };
+
+  const partyMatches = (profile) => {
+    const party = (profile.party || '').toLowerCase();
+    if (partyFilter === 'dem') return party.includes('democrat');
+    if (partyFilter === 'rep') return party.includes('republican');
+    return true;
+  };
+  const withinActivity = (profile) => {
+    if (activityFilter === null) return true;
+    const days = typeof profile.lastOnlineDays === 'number' ? profile.lastOnlineDays : Number.POSITIVE_INFINITY;
+    return days <= activityFilter;
+  };
+
+  const filtered = profiles
+    .filter((profile) => partyMatches(profile) && withinActivity(profile))
+    .sort((a, b) => {
+      const aDays = typeof a.lastOnlineDays === 'number' ? a.lastOnlineDays : Number.POSITIVE_INFINITY;
+      const bDays = typeof b.lastOnlineDays === 'number' ? b.lastOnlineDays : Number.POSITIVE_INFINITY;
+      if (aDays !== bDays) return aDays - bDays;
+      return (a.name || '').localeCompare(b.name || '');
+    });
+
+  const totalPages = Math.max(1, Math.ceil(filtered.length / pageSize));
+  const currentPage = Math.min(Math.max(1, requestedPage), totalPages);
+  const startIndex = (currentPage - 1) * pageSize;
+  const currentPageItems = filtered.slice(startIndex, startIndex + pageSize);
+
+  const topCash = [...profiles]
+    .sort((a, b) => parseMoney(b.cash) - parseMoney(a.cash))
+    .slice(0, Math.min(5, profiles.length));
+  const topEs = [...profiles]
+    .sort(
+      (a, b) =>
+        (parseFloat(String(b.es).replace(/[^0-9.]/g, '')) || 0) -
+        (parseFloat(String(a.es).replace(/[^0-9.]/g, '')) || 0),
+    )
+    .slice(0, Math.min(5, profiles.length));
+
+  const listRows =
+    currentPageItems.length > 0
+      ? currentPageItems
+          .map((profile, idx) => {
+            const absoluteIndex = startIndex + idx + 1;
+            const profileUrl = profile.id ? `https://powerplayusa.net/users/${profile.id}` : '#';
+            const nameCell = profile.id
+              ? `<a href="${profileUrl}" target="_blank" rel="noopener">${escapeHtml(profile.name || 'Unknown')}</a>`
+              : escapeHtml(profile.name || 'Unknown');
+            return `<tr>
+              <td>${absoluteIndex}</td>
+              <td>${nameCell}</td>
+              <td>${escapeHtml(profile.party || 'Unknown')}</td>
+              <td>${escapeHtml(profile.state || '—')}</td>
+              <td>${escapeHtml(formatLastSeen(profile))}</td>
+              <td>${escapeHtml(profile.es || '—')}</td>
+              <td>${escapeHtml(profile.cash || '—')}</td>
+            </tr>`;
+          })
+          .join('')
+      : '<tr><td colspan="7" class="muted">No profiles match the selected filters.</td></tr>';
+
+  const pagination = renderPagination(filterState, currentPage, totalPages);
+  const filterTags = [];
+  if (partyFilter !== 'both')
+    filterTags.push(
+      `<span class="filter-tag">Party: ${partyFilter === 'dem' ? 'Democratic' : 'Republican'}</span>`,
+    );
+  if (activityFilter === null) filterTags.push('<span class="filter-tag">No activity limit</span>');
+  else if (activityFilter !== 3)
+    filterTags.push(`<span class="filter-tag">Active ≤ ${activityFilter} days</span>`);
+
+  const content = `
+    <section class="grid-two">
+      ${renderTopCard('Top ES', topEs, (p) => p.es || '—')}
+      ${renderTopCard('Top Cash', topCash, (p) => p.cash || '—')}
+    </section>
+    <section class="card">
+      <header class="card-header">
+        <div>
+          <p class="eyebrow">Roster</p>
+          <h2>Active Members</h2>
+        </div>
+        <div class="badge-stack">
+          <span class="pill pill-neutral">${filtered.length} matching</span>
+        </div>
+      </header>
+      <form class="filter-bar" method="get">
+        <label>
+          Party
+          <select name="party">
+            <option value="both" ${partyFilter === 'both' ? 'selected' : ''}>Both parties</option>
+            <option value="dem" ${partyFilter === 'dem' ? 'selected' : ''}>Democratic</option>
+            <option value="rep" ${partyFilter === 'rep' ? 'selected' : ''}>Republican</option>
+          </select>
+        </label>
+        <label>
+          Activity window
+          <select name="activity">
+            <option value="3" ${activityFilter === 3 ? 'selected' : ''}>Active ≤ 3 days</option>
+            <option value="5" ${activityFilter === 5 ? 'selected' : ''}>Active ≤ 5 days</option>
+            <option value="all" ${activityFilter === null ? 'selected' : ''}>No limit</option>
+          </select>
+        </label>
+        <button type="submit">Apply</button>
+      </form>
+      ${filterTags.length ? `<div>${filterTags.join('')}</div>` : ''}
+      <div class="table-scroll">
+        <table>
+          <thead>
+            <tr>
+              <th>#</th>
+              <th>Name</th>
+              <th>Party</th>
+              <th>State</th>
+              <th>Last Online</th>
+              <th>ES</th>
+              <th>Cash</th>
+            </tr>
+          </thead>
+          <tbody>${listRows}</tbody>
+        </table>
+      </div>
+      ${pagination}
+    </section>
+  `;
+
+  const refreshMeta =
+    HTML_REFRESH_SECONDS > 0 ? `<meta http-equiv="refresh" content="${HTML_REFRESH_SECONDS}">` : '';
+
+  return `<!DOCTYPE html>
+  <html lang="en">
+    <head>
+      <meta charset="utf-8">
+      ${refreshMeta}
+      <meta name="viewport" content="width=device-width, initial-scale=1">
+      <title>DemBot Stats</title>
+      <style>${DASHBOARD_STYLE}</style>
+    </head>
+    <body>
+      <main>
+        <nav class="tabs">
+          <a href="/">Overview</a>
+          <a href="/stats" class="active">Stats</a>
+          <a href="/settings">Settings</a>
+        </nav>
+        <header class="page-header">
+          <div>
+            <span class="badge-dot">DemBot Monitoring</span>
+            <h1>Statistics</h1>
+            <p>Derived from profiles.json</p>
+          </div>
+        </header>
+        ${content}
+      </main>
+    </body>
+  </html>`;
+};

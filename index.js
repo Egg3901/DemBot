@@ -1,5 +1,20 @@
 // File: index.js
 require('dotenv').config();
+const { Blob: NodeBlob } = require('node:buffer');
+
+if (typeof globalThis.File === 'undefined') {
+  class NodeFile extends NodeBlob {
+    constructor(bits, name, options = {}) {
+      super(bits, options);
+      this.name = name ?? 'file';
+      this.lastModified = options.lastModified ?? Date.now();
+    }
+    get [Symbol.toStringTag]() {
+      return 'File';
+    }
+  }
+  globalThis.File = NodeFile;
+}
 const fs = require('node:fs');
 const path = require('node:path');
 const {
