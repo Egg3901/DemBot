@@ -95,11 +95,11 @@ const fetchChamber = async (page, id) => {
 
   const { handle: diagramHandle, selector } = await selectDiagramHandle(page);
   if (diagramHandle) {
+    let originalStyles = null;
     try {
       svgHtml = await page.evaluate((el) => el.innerHTML, diagramHandle);
       const svgHandle = await diagramHandle.$('svg');
       const targetHandle = svgHandle || diagramHandle;
-      let originalStyles = null;
       if (selector) {
         originalStyles = await page.evaluate(
           (sel, scale) => {
@@ -121,7 +121,7 @@ const fetchChamber = async (page, id) => {
       svgHtml = null;
       pngBuffer = null;
     } finally {
-      if (selector) {
+      if (selector && originalStyles !== null) {
         await page.evaluate(
           (sel, styles) => {
             const el = document.querySelector(sel);
