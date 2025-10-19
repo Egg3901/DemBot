@@ -85,17 +85,69 @@ function extractNextRaceTime(html) {
   return candidates[0] || null;
 }
 
-function findRaceLinkFromStateElections(html, raceLabel) {
+function findRaceInfoFromStateElections(html, raceLabel) {
   const $ = cheerio.load(html || '');
-  const target = String(raceLabel || '').toLowerCase();
-  const links = [];
-  $('a[href]').each((_, a) => {
-    const text = ($(a).text() || '').replace(/\s+/g, ' ').trim().toLowerCase();
-    const href = $(a).attr('href') || '';
-    if (!/election|senate|govern|house|class\s*[123]/i.test(text)) return;
-    if (text.includes(target.split(' ').pop())) links.push(new URL(href, BASE).toString());
+  const target = String(raceLabel || '').trim().toLowerCase();
+  let match = null;
+
+  $('h4').each((_, heading) => {
+    const headingText = ($(heading).text() || '').replace(/\s+/g, ' ').trim().toLowerCase();
+    if (headingText !== target) return;
+
+    const section = $(heading).closest('.container-fluid');
+    if (!section.length) return;
+
+    const rows = section.find('table tbody tr');
+    let nextRaceText = null;
+    let raceUrl = null;
+
+    rows.each((__, tr) => {
+      const row = $(tr);
+      const cells = row.find('td');
+      const dateText = (cells.eq(0).text() || '').replace(/\s+/g, ' ').trim();
+      const statusText = (cells.eq(1).text() || '').replace(/\s+/g, ' ').trim();
+      const anchor = row.find('a[href]').first();
+      if (!nextRaceText && dateText) {
+        const isEnded = /ended|finished|complete/i.test(statusText);
+        if (!isEnded) {
+          nextRaceText = statusText ? `${dateText} â€” ${statusText}` : dateText;
+        }
+      }
+      if (!raceUrl && anchor.length) {
+        raceUrl = anchor.attr('href');
+        if (raceUrl && !/^https?:/i.test(raceUrl)) {
+          raceUrl = new URL(raceUrl, BASE).toString();
+        }
+      }
+      if (nextRaceText && raceUrl) return false;
+    });
+
+    if (!nextRaceText && rows.length) {
+      const firstRow = rows.first();
+      const cells = firstRow.find('td');
+      const dateText = (cells.eq(0).text() || '').replace(/\s+/g, ' ').trim();
+      const statusText = (cells.eq(1).text() || '').replace(/\s+/g, ' ').trim();
+      if (dateText || statusText) {
+        nextRaceText = statusText ? `${dateText} â€” ${statusText}`.trim() : dateText;
+      }
+    }
+
+    if (!raceUrl) {
+      const anchor = section.find('a[href*="/elections/"]').first();
+      if (anchor.length) {
+        let href = anchor.attr('href');
+        if (href && !/^https?:/i.test(href)) {
+          href = new URL(href, BASE).toString();
+        }
+        raceUrl = href;
+      }
+    }
+
+    match = { url: raceUrl || null, nextRace: nextRaceText || null };
+    return false;
   });
-  return links.pop() || null;
+
+  return match;
 }
 
 function extractLatestPoll(html, stateName, raceLabel) {
@@ -171,14 +223,14 @@ module.exports = {
       }
 
       const elections = await fetchHtml(page, `${BASE}/states/${stateId}/elections`, 'domcontentloaded');
-      const raceLink = findRaceLinkFromStateElections(elections.html, raceLabel);
-      if (!raceLink) {
+      const raceMeta = findRaceInfoFromStateElections(elections.html, raceLabel);
+      if (!raceMeta?.url) {
         return interaction.editReply({ content: `Could not find a ${raceLabel} election page for ${stateName}.` });
       }
 
-      const racePage = await fetchHtml(page, raceLink, 'load');
+      const racePage = await fetchHtml(page, raceMeta.url, 'load');
       const latest = pickLatestResults(racePage.html);
-      const nextInfo = extractNextRaceTime(racePage.html);
+      const nextInfo = extractNextRaceTime(racePage.html) || raceMeta.nextRace || null;
 
       let pollResult = null;
       const $race = cheerio.load(racePage.html);
@@ -196,8 +248,8 @@ module.exports = {
       if (latest && latest.rows.length >= 2) {
         const [a, b] = latest.rows;
         fields.push({ name: 'Latest Finished Round', value: latest.title, inline: false });
-        fields.push({ name: 'Candidate A', value: `${a.name}${a.percent != null ? ` — ${a.percent}%` : ''}`, inline: true });
-        fields.push({ name: 'Candidate B', value: `${b.name}${b.percent != null ? ` — ${b.percent}%` : ''}`, inline: true });
+        fields.push({ name: 'Candidate A', value: `${a.name}${a.percent != null ? ` - ${a.percent}%` : ''}`, inline: true });
+        fields.push({ name: 'Candidate B', value: `${b.name}${b.percent != null ? ` - ${b.percent}%` : ''}`, inline: true });
       } else {
         fields.push({ name: 'Latest Finished Round', value: 'No finished results found yet', inline: false });
       }
@@ -213,7 +265,7 @@ module.exports = {
       }
 
       const embed = {
-        title: `${stateName} — ${raceLabel}`,
+        title: `${stateName} - ${raceLabel}`,
         url: racePage.finalUrl,
         fields,
         footer: { text: new URL(BASE).hostname },

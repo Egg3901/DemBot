@@ -7,8 +7,9 @@ const { canManageBot } = require('../lib/permissions');
 const { ensureDbShape, mergeProfileRecord } = require('../lib/profile-cache');
 
 // Inactive (offline) role and threshold (days)
-const INACTIVE_ROLE_ID = '1427250767290564629';
+const INACTIVE_ROLE_ID = '1427236595345522708';
 const OFFLINE_THRESHOLD_DAYS = 4;
+const WARNING_THRESHOLD_DAYS = 3;
 
 const MAX_CONSECUTIVE_MISSES = 20;
 const DEFAULT_MAX_ID = Number(process.env.PPUSA_MAX_USER_ID || '0');
@@ -23,6 +24,12 @@ module.exports = {
         .setName('roles')
         .setDescription('After update, apply needed roles to matching server members')
         .setRequired(false)
+    )
+    .addBooleanOption(opt =>
+      opt
+        .setName('clear')
+        .setDescription('When used with roles, remove all managed office and region roles')
+        .setRequired(false)
     ),
 
   /**
@@ -34,6 +41,7 @@ module.exports = {
     await interaction.deferReply();
 
     const applyRoles = interaction.options.getBoolean('roles') || false;
+    const clearRoles = interaction.options.getBoolean('clear') || false;
     const inGuild = interaction.inGuild();
 
     if (!(await canManageBot(interaction))) {
@@ -42,6 +50,10 @@ module.exports = {
 
     if (!inGuild && applyRoles) {
       return interaction.editReply('Role syncing must be run from within the server.');
+    }
+
+    if (clearRoles && !applyRoles) {
+      return interaction.editReply('Use the clear option alongside roles=true.');
     }
 
     const dataDir = path.join(process.cwd(), 'data');
@@ -126,8 +138,36 @@ module.exports = {
           ephemeral: true,
         });
       }
+      if (clearRoles) {
+        const officeRoleIds = Object.values(ROLE_IDS).filter(Boolean);
+        const regionRoleIdsList = Object.values(REGION_ROLE_IDS).filter(Boolean);
+        const targets = Array.from(new Set([...officeRoleIds, ...regionRoleIdsList]));
+        await interaction.editReply('Clearing managed office and region roles...');
+        let cleared = 0;
+        let membersTouched = 0;
+        for (const member of guild.members.cache.values()) {
+          let memberCleared = 0;
+          for (const rid of targets) {
+            if (!rid) continue;
+            if (member.roles.cache.has(rid)) {
+              try {
+                await member.roles.remove(rid, 'Clear managed roles via /update clear');
+                cleared++;
+                memberCleared++;
+              } catch (_) {}
+            }
+          }
+          if (memberCleared > 0) membersTouched++;
+        }
+        const msg = `Cleared ${cleared} managed roles across ${membersTouched} members.`;
+        await interaction.followUp(msg);
+        return;
+      }
       let applied = 0, removed = 0, skipped = 0, matched = 0;
       const changeLogs = [];
+      const partialOfflineWarnings = [];
+      const offlineProfilesOver3 = [];
+      const profileOfflineMap = new Map();
       let processed = 0;
       const inactiveRoleRef = INACTIVE_ROLE_ID ? guild.roles.cache.get(INACTIVE_ROLE_ID) : null;
       const inactiveRoleId = inactiveRoleRef?.id || null;
@@ -148,6 +188,7 @@ module.exports = {
             regions: new Set(),
             lastOnlineDays: null,
             lastOnlineText: null,
+            offlineDetails: [],
           };
           groups.set(handle, g);
         }
@@ -166,6 +207,21 @@ module.exports = {
             g.lastOnlineDays = los;
             g.lastOnlineText = p.lastOnlineText || null;
           }
+          g.offlineDetails.push({
+            id: p.id,
+            name: p.name || null,
+            lastOnlineDays: los,
+            lastOnlineText: p.lastOnlineText || null,
+          });
+          if (los > WARNING_THRESHOLD_DAYS) {
+            profileOfflineMap.set(p.id, {
+              id: p.id,
+              name: p.name || null,
+              days: los,
+              text: p.lastOnlineText || null,
+              handle,
+            });
+          }
         }
       }
 
@@ -176,7 +232,14 @@ module.exports = {
           (m.user?.globalName?.toLowerCase?.() === g.handle)
         );
         processed++;
-        if (!member) { skipped++; continue; }
+        if (!member) {
+          g.offlineDetails.forEach((d) => {
+            const entry = profileOfflineMap.get(d.id);
+            if (entry) offlineProfilesOver3.push(entry);
+          });
+          skipped++;
+          continue;
+        }
         matched++;
 
         // If any Republican profile exists for this user, skip additions and remove managed roles
@@ -246,11 +309,31 @@ module.exports = {
           }
         }
 
-        // Activity/inactivity role handling (uses most recently active profile across all linked ids)
+        // Activity/inactivity role handling (uses all linked profiles)
         if (inactiveRoleId) {
           const hasInactive = member.roles.cache.has(inactiveRoleId);
-          const hasActivityData = typeof g.lastOnlineDays === 'number';
-          const shouldBeInactive = g.anyDem && hasActivityData && g.lastOnlineDays > OFFLINE_THRESHOLD_DAYS;
+          const offlineDetails = g.offlineDetails;
+          const totalWithData = offlineDetails.length;
+          const over4 = offlineDetails.filter((d) => d.lastOnlineDays > OFFLINE_THRESHOLD_DAYS);
+          const hasActivityData = totalWithData > 0;
+          const allOver4 = totalWithData > 0 && over4.length === totalWithData;
+          const someOver4 = over4.length > 0 && !allOver4;
+          const over3 = offlineDetails.filter((d) => d.lastOnlineDays > WARNING_THRESHOLD_DAYS);
+          over3.forEach((d) => {
+            const existing = profileOfflineMap.get(d.id);
+            if (existing) offlineProfilesOver3.push(existing);
+          });
+
+          if (someOver4) {
+            partialOfflineWarnings.push({
+              member: member.user?.tag || member.displayName,
+              ids: over4.map((d) => d.id),
+              total: totalWithData,
+              count: over4.length,
+            });
+          }
+
+          const shouldBeInactive = g.anyDem && allOver4;
 
           if (shouldBeInactive && !hasInactive) {
             const reason = g.lastOnlineText
@@ -282,7 +365,7 @@ module.exports = {
       const rolesSecs = Math.round((Date.now() - rolesStart) / 1000);
       const summary = `Role update completed in ${rolesSecs}s. Matched ${matched}, applied ${applied}, removed ${removed}, skipped ${skipped}.`;
       if (changeLogs.length === 0) {
-        return interaction.followUp(summary);
+        await interaction.followUp(summary);
       } else {
         const chunks = [];
         let buffer = [];
@@ -302,8 +385,49 @@ module.exports = {
         for (const chunk of chunks) {
           await interaction.followUp('```\n' + chunk + '\n```');
         }
-        return;
       }
+
+      const warningLines = [];
+      if (partialOfflineWarnings.length) {
+        partialOfflineWarnings.slice(0, 30).forEach((w) => {
+          warningLines.push(`Partial inactivity: ${w.member} has ${w.count}/${w.total} linked profiles offline >${OFFLINE_THRESHOLD_DAYS} days (IDs: ${w.ids.join(', ')})`);
+        });
+        if (partialOfflineWarnings.length > 30) {
+          warningLines.push(`...and ${partialOfflineWarnings.length - 30} more partial inactivity warnings.`);
+        }
+      }
+      if (offlineProfilesOver3.length) {
+        const uniqueOver3 = new Map();
+        offlineProfilesOver3.forEach((entry) => {
+          if (!uniqueOver3.has(entry.id)) uniqueOver3.set(entry.id, entry);
+        });
+        Array.from(uniqueOver3.values()).slice(0, 40).forEach((entry) => {
+          warningLines.push(`Profile offline >${WARNING_THRESHOLD_DAYS} days: ${entry.name || `ID ${entry.id}`} (ID ${entry.id}) — ${entry.text || `${entry.days} days ago`}`);
+        });
+        if (uniqueOver3.size > 40) {
+          warningLines.push(`...and ${uniqueOver3.size - 40} more offline profile warnings.`);
+        }
+      }
+      if (warningLines.length) {
+        const chunked = [];
+        let bucket = [];
+        let len = 0;
+        for (const line of warningLines) {
+          const addition = line.length + 1;
+          if (len + addition > 1800) {
+            chunked.push(bucket.join('\n'));
+            bucket = [];
+            len = 0;
+          }
+          bucket.push(line);
+          len += addition;
+        }
+        if (bucket.length) chunked.push(bucket.join('\n'));
+        for (const chunk of chunked) {
+          await interaction.followUp(`Warnings:\n${chunk}`);
+        }
+      }
+      return;
     }
 
     // Scrape mode (no roles), build/update profiles.json
