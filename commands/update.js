@@ -3,12 +3,8 @@ const { SlashCommandBuilder, PermissionsBitField } = require('discord.js');
 const fs = require('node:fs');
 const path = require('node:path');
 const { loginAndGet, parseProfile, BASE } = require('../lib/ppusa');
+const { canManageBot } = require('../lib/permissions');
 
-// Only these roles may run /update (including roles:true)
-const ALLOWED_ROLE_IDS = [
-  '1405701524608516107',
-  '1406063223475535994',
-];
 // Inactive (offline) role and threshold (days)
 const INACTIVE_ROLE_ID = '1427250767290564629';
 const OFFLINE_THRESHOLD_DAYS = 3;
@@ -78,22 +74,14 @@ module.exports = {
     await interaction.deferReply();
 
     const applyRoles = interaction.options.getBoolean('roles') || false;
+    const inGuild = interaction.inGuild();
 
-    // Enforce role-based access (must be in a guild and have one of the allowed roles)
-    if (!interaction.inGuild()) {
-      return interaction.editReply({ content: 'This command must be used in a server.', ephemeral: true });
+    if (!(await canManageBot(interaction))) {
+      return interaction.editReply('You do not have permission to use /update.');
     }
-    try {
-      const member = await interaction.guild.members.fetch(interaction.user.id);
-      const hasAllowed = member.roles.cache.some(r => ALLOWED_ROLE_IDS.includes(r.id));
-      if (!hasAllowed) {
-        return interaction.editReply({
-          content: 'You do not have permission to use /update. Required role missing.',
-          ephemeral: true,
-        });
-      }
-    } catch (e) {
-      return interaction.editReply({ content: `Unable to verify your roles: ${e?.message || e}`, ephemeral: true });
+
+    if (!inGuild && applyRoles) {
+      return interaction.editReply('Role syncing must be run from within the server.');
     }
 
     const dataDir = path.join(process.cwd(), 'data');
