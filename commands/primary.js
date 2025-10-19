@@ -15,8 +15,11 @@ const { SlashCommandBuilder } = require('discord.js');
 const fs = require('node:fs');
 const path = require('node:path');
 const cheerio = require('cheerio');
-const { loginAndGet, BASE } = require('../lib/ppusa');
+const { authenticateAndNavigate, PPUSAAuthError } = require('../lib/ppusa-auth');
+const { config, toAbsoluteUrl } = require('../lib/ppusa-config');
 const { getDebugChoice, reportCommandError } = require('../lib/command-utils');
+const BASE = config.baseUrl;
+
 
 const US_STATE_ABBR = {
   al: 'Alabama', ak: 'Alaska', az: 'Arizona', ar: 'Arkansas', ca: 'California', co: 'Colorado',
@@ -105,13 +108,12 @@ module.exports = {
     try {
       // 1) Login and load the states index to resolve state id
       // NOTE: the game lists states at /national/states; individual state pages remain /states/:id
-      const statesUrl = `${BASE}/national/states`;
-      const sess = await loginAndGet(statesUrl);
-      browser = sess.browser;
-      page = sess.page;
-      let statesHtml = sess.html;
+      const statesUrl = toAbsoluteUrl('/national/states');
+const session = await authenticateAndNavigate({ url: statesUrl, debug: requestedDebug || debugAllowed });      browser = sess.browser;
+      browser = session.browser;
+      page = session.page;;
+      let statesHtml = session.html;
       addLog(`Fetched /national/states (length=${statesHtml?.length || 0})`);
-      stage = 'resolve_state_id';
 
       // --- helpers for states-list detection (supports /national/states and /states) ---
       function looksLikeStatesList(html) {
