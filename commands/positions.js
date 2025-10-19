@@ -234,16 +234,28 @@ function buildSummaryEmbed({ stateName, stateId, comparison, player, totalPages 
   if (mismatches.length === 0) {
     lines.push(`✅ **${displayName} matches all recorded positions for ${stateName}.**`);
   } else {
-    lines.push(`⚠️ **${displayName} differs on these positions:**`);
-    for (const item of mismatches) {
-      const emoji = item.emoji ? `${item.emoji} ` : '';
-      if (!item.playerValue) {
-        lines.push(`• **${emoji}${item.key}** — no player stance recorded (state: ${item.stateValue ?? 'n/a'}).`);
-      } else if (!item.stateValue) {
-        lines.push(`• **${emoji}${item.key}** — player is ${item.playerValue}, state has no stance recorded.`);
-      } else {
-        lines.push(`• **${emoji}${item.key}** — player ${item.playerValue} vs state ${item.stateValue}. **Ask the player to update to ${item.stateValue}.**`);
+    const aggregateKeys = new Set(['Social', 'Economic']);
+    const actionable = mismatches.filter((item) => !aggregateKeys.has(item.key));
+    const aggregateOnly = mismatches.filter((item) => aggregateKeys.has(item.key));
+
+    if (actionable.length) {
+      lines.push(`⚠️ **${displayName} differs on these positions:**`);
+      for (const item of actionable) {
+        const emoji = item.emoji ? `${item.emoji} ` : '';
+        if (!item.playerValue) {
+          lines.push(`• **${emoji}${item.key}** — no player stance recorded (state: ${item.stateValue ?? 'n/a'}).`);
+        } else if (!item.stateValue) {
+          lines.push(`• **${emoji}${item.key}** — player is ${item.playerValue}, state has no stance recorded.`);
+        } else {
+          lines.push(`• **${emoji}${item.key}** — player ${item.playerValue} vs state ${item.stateValue}. Please update to **${item.stateValue}**.`);
+        }
       }
+    }
+
+    if (aggregateOnly.length) {
+      lines.push(
+        `ℹ️ Aggregate ratings (Social/Economic) differ; see the detailed page for values.`
+      );
     }
   }
 
