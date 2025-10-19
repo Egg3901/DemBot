@@ -209,18 +209,22 @@ function buildDetailEmbed(commandModule, requirementLabel = ACCESS_GENERAL) {
 async function evaluateAccess(interaction, commandName, context) {
   const requirement = COMMAND_REQUIREMENTS[commandName];
   if (!requirement) {
-    return { allowed: true, label: ACCESS_GENERAL };
+    return { allowed: true, label: ACCESS_GENERAL, groupKey: ACCESS_GENERAL };
   }
-  const fallbackLabel =
-    (typeof requirement.defaultLabel === 'function'
-      ? requirement.defaultLabel(context)
-      : requirement.defaultLabel) || ACCESS_GENERAL;
+  const fallbackLabel = (
+    typeof requirement.defaultLabel === 'function' ? requirement.defaultLabel(context) : requirement.defaultLabel
+  ) || ACCESS_GENERAL;
+  const fallbackGroup = (
+    typeof requirement.groupKey === 'function' ? requirement.groupKey(context) : requirement.groupKey
+  ) || fallbackLabel;
+
   try {
     const result = await requirement.check(interaction, context);
     if (typeof result === 'object' && result !== null) {
       return {
         allowed: Boolean(result.allowed),
         label: result.label || fallbackLabel,
+        groupKey: result.groupKey || fallbackGroup,
       };
     }
     return { allowed: Boolean(result), label: fallbackLabel, groupKey: fallbackGroup };
