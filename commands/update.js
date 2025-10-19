@@ -120,6 +120,7 @@ async function performRoleSync({ interaction, guild, db, clearRoles = false, use
     }
     if (p.region) g.regions.add(p.region);
     const los = typeof p.lastOnlineDays === 'number' ? p.lastOnlineDays : null;
+    const losRounded = los !== null ? Math.floor(los) : null;
     if (los !== null) {
       if (g.lastOnlineDays === null || los < g.lastOnlineDays) {
         g.lastOnlineDays = los;
@@ -129,13 +130,18 @@ async function performRoleSync({ interaction, guild, db, clearRoles = false, use
         id: p.id,
         name: p.name || null,
         lastOnlineDays: los,
+        lastOnlineDaysRounded: losRounded,
         lastOnlineText: p.lastOnlineText || null,
       });
-      if (los > WARNING_THRESHOLD_DAYS) {
+      const withinWarningWindow =
+        losRounded !== null &&
+        losRounded >= WARNING_THRESHOLD_DAYS &&
+        losRounded <= 10;
+      if (withinWarningWindow) {
         profileOfflineMap.set(p.id, {
           id: p.id,
           name: p.name || null,
-          days: los,
+          days: losRounded,
           text: p.lastOnlineText || null,
           handle,
         });
@@ -231,11 +237,16 @@ async function performRoleSync({ interaction, guild, db, clearRoles = false, use
 
     const offlineDetails = g.offlineDetails;
     const totalWithData = offlineDetails.length;
-    const over4 = offlineDetails.filter((d) => d.lastOnlineDays > OFFLINE_THRESHOLD_DAYS);
+    const over4Raw = offlineDetails.filter((d) => d.lastOnlineDays > OFFLINE_THRESHOLD_DAYS);
     const hasActivityData = totalWithData > 0;
-    const allOver4 = totalWithData > 0 && over4.length === totalWithData;
-    const someOver4 = over4.length > 0 && !allOver4;
-    const over3 = offlineDetails.filter((d) => d.lastOnlineDays > WARNING_THRESHOLD_DAYS);
+    const allOver4 = totalWithData > 0 && over4Raw.length === totalWithData;
+    const warnableDetails = offlineDetails.filter((d) => {
+      const rounded = d.lastOnlineDaysRounded;
+      return rounded !== null && rounded <= 10;
+    });
+    const warnOver4 = warnableDetails.filter((d) => d.lastOnlineDaysRounded > OFFLINE_THRESHOLD_DAYS);
+    const someOver4 = warnOver4.length > 0 && warnOver4.length < warnableDetails.length;
+    const over3 = warnableDetails.filter((d) => d.lastOnlineDaysRounded >= WARNING_THRESHOLD_DAYS);
     over3.forEach((d) => {
       const entry = profileOfflineMap.get(d.id);
       if (entry) offlineProfilesOver3.push(entry);
@@ -244,9 +255,9 @@ async function performRoleSync({ interaction, guild, db, clearRoles = false, use
     if (someOver4) {
       partialOfflineWarnings.push({
         member: member.user?.tag || member.displayName,
-        ids: over4.map((d) => d.id),
-        total: totalWithData,
-        count: over4.length,
+        ids: warnOver4.map((d) => d.id),
+        total: warnableDetails.length,
+        count: warnOver4.length,
       });
     }
 
@@ -254,7 +265,7 @@ async function performRoleSync({ interaction, guild, db, clearRoles = false, use
       const hasInactive = member.roles.cache.has(INACTIVE_ROLE_ID);
       const shouldBeInactive = g.anyDem && allOver4;
       if (shouldBeInactive && !hasInactive) {
-        const referenceDetail = over4[0] || offlineDetails[0];
+        const referenceDetail = over4Raw[0] || offlineDetails[0];
         const reason = referenceDetail?.lastOnlineText
           ? `Last online ${referenceDetail.lastOnlineText}`
           : referenceDetail?.lastOnlineDays != null
