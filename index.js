@@ -175,7 +175,7 @@ client.on(Events.GuildMemberAdd, async (member) => {
 
     const msg =
       `👋 Welcome <@${member.id}> to the **Democratic Party** server!\n\n` +
-      `To access the server channels, please run **\`!verifyparty\`** in this channel.\n` +
+      `To access the server channels, please run **\`!verifyparty\`** in the verification channel.\n` +
       `If you need help, ping chair/deputy chair or a member of the national committee. `;
 
     await channel.send({ content: msg });
