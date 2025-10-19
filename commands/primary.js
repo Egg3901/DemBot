@@ -46,7 +46,6 @@ const PARTY_ALIASES = {
 
 // -------------------- Small utils --------------------
 const delay = (ms) => new Promise((r) => setTimeout(r, ms));
-
 const normalizeParty = (p) => PARTY_ALIASES[String(p || '').toLowerCase()] || 'both';
 
 function normalizeRace(r) {
@@ -83,6 +82,7 @@ function normalizeStateName(s) {
 }
 
 // -------------------- Parsing --------------------
+// /national/states -> resolve numeric stateId
 function resolveStateIdFromIndex(html, stateName) {
   const $ = cheerio.load(html || '');
   const norm = (t) => String(t || '')
@@ -120,11 +120,55 @@ function resolveStateIdFromIndex(html, stateName) {
   return found;
 }
 
+// /states/:id/primaries -> locate the race row, return party links/meta
+function extractRacePrimariesFromStatePage(html, raceLabel) {
+  const $ = cheerio.load(html || '');
+  const raceName = String(raceLabel || '').trim().toLowerCase();
+
+  let header = null;
+  $('h4').each((_, el) => {
+    const t = ($(el).text() || '').trim().toLowerCase();
+    if (t === raceName) { header = $(el); return false; }
+  });
+  if (!header) return null;
+
+  const container = header.closest('.container, .container-fluid, .bg-white').length
+    ? header.closest('.container, .container-fluid, .bg-white')
+    : header.parent();
+
+  const table = container.find('table').first();
+  if (!table.length) return null;
+
+  const result = { dem: null, gop: null };
+  table.find('tbody tr').each((_, tr) => {
+    const row = $(tr);
+    const a = row.find('a[href*="/primaries/"]').first();
+    if (!a.length) return;
+
+    const href = a.attr('href') || '';
+    const url = href.startsWith('http') ? href : new URL(href, BASE).toString();
+    const tds = row.find('td');
+
+    const partyText = (a.text() || '').toLowerCase();
+    const deadlineText = (tds.eq(1).text() || '').replace(/\s+/g, ' ').trim() || null;
+    const countText = (tds.eq(2).text() || '').trim();
+    const count = countText && /\d+/.test(countText) ? Number((countText.match(/\d+/) || [])[0]) : null;
+
+    const obj = { url, deadline: deadlineText, count };
+    if (partyText.includes('democrat')) result.dem = obj;
+    if (partyText.includes('republican')) result.gop = obj;
+  });
+
+  if (!result.dem && !result.gop) return null;
+  return result;
+}
+
+// Primary page -> candidates (supports old progress layout and new "Primary Registration" table)
 function extractPrimaryCandidates(html) {
   const $ = cheerio.load(html || '');
   const items = [];
 
-  // Helper: pull metrics like ES/CO/NR/AR/CR from any nearby text
+  // Helper: pick metrics (ES/CO/NR/AR/CR) from surrounding text
   const pickMetrics = (txt) => {
     const out = {};
     const re = /\b(ES|CO|NR|AR|CR)\s*[:\-]\s*([0-9]+(?:\.[0-9]+)?)\b/gi;
@@ -135,22 +179,23 @@ function extractPrimaryCandidates(html) {
     return out;
   };
 
-  // ---------- Layout A: legacy "progress-wrapper" blocks ----------
+  // Layout A: legacy progress cards
   let scope = $('#electionresult');
   if (!scope.length) scope = $('body');
   scope.find('.progress-wrapper').each((_, pw) => {
     const wrap = $(pw);
-    const label = wrap.find('.progress-label a').first();
+    const label = wrap.find('.progress-label a, .progress-label').first();
     const nameFull = (label.text() || '').replace(/\s+/g, ' ').trim();
     if (!nameFull) return;
 
-    // Name and inline metrics "(ES: 20, CO: 30, ...)"
     let name = nameFull;
+    let metrics = pickMetrics(nameFull);
     const paren = nameFull.match(/^(.+?)\s*\(([^)]+)\)\s*$/);
-    const metrics = paren ? pickMetrics(paren[2]) : pickMetrics(nameFull);
-    if (paren) name = paren[1].trim();
+    if (paren) {
+      name = paren[1].trim();
+      metrics = { ...metrics, ...pickMetrics(paren[2]) };
+    }
 
-    // Percent (either text or style width)
     let percent = null;
     const pctText = (wrap.find('.progress-percentage .text-primary').first().text() || '').trim();
     const mp = pctText.match(/([0-9]+(?:\.[0-9]+)?)/);
@@ -166,23 +211,20 @@ function extractPrimaryCandidates(html) {
 
   if (items.length) return items;
 
-  // ---------- Layout B: new "Primary Registration" table ----------
-  // Looks like: <h3>Primary Registration</h3> ... <table> <tbody><tr>...</tr></tbody>
-  // Candidate name is inside an <a href="/users/..."><h5>NAME</h5></a>
-  const regBlock = $('h3').filter((_, el) => /primary\s+registration/i.test($(el).text())).first()
-    .closest('.container-fluid, .bg-white, .rounded, .ppusa_background, .row, .col-sm-6');
+  // Layout B: new "Primary Registration" table
+  const regHeader = $('h3').filter((_, el) => /primary\s+registration/i.test($(el).text())).first();
+  const regBlock = regHeader.length
+    ? regHeader.closest('.container-fluid, .bg-white, .rounded, .ppusa_background, .row, .col-sm-6')
+    : $();
   const regTable = regBlock.find('table tbody');
   if (regTable.length) {
     regTable.find('tr').each((_, tr) => {
       const row = $(tr);
-      // Prefer h5 text, fallback to anchor text
       const name =
         row.find('a[href^="/users/"] h5').first().text().trim() ||
         row.find('a[href^="/users/"]').first().text().trim();
-
       if (!name) return;
 
-      // Look for any inline “(ES:…, CO:…, NR:…, AR:…, CR:…)” in row text
       const rowText = row.text().replace(/\s+/g, ' ');
       const metrics = pickMetrics(rowText);
 
@@ -192,57 +234,13 @@ function extractPrimaryCandidates(html) {
 
   if (items.length) return items;
 
-  // ---------- Layout C: very defensive fallback ----------
-  // Any user links with an h5 name elsewhere on the page
+  // Fallback: any user names we can see, grab nearby metrics text
   $('a[href^="/users/"] h5').each((_, h5) => {
     const name = ($(h5).text() || '').trim();
     if (!name) return;
-    const blockText = $(h5).closest('tr, .container-fluid, .bg-white, .rounded, .row').text().replace(/\s+/g, ' ');
-    const metrics = pickMetrics(blockText);
+    const nearText = $(h5).closest('tr, .container-fluid, .bg-white, .rounded, .row').text().replace(/\s+/g, ' ');
+    const metrics = pickMetrics(nearText);
     items.push({ name, metrics, percent: null });
-  });
-
-  return items;
-}
-
-
-function extractPrimaryCandidates(html) {
-  const $ = cheerio.load(html || '');
-  let scope = $('#electionresult');
-  if (!scope.length) scope = $('body');
-
-  const items = [];
-  scope.find('.progress-wrapper').each((_, el) => {
-    const wrap = $(el);
-    const label = wrap.find('.progress-label a, .progress-label').first();
-    let nameFull = (label.text() || '').replace(/\s+/g, ' ').trim();
-    if (!nameFull) return;
-
-    let name = nameFull;
-    const metrics = {};
-
-    const m = nameFull.match(/^(.+?)\s*\(([^)]+)\)\s*$/);
-    if (m) {
-      name = m[1].trim();
-      const parts = m[2].split(',').map((s) => s.trim());
-      for (const part of parts) {
-        const mm = part.match(/^(ES|CO|NR|AR)[:\s]+([0-9]+(?:\.[0-9]+)?)$/i);
-        if (mm) metrics[mm[1].toUpperCase()] = mm[2];
-      }
-    }
-
-    let percent = null;
-    const pctText = (wrap.find('.progress-percentage .text-primary').first().text() || '').trim();
-    if (/\d/.test(pctText)) {
-      const mp = pctText.match(/([0-9]+(?:\.[0-9]+)?)/);
-      if (mp) percent = mp[1];
-    } else {
-      const w = wrap.find('.progress-bar').attr('style') || '';
-      const mw = w.match(/width:\s*([0-9.]+)%/i);
-      if (mw) percent = mw[1];
-    }
-
-    items.push({ name, metrics, percent });
   });
 
   return items;
@@ -250,8 +248,8 @@ function extractPrimaryCandidates(html) {
 
 function compactMetrics(metrics) {
   if (!metrics) return '';
-  const order = ['ES', 'CO', 'NR', 'AR'];
-  const parts = order.filter((k) => metrics[k]).map((k) => `${k} ${metrics[k]}`);
+  const order = ['ES', 'CO', 'NR', 'AR', 'CR']; // include CR when present
+  const parts = order.filter((k) => metrics[k] != null).map((k) => `${k} ${metrics[k]}`);
   return parts.length ? `(${parts.join(', ')})` : '';
 }
 
@@ -288,7 +286,7 @@ function buildDebugArtifacts(enabled, data) {
 // -------------------- Network helpers (reuse session) --------------------
 async function fetchHtmlWithSession(url, sessionPage, waitUntil = 'domcontentloaded') {
   await sessionPage.goto(url, { waitUntil }).catch(() => {});
-  await delay(150); // allow SPA paint without relying on puppeteer-only helpers
+  await delay(150); // small paint window
   return { html: await sessionPage.content(), finalUrl: sessionPage.url() };
 }
 
@@ -353,7 +351,7 @@ module.exports = {
     let page = null;
 
     try {
-      // Authenticate once and reuse the session/page.
+      // Authenticate once and reuse session/page
       const session = await authenticateAndNavigate({ url: `${BASE}/national/states`, debug: debugFlag });
       browser = session.browser;
       page = session.page;
