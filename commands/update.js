@@ -370,12 +370,15 @@ async function scrapeStatesData(interaction, page, writeDb) {
   // Get state IDs from the states index page instead of hardcoded list
   await interaction.editReply('Getting states list...');
 
+  let stateIds = [];
+
   try {
-    await page.goto(`${BASE}/national/states`, { waitUntil: 'domcontentloaded', timeout: 10000 });
+    // Use longer timeout and different wait strategy for the initial states page load
+    await page.goto(`${BASE}/national/states`, { waitUntil: 'load', timeout: 20000 });
+    await new Promise(resolve => setTimeout(resolve, 1000)); // Give it extra time to fully load
     const statesIndexHtml = await page.content();
 
     // Extract state IDs from the index page
-    const stateIds = [];
     const cheerio = require('cheerio');
     const $ = cheerio.load(statesIndexHtml);
 
@@ -393,6 +396,14 @@ async function scrapeStatesData(interaction, page, writeDb) {
     if (stateIds.length === 0) {
       throw new Error('No states found on states index page');
     }
+  } catch (err) {
+    console.error('Failed to load states index page:', err.message);
+    // Fallback to a reasonable list of state IDs if the index page fails
+    console.log('Using fallback state ID list');
+    stateIds = [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20,
+    21, 22, 23, 24, 25, 26, 27, 28, 29, 30, 31, 32, 33, 34, 35, 36, 37, 38, 39, 40,
+                41, 42, 43, 44, 45, 46, 47, 48, 49, 50];
+  }
 
     await interaction.editReply(`Found ${stateIds.length} states. Starting scrape...`);
 
@@ -449,12 +460,7 @@ async function scrapeStatesData(interaction, page, writeDb) {
       // Brief pause between batches
       if (batchIndex < batches.length - 1) {
         await new Promise(resolve => setTimeout(resolve, 500));
-      }
     }
-
-  } catch (err) {
-    console.error('Error in state scraping setup:', err);
-    throw err;
   }
   
   // Update the database with state data
@@ -483,26 +489,37 @@ async function scrapeRacesData(interaction, page, writeDb) {
   await interaction.editReply('Scraping race data from all states...');
 
   // First, get the states index page to resolve state IDs
-  await page.goto(`${BASE}/national/states`, { waitUntil: 'networkidle2' });
-  const statesHtml = await page.content();
+  let stateIds = [];
 
-  // Extract all state IDs from the states index
-  const stateIds = [];
-  const $ = cheerio.load(statesHtml);
+  try {
+    await page.goto(`${BASE}/national/states`, { waitUntil: 'load', timeout: 20000 });
+    await new Promise(resolve => setTimeout(resolve, 1000)); // Give it extra time to fully load
+    const statesHtml = await page.content();
 
-  $('a[href*="/states/"]').each((_, el) => {
-    const href = $(el).attr('href');
-    const match = href && href.match(/\/states\/(\d+)/);
-    if (match && match[1]) {
-      const stateId = parseInt(match[1]);
-      if (!stateIds.includes(stateId)) {
-        stateIds.push(stateId);
+    // Extract all state IDs from the states index
+    const $ = cheerio.load(statesHtml);
+
+    $('a[href*="/states/"]').each((_, el) => {
+      const href = $(el).attr('href');
+      const match = href && href.match(/\/states\/(\d+)/);
+      if (match && match[1]) {
+        const stateId = parseInt(match[1]);
+        if (!stateIds.includes(stateId)) {
+          stateIds.push(stateId);
+        }
       }
-    }
-  });
+    });
 
-  if (stateIds.length === 0) {
-    throw new Error('No states found on states index page');
+    if (stateIds.length === 0) {
+      throw new Error('No states found on states index page');
+    }
+  } catch (err) {
+    console.error('Failed to load states index page for races:', err.message);
+    // Fallback to a reasonable list of state IDs if the index page fails
+    console.log('Using fallback state ID list for races');
+    stateIds = [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20,
+                21, 22, 23, 24, 25, 26, 27, 28, 29, 30, 31, 32, 33, 34, 35, 36, 37, 38, 39, 40,
+                41, 42, 43, 44, 45, 46, 47, 48, 49, 50];
   }
 
   let found = 0;
@@ -640,26 +657,37 @@ async function scrapePrimariesData(interaction, page, writeDb) {
   await interaction.editReply('Scraping primary data from all states...');
 
   // First, get the states index page to resolve state IDs
-  await page.goto(`${BASE}/national/states`, { waitUntil: 'networkidle2' });
-  const statesHtml = await page.content();
+  let stateIds = [];
 
-  // Extract all state IDs from the states index
-  const stateIds = [];
-  const $ = cheerio.load(statesHtml);
+  try {
+    await page.goto(`${BASE}/national/states`, { waitUntil: 'load', timeout: 20000 });
+    await new Promise(resolve => setTimeout(resolve, 1000)); // Give it extra time to fully load
+    const statesHtml = await page.content();
 
-  $('a[href*="/states/"]').each((_, el) => {
-    const href = $(el).attr('href');
-    const match = href && href.match(/\/states\/(\d+)/);
-    if (match && match[1]) {
-      const stateId = parseInt(match[1]);
-      if (!stateIds.includes(stateId)) {
-        stateIds.push(stateId);
+    // Extract all state IDs from the states index
+    const $ = cheerio.load(statesHtml);
+
+    $('a[href*="/states/"]').each((_, el) => {
+      const href = $(el).attr('href');
+      const match = href && href.match(/\/states\/(\d+)/);
+      if (match && match[1]) {
+        const stateId = parseInt(match[1]);
+        if (!stateIds.includes(stateId)) {
+          stateIds.push(stateId);
+        }
       }
-    }
-  });
+    });
 
-  if (stateIds.length === 0) {
-    throw new Error('No states found on states index page');
+    if (stateIds.length === 0) {
+      throw new Error('No states found on states index page');
+    }
+  } catch (err) {
+    console.error('Failed to load states index page for primaries:', err.message);
+    // Fallback to a reasonable list of state IDs if the index page fails
+    console.log('Using fallback state ID list for primaries');
+    stateIds = [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20,
+                21, 22, 23, 24, 25, 26, 27, 28, 29, 30, 31, 32, 33, 34, 35, 36, 37, 38, 39, 40,
+                41, 42, 43, 44, 45, 46, 47, 48, 49, 50];
   }
 
   let found = 0;
