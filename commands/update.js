@@ -11,6 +11,17 @@ const INACTIVE_ROLE_ID = '1427236595345522708';
 const OFFLINE_THRESHOLD_DAYS = 4;
 const WARNING_THRESHOLD_DAYS = 3;
 
+const TYPE_CHOICES = new Set(['all', 'dems', 'gop', 'new']);
+const TYPE_LABELS = {
+  all: 'All Profiles',
+  dems: 'Democratic Profiles',
+  gop: 'Republican Profiles',
+  new: 'New Accounts',
+};
+
+const isDemocratic = (party = '') => /democratic/i.test(String(party));
+const isRepublican = (party = '') => /republican/i.test(String(party));
+
 async function performRoleSync({ interaction, guild, db, clearRoles = false, useFollowUpForStatus = false }) {
   const profiles = db.profiles || {};
   if (!profiles || Object.keys(profiles).length === 0) {
@@ -337,6 +348,18 @@ module.exports = {
   data: new SlashCommandBuilder()
     .setName('update')
     .setDescription('Crawl player profiles (id 1..max) and update profiles.json')
+    .addStringOption((opt) =>
+      opt
+        .setName('type')
+        .setDescription('Which profiles to refresh (all, dems, gop, or new)')
+        .setRequired(false)
+        .addChoices(
+          { name: 'All profiles', value: 'all' },
+          { name: 'Democrats', value: 'dems' },
+          { name: 'Republicans', value: 'gop' },
+          { name: 'New accounts only', value: 'new' },
+        )
+    )
     .addBooleanOption(opt =>
       opt
         .setName('roles')
@@ -360,6 +383,9 @@ module.exports = {
 
     const applyRoles = interaction.options.getBoolean('roles') || false;
     const clearRoles = interaction.options.getBoolean('clear') || false;
+    const typeInputRaw = (interaction.options.getString('type') || 'all').toLowerCase();
+    const updateType = TYPE_CHOICES.has(typeInputRaw) ? typeInputRaw : 'all';
+    const typeLabel = TYPE_LABELS[updateType] || TYPE_LABELS.all;
     const inGuild = interaction.inGuild();
 
     if (!(await canManageBot(interaction))) {
@@ -396,10 +422,42 @@ module.exports = {
     };
     if (!fs.existsSync(jsonPath)) writeDb();
 
+    const profilesList = Object.values(db.profiles || {});
+    const allIdsSet = new Set();
+    const allIds = [];
+    const demIdsSet = new Set();
+    const gopIdsSet = new Set();
+
+    for (const profile of profilesList) {
+      const idNum = Number(profile.id);
+      if (!Number.isFinite(idNum)) continue;
+      if (!allIdsSet.has(idNum)) {
+        allIdsSet.add(idNum);
+        allIds.push(idNum);
+      }
+      if (isDemocratic(profile.party)) demIdsSet.add(idNum);
+      if (isRepublican(profile.party)) gopIdsSet.add(idNum);
+    }
+
+    allIds.sort((a, b) => a - b);
+    const demIds = Array.from(demIdsSet).sort((a, b) => a - b);
+    const gopIds = Array.from(gopIdsSet).sort((a, b) => a - b);
+
+    const existingTargetIds =
+      updateType === 'all' ? allIds :
+      updateType === 'dems' ? demIds :
+      updateType === 'gop' ? gopIds :
+      [];
+
+    const maxKnownIdAll = allIds.length ? allIds[allIds.length - 1] : 0;
+    const baseStartId = DEFAULT_START_ID > 0 ? DEFAULT_START_ID : 1;
+    const newStartId = Math.max(maxKnownIdAll + 1, baseStartId);
+    const effectiveNewStartId = DEFAULT_MAX_ID > 0 ? Math.min(newStartId, DEFAULT_MAX_ID) : newStartId;
+    const typeSummaryLabel = updateType === 'new' ? 'New accounts' : `${typeLabel} + new accounts`;
+
     const start = Date.now();
     let found = 0;
     let checked = 0;
-    let misses = 0;
     let lastProgressAt = Date.now();
     const scrapeOfflineWarnings = [];
 
@@ -419,33 +477,45 @@ module.exports = {
     // Scrape mode (no roles), build/update profiles.json
     let browser, page;
     try {
-      // login once
-      const startId = DEFAULT_START_ID > 0 ? DEFAULT_START_ID : 1;
-      const sess = await loginAndGet(`${BASE}/users/${startId}`);
+      const loginSeed = existingTargetIds.length ? existingTargetIds[0] : effectiveNewStartId;
+      const loginId = Number.isFinite(loginSeed) && loginSeed > 0 ? loginSeed : baseStartId;
+      const sess = await loginAndGet(`${BASE}/users/${loginId}`);
       browser = sess.browser;
       page = sess.page;
 
-      const maxId = DEFAULT_MAX_ID > 0 ? DEFAULT_MAX_ID : 10000; // upper bound if unknown
-      for (let id = startId; id <= maxId; id++) {
+      await interaction.editReply(`Updating profiles (${typeSummaryLabel})...`);
+
+      const maybeReportProgress = async (id, info) => {
+        const now = Date.now();
+        if (
+          found === 1 ||
+          (found % 25 === 0) ||
+          (checked % 300 === 0) ||
+          (now - lastProgressAt > 10_000)
+        ) {
+          writeDb();
+          lastProgressAt = now;
+          const latestName = info?.name || 'Unknown';
+          await interaction.editReply(`Updating profiles (${typeSummaryLabel})... checked ${checked}, found ${found}. Latest: ${latestName} (id ${id})`);
+        }
+      };
+
+      const scrapeId = async (id) => {
         checked++;
-        const url = `${BASE}/users/${id}`;
-        const resp = await page.goto(url, { waitUntil: 'networkidle2' }).catch(() => null);
+        let resp = null;
+        try {
+          resp = await page.goto(`${BASE}/users/${id}`, { waitUntil: 'networkidle2' });
+        } catch (_) {}
         const status = resp?.status?.() ?? 200;
         const finalUrl = page.url();
         const html = await page.content();
         const info = parseProfile(html);
-        // Consider a miss when the request errors, or we land on a non-user page, or no name parsed
         const isUserUrl = /\/users\//i.test(finalUrl);
         const isMiss = (status >= 400) || !isUserUrl || !info?.name;
-        if (isMiss) {
-          misses++;
-          if (misses >= MAX_CONSECUTIVE_MISSES && DEFAULT_MAX_ID === 0) break;
-          continue;
-        }
-        misses = 0;
+        if (isMiss) return { ok: false };
 
         mergeProfileRecord(db, id, info);
-        const los = typeof info.lastOnlineDays === "number" ? info.lastOnlineDays : null;
+        const los = typeof info.lastOnlineDays === 'number' ? info.lastOnlineDays : null;
         if (los !== null && los > WARNING_THRESHOLD_DAYS) {
           scrapeOfflineWarnings.push({
             id,
@@ -455,13 +525,29 @@ module.exports = {
           });
         }
         found++;
+        await maybeReportProgress(id, info);
+        return { ok: true, info };
+      };
 
-        // Flush early: on first find, then every 25 finds, or every 300 checks, or every 10s
-        const now = Date.now();
-        if (found === 1 || (found % 25 === 0) || (checked % 300 === 0) || (now - lastProgressAt > 10_000)) {
-          writeDb();
-          lastProgressAt = now;
-          await interaction.editReply(`Updating profiles... checked ${checked}, found ${found}. Latest: ${info.name} (id ${id})`);
+      if (existingTargetIds.length) {
+        for (const id of existingTargetIds) {
+          await scrapeId(id);
+        }
+      }
+
+      let consecutiveMisses = 0;
+      if (effectiveNewStartId > 0) {
+        let id = effectiveNewStartId;
+        while (true) {
+          if (DEFAULT_MAX_ID > 0 && id > DEFAULT_MAX_ID) break;
+          const { ok } = await scrapeId(id);
+          if (ok) {
+            consecutiveMisses = 0;
+          } else {
+            consecutiveMisses++;
+            if (DEFAULT_MAX_ID === 0 && consecutiveMisses >= MAX_CONSECUTIVE_MISSES) break;
+          }
+          id++;
         }
       }
 
@@ -471,7 +557,7 @@ module.exports = {
       const backupPath = path.join(dataDir, `profiles.${stamp}.json`);
       try { fs.writeFileSync(backupPath, JSON.stringify(db, null, 2)); } catch {}
       const secs = Math.round((Date.now() - start) / 1000);
-      await interaction.editReply(`Updated profiles.json. Checked ${checked}, found ${found}. Time: ${secs}s.`);
+      await interaction.editReply(`Updated profiles.json (${typeSummaryLabel}). Checked ${checked}, found ${found}. Time: ${secs}s.`);
 
       if (scrapeOfflineWarnings.length) {
         const lines = [];
