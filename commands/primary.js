@@ -478,14 +478,22 @@ function normalizeStateName(s) {
   const abbr = raw.toLowerCase();
   if (US_STATE_ABBR[abbr]) return US_STATE_ABBR[abbr];
 
-  // Common short forms
-  const nick = {
-    cal: 'California', cali: 'California', wash: 'Washington',
-    mass: 'Massachusetts', jersey: 'New Jersey',
-    carolina: 'North Carolina', 'wash state': 'Washington',
-    d.c.: 'District of Columbia', dc: 'District of Columbia', pr: 'Puerto Rico'
-  };
-  if (nick[abbr]) return nick[abbr];
+  // Alias map with SAFE keys (strings) + multiple DC spellings
+  const alias = new Map([
+    ['cal', 'California'],
+    ['cali', 'California'],
+    ['wash', 'Washington'],
+    ['wash state', 'Washington'],
+    ['mass', 'Massachusetts'],
+    ['jersey', 'New Jersey'],
+    ['carolina', 'North Carolina'],
+    ['dc', 'District of Columbia'],
+    ['d.c.', 'District of Columbia'],
+    ['d.c', 'District of Columbia'],
+    ['d c', 'District of Columbia'],
+    ['pr', 'Puerto Rico'],
+  ]);
+  if (alias.has(abbr)) return alias.get(abbr);
 
   const name = raw
     .replace(/^\s+|\s+$/g, '')
