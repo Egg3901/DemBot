@@ -22,6 +22,8 @@
     "chromium": "^3.0.3",
     "discord.js": "^14.23.2",
     "dotenv": "^17.2.3",
+    "hast-util-to-html": "^9.0.3",
+    "parliament-svg": "^3.0.0",
     "puppeteer": "^24.25.0",
     "puppeteer-extra": "^3.3.6",
     "puppeteer-extra-plugin-stealth": "^2.11.2",

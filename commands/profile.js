@@ -171,6 +171,7 @@ module.exports = {
               title: `${cached.name || 'Unknown'} (ID ${id})`,
               url: `${BASE}/users/${id}`,
               fields,
+              ...(cached.avatar ? { thumbnail: { url: cached.avatar } } : {}),
               footer: { text: new URL(BASE).hostname },
               timestamp: new Date().toISOString(),
             });
