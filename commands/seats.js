@@ -9,6 +9,7 @@ const CHAMBER_OPTIONS = {
   senate: { id: 1, label: 'United States Senate' },
   house: { id: 2, label: 'United States House of Representatives' },
   congress: { id: null, label: 'United States Congress' },
+  govs: { id: 'govs', label: 'U.S. Governors' }, // <-- NEW
 };
 
 const PARTY_ORDER = ['Democrats', 'Republicans', 'Independent', 'Independents', 'Other', 'Unfilled', 'Vacant'];
@@ -23,6 +24,32 @@ const parsePartiesObject = (scriptText) => {
     const fn = new Function(`"use strict"; return (${rawObject});`);
     const value = fn();
     if (value && typeof value === 'object') return value;
+  } catch (_) {}
+  return null;
+};
+
+// NEW: parse partyDisplay from Governors page
+const parsePartyDisplayObject = (scriptText) => {
+  if (!scriptText) return null;
+  const match = scriptText.match(/const\s+partyDisplay\s*=\s*(\{[\s\S]*?\});/);
+  if (!match) return null;
+  const rawObject = match[1];
+  try {
+    // eslint-disable-next-line no-new-func
+    const fn = new Function(`"use strict"; return (${rawObject});`);
+    const value = fn();
+    if (value && typeof value === 'object') {
+      // Convert to the same { name, seats, colour } shape
+      const entries = Object.entries(value).map(([name, info]) => ({
+        name,
+        seats: Number(info?.seats ?? 0),
+        colour: info?.colour || '#666666',
+      }));
+      return entries.reduce((acc, p) => {
+        acc[p.name] = { seats: p.seats, colour: p.colour };
+        return acc;
+      }, {});
+    }
   } catch (_) {}
   return null;
 };
@@ -64,9 +91,10 @@ const computeControl = (parties) => {
 };
 
 const DIAGRAM_SELECTORS = ['#senate-diagram', '#house-diagram', '#chamber-diagram', '[data-chamber-diagram]'];
+const GOVS_DIAGRAM_SELECTORS = ['#governor-diagram']; // <-- NEW
 
-const selectDiagramHandle = async (page) => {
-  for (const selector of DIAGRAM_SELECTORS) {
+const selectDiagramHandle = async (page, selectors = DIAGRAM_SELECTORS) => {
+  for (const selector of selectors) {
     const handle = await page.$(selector);
     if (handle) return { handle, selector };
   }
@@ -92,7 +120,53 @@ const fetchChamber = async (page, id) => {
   let svgHtml = null;
   let pngBuffer = null;
 
-  const { handle: diagramHandle } = await selectDiagramHandle(page);
+  const { handle: diagramHandle } = await selectDiagramHandle(page, DIAGRAM_SELECTORS);
+  if (diagramHandle) {
+    try {
+      svgHtml = await page.evaluate((el) => el.innerHTML, diagramHandle);
+      const svgHandle = await diagramHandle.$('svg');
+      const targetHandle = svgHandle || diagramHandle;
+      pngBuffer = await targetHandle.screenshot({ type: 'png' });
+      await svgHandle?.dispose();
+    } catch (_) {
+      svgHtml = null;
+      pngBuffer = null;
+    } finally {
+      await diagramHandle.dispose();
+    }
+  }
+
+  if (!svgHtml && parties.length) {
+    svgHtml = await buildSvg(parties);
+  }
+
+  return { parties, control, svgHtml, pngBuffer, url };
+};
+
+// NEW: Fetch Governors page and parse partyDisplay + screenshot #governor-diagram
+const fetchGovs = async (page) => {
+  const url = `${BASE}/maps/governors`;
+  const response = await page.goto(url, { waitUntil: 'networkidle2' }).catch(() => null);
+  const status = response?.status?.() ?? 200;
+  if (status >= 400) throw new Error(`Failed to load governors page (${status})`);
+  await page.waitForSelector(GOVS_DIAGRAM_SELECTORS.join(', '), { timeout: 5000 }).catch(() => null);
+
+  const html = await page.content();
+  const $ = cheerio.load(html);
+  const scriptBlock = $('script[type="module"]')
+    .filter((_, el) => $(el).text().includes('const partyDisplay'))
+    .first()
+    .text();
+
+  // Parse the "partyDisplay" inline object used by the governors page (e.g., { Democrats: {seats:18}, ... })
+  const partiesFromDisplay = parsePartyDisplayObject(scriptBlock);
+  const parties = sortParties(normaliseParties(partiesFromDisplay));
+  const control = computeControl(parties);
+
+  let svgHtml = null;
+  let pngBuffer = null;
+
+  const { handle: diagramHandle } = await selectDiagramHandle(page, GOVS_DIAGRAM_SELECTORS);
   if (diagramHandle) {
     try {
       svgHtml = await page.evaluate((el) => el.innerHTML, diagramHandle);
@@ -160,16 +234,17 @@ const buildEmbed = ({ label, data, attachmentName }) => {
 module.exports = {
   data: new SlashCommandBuilder()
     .setName('seats')
-    .setDescription('Show congressional chamber seat totals and control')
+    .setDescription('Show congressional/governor seat totals and control')
     .addStringOption((opt) =>
       opt
         .setName('chamber')
-        .setDescription('Select Senate, House, or combined Congress view')
+        .setDescription('Select Senate, House, Congress (both), or Governors')
         .setRequired(true)
         .addChoices(
           { name: 'Senate', value: 'senate' },
           { name: 'House', value: 'house' },
           { name: 'Congress (both chambers)', value: 'congress' },
+          { name: 'Governors (state executives)', value: 'govs' }, // <-- NEW
         ),
     ),
 
@@ -181,13 +256,14 @@ module.exports = {
     const choice = interaction.options.getString('chamber', true);
     const config = CHAMBER_OPTIONS[choice];
     if (!config) {
-      return interaction.editReply('Unknown chamber. Choose senate, house, or congress.');
+      return interaction.editReply('Unknown chamber. Choose senate, house, congress, or govs.');
     }
 
     let browser;
     let page;
     try {
-      const initial = await loginAndGet(`${BASE}/chambers/${config.id || 1}`);
+      // Open a session; default to Senate page for initial auth, then navigate as needed.
+      const initial = await loginAndGet(`${BASE}/chambers/${CHAMBER_OPTIONS.senate.id}`);
       browser = initial.browser;
       page = initial.page;
 
@@ -219,6 +295,19 @@ module.exports = {
         return;
       }
 
+      if (choice === 'govs') {
+        const govs = await fetchGovs(page);
+        if (govs.pngBuffer || govs.svgHtml) {
+          const name = govs.pngBuffer ? 'governors-seats.png' : 'governors-seats.svg';
+          const data = govs.pngBuffer || Buffer.from(govs.svgHtml, 'utf8');
+          attachments.push(new AttachmentBuilder(data, { name }));
+          govs.attachmentName = name;
+        }
+        const embed = buildEmbed({ label: config.label, data: govs, attachmentName: govs.attachmentName });
+        await interaction.editReply({ embeds: [embed], files: attachments });
+        return;
+      }
+
       // Congress: both chambers
       const senateData = await fetchChamber(page, 1);
       const houseData = await fetchChamber(page, 2);
@@ -242,7 +331,7 @@ module.exports = {
 
       await interaction.editReply({ embeds, files: attachments });
     } catch (err) {
-      await interaction.editReply(`Error fetching chamber data: ${err?.message || String(err)}`);
+      await interaction.editReply(`Error fetching data: ${err?.message || String(err)}`);
     } finally {
       try { await browser?.close(); } catch (_) {}
     }
