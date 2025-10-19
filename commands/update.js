@@ -1,4 +1,4 @@
-﻿// commands/update.js
+// commands/update.js
 const { SlashCommandBuilder, PermissionsBitField } = require('discord.js');
 const fs = require('node:fs');
 const path = require('node:path');
@@ -152,9 +152,19 @@ module.exports = {
           ephemeral: true,
         });
       }
+      try {
+        await guild.roles.fetch();
+      } catch (err) {
+        return interaction.followUp({
+          content: `Unable to fetch guild roles. Ensure the bot can view roles. Error: ${err?.message || err}`,
+          ephemeral: true,
+        });
+      }
       let applied = 0, removed = 0, skipped = 0, matched = 0;
       const changeLogs = [];
       let processed = 0;
+      const inactiveRoleRef = INACTIVE_ROLE_ID ? guild.roles.cache.get(INACTIVE_ROLE_ID) : null;
+      const inactiveRoleId = inactiveRoleRef?.id || null;
 
       // Group profiles by Discord handle and aggregate desired roles/regions
       const groups = new Map();
@@ -163,7 +173,16 @@ module.exports = {
         if (!handle) continue;
         let g = groups.get(handle);
         if (!g) {
-          g = { ids: [], handle, office: new Set(), anyDem: false, anyGop: false, regions: new Set() };
+          g = {
+            ids: [],
+            handle,
+            office: new Set(),
+            anyDem: false,
+            anyGop: false,
+            regions: new Set(),
+            lastOnlineDays: null,
+            lastOnlineText: null,
+          };
           groups.set(handle, g);
         }
         g.ids.push(p.id);
@@ -175,6 +194,13 @@ module.exports = {
           g.anyGop = true;
         }
         if (p.region) g.regions.add(p.region);
+        const los = typeof p.lastOnlineDays === 'number' ? p.lastOnlineDays : null;
+        if (los !== null) {
+          if (g.lastOnlineDays === null || los < g.lastOnlineDays) {
+            g.lastOnlineDays = los;
+            g.lastOnlineText = p.lastOnlineText || null;
+          }
+        }
       }
 
       for (const g of groups.values()) {
@@ -251,6 +277,34 @@ module.exports = {
                 changeLogs.push(`- ${REGION_NAMES[rk]} Region -> ${member.user?.tag || member.displayName} (profiles ${g.ids.join(',')}) [reason: not needed by any profile]`);
               } catch (_) {}
             }
+          }
+        }
+
+        // Activity/inactivity role handling (uses most recently active profile across all linked ids)
+        if (inactiveRoleId) {
+          const hasInactive = member.roles.cache.has(inactiveRoleId);
+          const hasActivityData = typeof g.lastOnlineDays === 'number';
+          const shouldBeInactive = hasActivityData && g.lastOnlineDays >= OFFLINE_THRESHOLD_DAYS;
+
+          if (shouldBeInactive && !hasInactive) {
+            const reason = g.lastOnlineText
+              ? `Last online ${g.lastOnlineText}`
+              : `Last online ${g.lastOnlineDays} day(s) ago`;
+            try {
+              await member.roles.add(inactiveRoleId, 'Auto-assign inactivity role via /update roles');
+              applied++;
+              changeLogs.push(
+                `+ Inactive -> ${member.user?.tag || member.displayName} (profiles ${g.ids.join(',')}) [reason: ${reason}]`
+              );
+            } catch (_) {}
+          } else if ((!shouldBeInactive && hasInactive) || (!hasActivityData && hasInactive)) {
+            try {
+              await member.roles.remove(inactiveRoleId, 'Auto-remove inactivity role via /update roles');
+              removed++;
+              changeLogs.push(
+                `- Inactive -> ${member.user?.tag || member.displayName} (profiles ${g.ids.join(',')}) [reason: recent activity detected]`
+              );
+            } catch (_) {}
           }
         }
 
