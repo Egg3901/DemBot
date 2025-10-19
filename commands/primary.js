@@ -16,6 +16,7 @@ const fs = require('node:fs');
 const path = require('node:path');
 const cheerio = require('cheerio');
 const { loginAndGet, BASE } = require('../lib/ppusa');
+const { getDebugChoice, reportCommandError } = require('../lib/command-utils');
 
 const US_STATE_ABBR = {
   al: 'Alabama', ak: 'Alaska', az: 'Arizona', ar: 'Arkansas', ca: 'California', co: 'Colorado',
@@ -78,7 +79,7 @@ module.exports = {
    * @param {import('discord.js').ChatInputCommandInteraction} interaction
    */
   async execute(interaction) {
-    const debug = interaction.options.getBoolean('debug') ?? false;
+    const { requested: requestedDebug, enabled: debug, denied: debugDenied, allowed: debugAllowed } = getDebugChoice(interaction);
     const stateRaw = (interaction.options.getString('state', true) || '').trim();
     const raceRaw = (interaction.options.getString('race', true) || '').trim();
     const partyRaw = (interaction.options.getString('party') || 'both').trim();
@@ -92,7 +93,14 @@ module.exports = {
 
     await interaction.deferReply();
 
-    let browser, page, finalLogs = [];
+    let browser;
+    let page;
+    const finalLogs = [];
+    const addLog = (msg) => { if (msg) finalLogs.push(msg); };
+    let stage = 'init';
+    let stateId = null;
+    let primariesUrl = null;
+    let results = [];
     try {
       // 1) Login and load the states index to resolve state id
       const statesUrl = `${BASE}/states`;
@@ -100,14 +108,19 @@ module.exports = {
       browser = sess.browser;
       page = sess.page;
       let statesHtml = sess.html;
+      addLog(`Fetched /states (length=${statesHtml?.length || 0})`);
+      stage = 'resolve_state_id';
 
       // If the /states page is not the listing we expect, try a fallback fetch of /states again
       if (!looksLikeStatesList(statesHtml)) {
+        addLog('Initial /states page did not match list heuristic; retrying with live navigation.');
         await page.goto(statesUrl, { waitUntil: 'networkidle2' });
         statesHtml = await page.content();
+        addLog(`Fetched /states via direct goto (length=${statesHtml?.length || 0})`);
       }
 
-      let stateId = extractStateIdFromStatesHtml(statesHtml, stateName);
+      stateId = extractStateIdFromStatesHtml(statesHtml, stateName);
+      if (stateId) addLog(`Resolved state ID ${stateId} from initial HTML match.`);
 
       // Try a live DOM extraction (after scripts run) if not found
       if (!stateId) {
@@ -137,7 +150,7 @@ module.exports = {
           }, stateName);
           if (idLive) {
             stateId = idLive;
-            finalLogs.push('Resolved state ID via live DOM.');
+            addLog(`Resolved state ID ${stateId} via live DOM evaluation.`);
           }
         } catch (_) {}
       }
@@ -152,7 +165,7 @@ module.exports = {
         let local = null;
         for (const fname of candidates) {
           const html = readLocalHtml(fname);
-          if (html && looksLikeStatesList(html)) { local = html; break; }
+          if (html && looksLikeStatesList(html)) { local = html; addLog(`Loaded local fallback states HTML: ${fname}`); break; }
         }
         if (!local) {
           // As a last resort, scan cwd for any .html containing many /states/<id> links
@@ -161,44 +174,80 @@ module.exports = {
             const files = fs.readdirSync(dir).filter(f => /\.html?$/i.test(f));
             for (const f of files) {
               const html = readLocalHtml(f);
-              if (html && looksLikeStatesList(html)) { local = html; break; }
+              if (html && looksLikeStatesList(html)) { local = html; addLog(`Loaded local fallback states HTML via directory scan: ${f}`); break; }
             }
           } catch (_) {}
         }
         if (local) {
           stateId = extractStateIdFromStatesHtml(local, stateName);
-          finalLogs.push('Resolved state ID via local saved States HTML.');
+          if (stateId) addLog(`Resolved state ID ${stateId} via local saved States HTML.`);
         }
       }
 
       if (!stateId) {
-        return await interaction.editReply(`Could not find a state matching "${stateName}" on the states listing.`);
+        await reportCommandError(interaction, new Error('State lookup failed'), {
+          message: `Could not find a state matching "${stateName}" on the states listing.`,
+          meta: {
+            reason: 'state_id_not_found',
+            stateRaw,
+            stateName,
+            race: raceLabel,
+            party,
+            stage,
+            logs: finalLogs.slice(-20),
+            debugRequested: requestedDebug,
+            debugAllowed,
+          },
+        });
+        return;
       }
+      addLog(`State ID confirmed: ${stateId}.`);
 
       // 2) Go to state page first, then primaries page
       const stateUrl = `${BASE}/states/${stateId}`;
       try {
+        stage = 'visit_state_page';
         await page.goto(stateUrl, { waitUntil: 'networkidle2' });
-        finalLogs.push(`Visited state page: ${stateUrl}`);
+        addLog(`Visited state page: ${stateUrl}`);
       } catch (e) {
-        finalLogs.push(`State page visit error: ${e?.message || e}`);
+        addLog(`State page visit error: ${e?.message || e}`);
       }
-      const primariesUrl = `${BASE}/states/${stateId}/primaries`;
+      primariesUrl = `${BASE}/states/${stateId}/primaries`;
+      stage = 'visit_primaries_page';
       await page.goto(primariesUrl, { waitUntil: 'networkidle2' });
       const primariesHtml = await page.content();
+      addLog(`Loaded primaries page: ${primariesUrl} (length=${primariesHtml?.length || 0})`);
 
       // 3) Find the requested race block, extract Dem/GOP primary links + meta
       const raceInfo = extractRacePrimariesFromStatePage(primariesHtml, raceLabel);
       if (!raceInfo) {
-        return await interaction.editReply(`No "${raceLabel}" primary found for ${stateName}.`);
+        await reportCommandError(interaction, new Error('Primary race not found'), {
+          message: `No "${raceLabel}" primary found for ${stateName}.`,
+          meta: {
+            reason: 'primary_race_missing',
+            stateName,
+            stateId,
+            primariesUrl,
+            race: raceLabel,
+            party,
+            stage,
+            logs: finalLogs.slice(-20),
+            hasDemLink: Boolean(raceInfo?.dem),
+            hasGopLink: Boolean(raceInfo?.gop),
+            debugRequested: requestedDebug,
+            debugAllowed,
+          },
+        });
+        return;
       }
+      addLog(`Race "${raceLabel}" found. Dem link: ${raceInfo.dem?.url || 'none'}, GOP link: ${raceInfo.gop?.url || 'none'}.`);
 
       // 4) For each matched party (or both), fetch details and parse candidates
       const partyTargets = (party === 'both')
         ? ['dem', 'gop']
         : [party];
 
-      const results = [];
+      results = [];
       for (const p of partyTargets) {
         const link = p === 'dem' ? raceInfo.dem?.url : raceInfo.gop?.url;
         const label = p === 'dem' ? 'Democratic Primary' : 'Republican Primary';
@@ -206,16 +255,20 @@ module.exports = {
         const deadline = p === 'dem' ? raceInfo.dem?.deadline : raceInfo.gop?.deadline;
 
         if (!link) {
+          addLog(`No ${label} link present.`);
           results.push({ party: p, label, error: 'No primary link found', candidates: [] });
           continue;
         }
 
         try {
+          stage = `visit_${p}_primary`;
           if (page.url() !== link) await page.goto(link, { waitUntil: 'networkidle2' });
           const html = await page.content();
+          addLog(`Fetched ${label} page (${link}) length=${html?.length || 0}.`);
           const candidates = extractPrimaryCandidates(html);
           results.push({ party: p, label, url: link, candidates, count, deadline });
         } catch (e) {
+          addLog(`Error fetching ${label} at ${link}: ${e?.message || e}`);
           results.push({ party: p, label, url: link, error: e?.message || 'Fetch error', candidates: [] });
         }
       }
@@ -255,12 +308,49 @@ module.exports = {
       };
 
       if (debug && finalLogs.length) {
-        embFields.push({ name: 'Debug', value: finalLogs.join('\n') });
+        const clipped = finalLogs.slice(-10);
+        let joined = clipped.join('\n');
+        if (joined.length > 950) {
+          joined = joined.slice(joined.length - 950);
+          joined = `…${joined}`;
+        }
+        embFields.push({ name: 'Debug', value: joined });
       }
 
       await interaction.editReply({ embeds: [embed] });
+      if (debugDenied && requestedDebug) {
+        try {
+          await interaction.followUp({ content: 'Debug output is restricted to authorized users.', ephemeral: true });
+        } catch (followErr) {
+          if (followErr?.code !== 10062) console.warn('primary: failed to send debug denial follow-up:', followErr);
+        }
+      }
     } catch (err) {
-      await interaction.editReply(`Error: ${err?.message || String(err)}`);
+      await reportCommandError(interaction, err, {
+        message: `Error: ${err?.message || String(err)}`,
+        meta: {
+          reason: 'primary_command_exception',
+          stateRaw,
+          stateName,
+          stateId,
+          raceRaw,
+          race: raceLabel,
+          party,
+          primariesUrl,
+          stage,
+          logs: finalLogs.slice(-20),
+          debugRequested: requestedDebug,
+          debugAllowed,
+          resultsSummary: Array.isArray(results)
+            ? results.map((r) => ({
+                party: r.party,
+                label: r.label,
+                candidates: r.candidates?.length ?? 0,
+                error: r.error || null,
+              }))
+            : null,
+        },
+      });
     } finally {
       try { await browser?.close(); } catch {}
     }
