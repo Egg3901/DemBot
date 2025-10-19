@@ -1,5 +1,5 @@
 // commands/send.js
-const { SlashCommandBuilder, PermissionFlagsBits } = require('discord.js');
+const { SlashCommandBuilder, EmbedBuilder } = require('discord.js');
 const { authenticateAndNavigate, PPUSAAuthError } = require('../lib/ppusa-auth');
 const { config, getEnv, toAbsoluteUrl } = require('../lib/ppusa-config');
 
@@ -11,6 +11,86 @@ const SEND_USE_AUTOSUGGEST = String(getEnv('SEND_USE_AUTOSUGGEST', 'false')).toL
 // ✅ Only this role can run /send
 const ROLE_ALLOWED = '1406063223475535994';
 
+// Default amount constant is unused because amount is required, but we keep it to format nicely if needed
+const DEFAULT_AMOUNT = 2_000_000;
+
+/* ---------- helpers: embeds & formatting ---------- */
+const fmtUsd = (n) =>
+  new Intl.NumberFormat('en-US', { style: 'currency', currency: 'USD', minimumFractionDigits: 2, maximumFractionDigits: 2 }).format(
+    n ?? DEFAULT_AMOUNT
+  );
+
+function buildRequestEmbeds({ invokerTag, name, type, amount }) {
+  // Embed 1: Request summary
+  const summary = new EmbedBuilder()
+    .setTitle('SEND FUNDS — Request')
+    .setColor(0xffcc00) // amber
+    .addFields(
+      { name: 'Recipient', value: name, inline: true },
+      { name: 'Type', value: type, inline: true },
+      { name: 'Amount', value: fmtUsd(amount), inline: true }
+    )
+    .setFooter({ text: `Requested by ${invokerTag}` })
+    .setTimestamp();
+
+  // Embed 2: Status (pending)
+  const status = new EmbedBuilder()
+    .setTitle('Status')
+    .setColor(0xffcc00)
+    .setDescription('Processing…');
+
+  return [summary, status];
+}
+
+function buildCompletedEmbeds({ invokerTag, name, type, amount, webResult, extraNotes, debugInline }) {
+  const ok = !!webResult?.ok;
+
+  // Embed 1: Final summary (unchanged)
+  const summary = new EmbedBuilder()
+    .setTitle('SEND FUNDS — Completed')
+    .setColor(ok ? 0x34d399 : 0xf87171) // green vs red
+    .addFields(
+      { name: 'Recipient', value: name, inline: true },
+      { name: 'Type', value: type, inline: true },
+      { name: 'Amount', value: fmtUsd(amount), inline: true }
+    )
+    .setFooter({ text: `Requested by ${invokerTag}` })
+    .setTimestamp();
+
+  // Determine nice status line
+  let statusLine;
+  if (!ok) {
+    statusLine = `**Failed:** ${webResult?.reason ?? 'unknown error'}`;
+  } else if (webResult?.approved) {
+    statusLine = '✅ Sent **and approved** on website';
+  } else if (webResult?.needsApproval) {
+    statusLine = '☑️ Submitted — **manual approval required**';
+  } else if (webResult?.verified) {
+    statusLine = '✅ Sent on website (**verified**)';
+  } else if (webResult?.submitted) {
+    statusLine = '✅ Sent on website (**verification pending**)';
+  } else {
+    statusLine = '✅ Sent on website';
+  }
+
+  // Embed 2: Status details
+  const status = new EmbedBuilder()
+    .setTitle('Status')
+    .setColor(ok ? 0x34d399 : 0xf87171)
+    .setDescription(statusLine);
+
+  if (Array.isArray(extraNotes) && extraNotes.length) {
+    status.addFields({ name: 'Notes', value: extraNotes.join('\n') });
+  }
+
+  if (debugInline) {
+    status.addFields({ name: 'Diagnostics', value: debugInline.slice(0, 1000) }); // keep under embed field length
+  }
+
+  return [summary, status];
+}
+
+/* ---------- auth error pretty printer ---------- */
 const formatAuthErrorMessage = (err, commandLabel) => {
   if (!(err instanceof PPUSAAuthError)) return err.message;
   const details = err.details || {};
@@ -18,12 +98,8 @@ const formatAuthErrorMessage = (err, commandLabel) => {
   if (details.finalUrl) lines.push(`Page: ${details.finalUrl}`);
 
   const tried = details.triedSelectors || {};
-  if (Array.isArray(tried.email) && tried.email.length) {
-    lines.push(`Email selectors tried: ${tried.email.join(', ')}`);
-  }
-  if (Array.isArray(tried.password) && tried.password.length) {
-    lines.push(`Password selectors tried: ${tried.password.join(', ')}`);
-  }
+  if (Array.isArray(tried.email) && tried.email.length) lines.push(`Email selectors tried: ${tried.email.join(', ')}`);
+  if (Array.isArray(tried.password) && tried.password.length) lines.push(`Password selectors tried: ${tried.password.join(', ')}`);
 
   if (Array.isArray(details.inputSnapshot) && details.inputSnapshot.length) {
     const sample = details.inputSnapshot.slice(0, 4).map((input) => {
@@ -51,22 +127,17 @@ const formatAuthErrorMessage = (err, commandLabel) => {
   return lines.join('\n');
 };
 
-// Default amount only used if caller omits it (but amount is now REQUIRED by the command)
-const DEFAULT_AMOUNT = 2_000_000;
-
+/* ---------- command ---------- */
 module.exports = {
   data: new SlashCommandBuilder()
     .setName('send')
     .setDescription('Send funds to a specified name and auto-approve')
-    // Required fields: name + amount
-    .addStringOption(opt =>
-      opt
-        .setName('name')
-        .setDescription('Recipient name (can be multiple words)')
-        .setRequired(true)
+    // Required: name
+    .addStringOption((opt) =>
+      opt.setName('name').setDescription('Recipient name (can be multiple words)').setRequired(true)
     )
-    // Optional field: type (defaults to player)
-    .addStringOption(opt =>
+    // Optional: type (defaults to player)
+    .addStringOption((opt) =>
       opt
         .setName('type')
         .setDescription('Recipient type (defaults to Player)')
@@ -77,34 +148,20 @@ module.exports = {
         )
         .setRequired(false)
     )
-    // Required field: amount
-    .addNumberOption(opt =>
-      opt
-        .setName('amount')
-        .setDescription('Dollar amount to send')
-        .setRequired(true)
-        .setMinValue(0.01)
+    // Required: amount
+    .addNumberOption((opt) =>
+      opt.setName('amount').setDescription('Dollar amount to send').setRequired(true).setMinValue(0.01)
     )
-    // Optional: debug
-    .addBooleanOption(opt =>
-      opt
-        .setName('debug')
-        .setDescription('Include diagnostics in the response')
-        .setRequired(false)
+    .addBooleanOption((opt) =>
+      opt.setName('debug').setDescription('Include diagnostics in the response').setRequired(false)
     )
-    // command metadata (does NOT enforce role—runtime check below)
     .setDMPermission(false),
 
   /** @param {import('discord.js').ChatInputCommandInteraction} interaction */
   async execute(interaction) {
-    // ✅ Hard role gate (only members with ROLE_ALLOWED can use this)
+    // ✅ Role gate
     const member = interaction.member; // GuildMember
-    const hasRole =
-      member &&
-      member.roles &&
-      member.roles.cache &&
-      member.roles.cache.has(ROLE_ALLOWED);
-
+    const hasRole = member?.roles?.cache?.has(ROLE_ALLOWED);
     if (!hasRole) {
       return interaction.reply({
         content: 'You do not have permission to use this command.',
@@ -112,32 +169,20 @@ module.exports = {
       });
     }
 
+    // Inputs
     const name = interaction.options.getString('name', true);
-    const type = interaction.options.getString('type') ?? 'player'; // ✅ default to player
-    const amount = interaction.options.getNumber('amount', true);   // ✅ amount required
+    const type = interaction.options.getString('type') ?? 'player'; // default
+    const amount = interaction.options.getNumber('amount', true);
     const debug = interaction.options.getBoolean('debug') ?? false;
+    const invokerTag = interaction.user?.tag ?? interaction.user?.id ?? 'unknown';
 
-    const formattedAmount = new Intl.NumberFormat('en-US', {
-      style: 'currency',
-      currency: 'USD',
-      minimumFractionDigits: 2,
-      maximumFractionDigits: 2,
-    }).format(amount ?? DEFAULT_AMOUNT);
-
-    // Initial message
-    const requestMsg =
-      `SEND FUNDS REQUEST\n\n` +
-      `Type: ${type}\n` +                // type is optional, but we still display the resolved default
-      `Recipient: ${name}\n` +
-      `Amount: ${formattedAmount}\n\n` +
-      `Processing...`;
-
+    // 🟡 Initial two-embed message
     await interaction.reply({
-      content: requestMsg,
+      embeds: buildRequestEmbeds({ invokerTag, name, type, amount }),
       allowedMentions: { parse: [] },
     });
 
-    // Attempt the website send if configured
+    // Perform web send
     let webResult = null;
     try {
       if (!config.email || !config.password) {
@@ -149,47 +194,43 @@ module.exports = {
       webResult = { ok: false, reason: err?.message ?? String(err) };
     }
 
-    const includeDebug = (debug || !webResult?.ok);
-    let diag = '';
+    // Decide on debug handling (inline vs file)
+    const includeDebug = debug || !webResult?.ok;
     let files;
+    let debugInline;
     if (includeDebug && webResult) {
-      const full = JSON.stringify(webResult);
-      if (full.length > 1500) {
-        diag = `\n\nDebug: attached as send_debug.json`;
-        files = [{ attachment: Buffer.from(JSON.stringify(webResult, null, 2), 'utf8'), name: 'send_debug.json' }];
+      const payload = JSON.stringify(webResult, null, 2);
+      if (payload.length > 1500) {
+        files = [{ attachment: Buffer.from(payload, 'utf8'), name: 'send_debug.json' }];
+        debugInline = 'Attached **send_debug.json**';
       } else {
-        diag = `\n\nDebug: ${full}`;
+        debugInline = '```json\n' + payload + '\n```';
       }
     }
+
     const extraNotes = [];
-    const statusLine = (() => {
-      if (!webResult?.ok) {
-        if (webResult?.reasonDetail && webResult.reasonDetail !== webResult.reason) {
-          extraNotes.push(webResult.reasonDetail);
-        }
-        return `Status: Failed (${webResult?.reason ?? 'unknown error'})`;
-      }
-      if (webResult?.approved) return 'Status: Sent and approved on website';
-      if (webResult?.needsApproval) return 'Status: Submitted on website — manual approval still required';
-      if (webResult?.verified) return 'Status: Sent on website (verified)';
-      if (webResult?.submitted) return 'Status: Sent on website (verification pending)';
-      return 'Status: Sent on website';
-    })();
+    if (!webResult?.ok && webResult?.reasonDetail && webResult.reasonDetail !== webResult.reason) {
+      extraNotes.push(webResult.reasonDetail);
+    }
 
-    const completedMsg =
-      `SEND FUNDS - COMPLETED\n\n` +
-      `Type: ${type}\n` +
-      `Recipient: ${name}\n` +
-      `Amount: ${formattedAmount}\n` +
-      `${statusLine}` +
-      `${extraNotes.length ? `\n${extraNotes.join('\n')}` : ''}` +
-      `${diag}`;
-
-    await interaction.editReply({ content: completedMsg, allowedMentions: { parse: [] }, files });
+    // 🟢/🔴 Edit with two embeds: summary + status
+    await interaction.editReply({
+      embeds: buildCompletedEmbeds({
+        invokerTag,
+        name,
+        type,
+        amount,
+        webResult,
+        extraNotes,
+        debugInline,
+      }),
+      allowedMentions: { parse: [] },
+      files,
+    });
   },
 };
 
-// === unchanged below (but includes form.requestSubmit()/submit() submission) ===
+/* ---------- web automation (unchanged core; uses form.requestSubmit/submit) ---------- */
 async function performWebSend({ type, name, amount, debug }) {
   const actions = [];
   const note = (step, detail, extra = {}) => {
@@ -211,6 +252,7 @@ async function performWebSend({ type, name, amount, debug }) {
     for (const action of authActions) actions.push({ phase: 'auth', ...action });
     note('login-success', 'Authenticated and ready on treasury page.', { finalUrl });
 
+    // Snapshot outgoing transactions before submitting
     const preTransactions = await scrapeOutgoingTransactions(page);
     const preData = await captureOutgoingData(page);
     note('snapshot', 'Captured pre-submit outgoing transactions.', {
@@ -218,6 +260,7 @@ async function performWebSend({ type, name, amount, debug }) {
       countData: preData.length,
     });
 
+    // Set recipient type if selector exists
     const selectSel = '#partyTransactions select#target, #target';
     if (await page.$(selectSel)) {
       await page.select(selectSel, type);
@@ -226,19 +269,21 @@ async function performWebSend({ type, name, amount, debug }) {
       note('form', 'Recipient type selector missing.', { selectSel });
     }
 
+    // Name input
     const nameSel = '#partyTransactions #target_id, #target_id';
     if (!(await page.$(nameSel))) {
       note('form', 'Name field missing.', { nameSel });
       return { ok: false, step: 'locate-name', reason: 'Name field not found', actions };
     }
-    await page.$eval(nameSel, el => (el.value = ''));
+    await page.$eval(nameSel, (el) => (el.value = ''));
     await page.type(nameSel, name, { delay: 10 });
-    await page.$eval(nameSel, el => {
+    await page.$eval(nameSel, (el) => {
       el.dispatchEvent(new Event('input', { bubbles: true }));
       el.dispatchEvent(new Event('change', { bubbles: true }));
     });
     note('form', 'Recipient name filled.', { value: name });
 
+    // Try autosuggest commit (optional)
     try {
       if (!SEND_USE_AUTOSUGGEST) throw new Error('autosuggest disabled');
       const SUGGESTION_SELECTORS = [
@@ -250,8 +295,7 @@ async function performWebSend({ type, name, amount, debug }) {
         '.list-group .list-group-item',
       ];
       if (typeof page.waitForTimeout === 'function') await page.waitForTimeout(300);
-      else await new Promise(r => setTimeout(r, 300));
-
+      else await new Promise((r) => setTimeout(r, 300));
       let picked = null;
       for (const sel of SUGGESTION_SELECTORS) {
         const exists = await page.$(sel);
@@ -259,7 +303,7 @@ async function performWebSend({ type, name, amount, debug }) {
         const candidate = await page.evaluateHandle((s, want) => {
           const wantLower = (want || '').toLowerCase();
           const items = Array.from(document.querySelectorAll(s));
-          let el = items.find(n => (n.innerText || '').toLowerCase().includes(wantLower));
+          let el = items.find((n) => (n.innerText || '').toLowerCase().includes(wantLower));
           if (!el) el = items[0] || null;
           if (el) {
             el.setAttribute('data-suggest-picked', '1');
@@ -278,49 +322,51 @@ async function performWebSend({ type, name, amount, debug }) {
         await page.focus(nameSel);
         await page.keyboard.press('Enter');
       }
-      const committed = await page.$eval(nameSel, el => el.value);
+      const committed = await page.$eval(nameSel, (el) => el.value);
       note('form', 'Recipient commit attempt finished.', { pickedSelector: picked, committedValue: committed });
     } catch (e) {
       note('form', 'Autosuggest selection step failed (continuing).', { error: e?.message || String(e) });
     }
 
+    // Amount input
     const amountSel = '#partyTransactions #money, #money, #partyTransactions input[type="money"]';
     if (!(await page.$(amountSel))) {
       note('form', 'Amount field missing.', { amountSel });
       return { ok: false, step: 'locate-amount', reason: 'Amount field not found', actions };
     }
     const plain = String(Math.round(Number(amount))).replace(/[^0-9]/g, '');
-    await page.$eval(amountSel, el => (el.value = ''));
+    await page.$eval(amountSel, (el) => (el.value = ''));
     await page.type(amountSel, plain, { delay: 10 });
-    await page.$eval(amountSel, el => {
+    await page.$eval(amountSel, (el) => {
       el.dispatchEvent(new Event('input', { bubbles: true }));
       el.dispatchEvent(new Event('change', { bubbles: true }));
     });
     note('form', 'Amount filled.', { amountDigits: plain });
 
+    // Submit via form.requestSubmit()/submit()
     const formSel = '#partyTransactions form, form#partyTransactions';
     if (!(await page.$(formSel))) {
       note('form', 'Form element not found for submission.', { formSel });
       return { ok: false, step: 'locate-form', reason: 'Form not found', actions };
     }
 
-    const postTarget = await page.$eval(formSel, (form) => {
-      const action = (form.getAttribute('action') || '').trim();
-      try {
-        const u = new URL(action, window.location.origin);
-        return u.pathname + (u.search || '');
-      } catch {
-        return action || '/parties/1/treasury';
-      }
-    }).catch(() => '/parties/1/treasury');
+    const postTarget = await page
+      .$eval(formSel, (form) => {
+        const action = (form.getAttribute('action') || '').trim();
+        try {
+          const u = new URL(action, window.location.origin);
+          return u.pathname + (u.search || '');
+        } catch {
+          return action || '/parties/1/treasury';
+        }
+      })
+      .catch(() => '/parties/1/treasury');
 
     note('form', 'Submitting via form.requestSubmit()/form.submit().', { formSel, postTarget });
 
     const postRespPromise = page
       .waitForResponse(
-        (resp) =>
-          resp.request().method() === 'POST' &&
-          (resp.url().includes(postTarget) || /\/parties\/1\/treasury(?!\S)/.test(resp.url())),
+        (resp) => resp.request().method() === 'POST' && (resp.url().includes(postTarget) || /\/parties\/1\/treasury(?!\S)/.test(resp.url())),
         { timeout: NAV_TIMEOUT }
       )
       .catch(() => null);
@@ -340,6 +386,7 @@ async function performWebSend({ type, name, amount, debug }) {
       note('post-response', 'No POST response captured (may still have submitted).');
     }
 
+    // Heuristic verification
     let afterHtml = await page.content();
     let amountRounded = Math.round(Number(amount));
     let amountDigits = String(amountRounded);
@@ -347,29 +394,35 @@ async function performWebSend({ type, name, amount, debug }) {
     let verifiedSubmit = afterHtml.includes(name) || afterHtml.includes(amountFmt);
 
     if (!postResp && !verifiedSubmit) {
-      const retried = await page.$eval(formSel, (form) => {
-        try {
-          const f = /** @type {HTMLFormElement} */ (form);
-          if (typeof f.requestSubmit !== 'function') {
-            f.submit();
-            return 'submit()';
-          }
-        } catch {}
-        return 'skipped';
-      }).catch(() => 'error');
+      const retried = await page
+        .$eval(formSel, (form) => {
+          try {
+            const f = /** @type {HTMLFormElement} */ (form);
+            if (typeof f.requestSubmit !== 'function') {
+              f.submit();
+              return 'submit()';
+            }
+          } catch {}
+          return 'skipped';
+        })
+        .catch(() => 'error');
 
       note('retry', 'Retrying native submission once.', { mode: retried });
       await page.waitForNavigation({ waitUntil: 'networkidle2', timeout: NAV_TIMEOUT }).catch(() => null);
       if (typeof page.waitForTimeout === 'function') await page.waitForTimeout(500);
       afterHtml = await page.content();
       verifiedSubmit = afterHtml.includes(name) || afterHtml.includes(amountFmt);
-      note('retry', 'Post-retry verification.', { verifiedSubmit, matchName: afterHtml.includes(name), matchAmount: afterHtml.includes(amountFmt) });
+      note('retry', 'Post-retry verification.', {
+        verifiedSubmit,
+        matchName: afterHtml.includes(name),
+        matchAmount: afterHtml.includes(amountFmt),
+      });
     }
 
     note('form', 'Submission sequence finished.', { currentUrl: page.url() });
 
     if (typeof page.waitForTimeout === 'function') await page.waitForTimeout(1000);
-    else await new Promise(resolve => setTimeout(resolve, 1000));
+    else await new Promise((resolve) => setTimeout(resolve, 1000));
     note('post-submit', 'Waited after submit for UI updates.');
 
     afterHtml = await page.content();
@@ -380,6 +433,7 @@ async function performWebSend({ type, name, amount, debug }) {
       matchAmount: afterHtml.includes(amountFmt),
     });
 
+    // Check inline errors
     const formIssues = await scanFormIssues(page);
     if (formIssues && (formIssues.invalids.length || formIssues.alerts.length)) {
       note('form-issues', 'Detected form errors after submit.', formIssues);
@@ -389,6 +443,7 @@ async function performWebSend({ type, name, amount, debug }) {
       }
     }
 
+    // Refresh and locate the new transaction
     await page.reload({ waitUntil: 'networkidle2' });
     note('reload', 'Page reloaded to capture pending approvals.');
 
@@ -400,23 +455,23 @@ async function performWebSend({ type, name, amount, debug }) {
         ok: false,
         step: 'verify',
         reason: 'No new transaction detected after submit. Amount or recipient may not have matched exactly.',
-        actions
+        actions,
       };
     }
     note('diff', 'Matched transaction identified.', matched);
 
+    // Approval flow if present
     let approved = false;
     let needsApproval = false;
-
     if (matched.hasApproveButton && matched.approveSelector) {
       await Promise.all([
         page.waitForNavigation({ waitUntil: 'networkidle2', timeout: NAV_TIMEOUT }).catch(() => null),
-        page.click(matched.approveSelector)
+        page.click(matched.approveSelector),
       ]);
       note('approval', 'Clicked approval button.', { approveSelector: matched.approveSelector });
 
       if (typeof page.waitForTimeout === 'function') await page.waitForTimeout(800);
-      else await new Promise(resolve => setTimeout(resolve, 800));
+      else await new Promise((resolve) => setTimeout(resolve, 800));
       await page.reload({ waitUntil: 'networkidle2' });
       note('approval', 'Reloaded after approval click to confirm.');
 
@@ -442,7 +497,7 @@ async function performWebSend({ type, name, amount, debug }) {
       verified: verifiedSubmit,
       approved,
       needsApproval,
-      actions: debug ? actions : undefined
+      actions: debug ? actions : undefined,
     };
   } catch (err) {
     if (err instanceof PPUSAAuthError) {
@@ -450,7 +505,6 @@ async function performWebSend({ type, name, amount, debug }) {
       if (Array.isArray(details.actions)) {
         for (const action of details.actions) actions.push({ phase: 'auth-error', ...action });
       }
-      note('auth-error', err.message, details);
       const reasonDetail = formatAuthErrorMessage(err, '/send');
       return { ok: false, step: 'auth', reason: err.message, reasonDetail, actions, authDetails: details };
     }
@@ -458,15 +512,21 @@ async function performWebSend({ type, name, amount, debug }) {
   } finally {
     if (browser) {
       try {
-        note('cleanup', 'Closing browser.');
+        actions.push({ step: 'cleanup', detail: 'Closing browser.', timestamp: new Date().toISOString() });
         await browser.close();
       } catch (closeErr) {
-        note('cleanup', 'Browser close failed.', { error: closeErr?.message ?? String(closeErr) });
+        actions.push({
+          step: 'cleanup',
+          detail: 'Browser close failed.',
+          error: closeErr?.message ?? String(closeErr),
+          timestamp: new Date().toISOString(),
+        });
       }
     }
   }
 }
 
+/* ---------- DOM helpers ---------- */
 async function scrapeOutgoingTransactions(page) {
   return page.evaluate(() => {
     const rows = Array.from(document.querySelectorAll('#partyOutgoingTableBody tr'));
@@ -520,9 +580,7 @@ async function captureOutgoingData(page) {
           : String(item.amount || '').replace(/[^0-9]/g, '');
         const approvalText = typeof item.approval === 'string' ? item.approval : '';
 
-        const amountPretty = Number.isFinite(amountNum)
-          ? `$${Number(amountNum).toLocaleString('en-US')}`
-          : String(item.amount ?? '');
+        const amountPretty = Number.isFinite(amountNum) ? `$${Number(amountNum).toLocaleString('en-US')}` : String(item.amount ?? '');
 
         return {
           source: 'data',
@@ -599,9 +657,7 @@ async function waitForTransactionEntry(page, recipientLower, amountDigits, timeo
 
           const approvalText = typeof item.approval === 'string' ? item.approval : '';
 
-          const amountPretty = Number.isFinite(amountNum)
-            ? `$${Number(amountNum).toLocaleString('en-US')}`
-            : String(item.amount ?? '');
+          const amountPretty = Number.isFinite(amountNum) ? `$${Number(amountNum).toLocaleString('en-US')}` : String(item.amount ?? '');
 
           matches.push({
             source: 'data',
@@ -618,6 +674,7 @@ async function waitForTransactionEntry(page, recipientLower, amountDigits, timeo
           if (requireApproved && !/approved/i.test(entry.approvalText || '')) continue;
           return entry;
         }
+
         return null;
       },
       { timeout: timeoutMs },
@@ -649,17 +706,18 @@ async function scanFormIssues(page) {
     return await page.evaluate(() => {
       const within = document.querySelector('#partyTransactions') || document;
       const invalids = Array.from(within.querySelectorAll('.is-invalid, .invalid-feedback'))
-        .map(el => ({ text: el.textContent?.trim() || '', id: el.id || null, for: el.getAttribute('for') || null }))
-        .filter(x => x.text);
+        .map((el) => ({ text: el.textContent?.trim() || '', id: el.id || null, for: el.getAttribute('for') || null }))
+        .filter((x) => x.text);
       const alerts = Array.from(document.querySelectorAll('.alert.alert-danger, .alert.alert-warning'))
-        .map(el => ({ text: el.textContent?.trim() || '' }))
-        .filter(x => x.text);
+        .map((el) => ({ text: el.textContent?.trim() || '' }))
+        .filter((x) => x.text);
       return { invalids, alerts };
     });
   } catch {
     return { invalids: [], alerts: [] };
   }
 }
+
 /**
  * Project: DemBot (Discord automation for Power Play USA)
  * File: commands/send.js
@@ -670,5 +728,6 @@ async function scanFormIssues(page) {
  * Notes:
  *   - Restricted to role 1406063223475535994 at runtime.
  *   - Required options: name, amount. Optional: type (defaults to "player"), debug.
+ *   - Clean message flow using TWO embeds: request summary + status.
  *   - Uses form.requestSubmit()/submit() for reliable submission.
  */
