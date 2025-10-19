@@ -10,7 +10,7 @@ const { SlashCommandBuilder, EmbedBuilder } = require('discord.js');
 const fs = require('node:fs');
 const path = require('node:path');
 const Anthropic = require('@anthropic-ai/sdk');
-const { checkPermissions } = require('../lib/permissions');
+const { canUseAnalyze } = require('../lib/permissions');
 
 // Party-leaning states based on recent electoral data
 const DEMOCRATIC_STATES = {
@@ -285,8 +285,7 @@ module.exports = {
    */
   async execute(interaction) {
     // Check permissions - restrict to party leadership/admin
-    const hasPermission = await checkPermissions(interaction, ['party_leadership', 'admin']);
-    if (!hasPermission) {
+    if (!(await canUseAnalyze(interaction))) {
       return interaction.reply({
         content: '❌ This command is restricted to party leadership and administrators.',
         ephemeral: true
