@@ -1,0 +1,107 @@
+{
+  "finalUrl": "https://powerplayusa.net/account",
+  "actions": [
+    {
+      "step": "start",
+      "success": true,
+      "timestamp": "2025-10-19T00:24:03.279Z",
+      "targetUrl": "https://powerplayusa.net/parties/1/treasury"
+    },
+    {
+      "step": "browser-new",
+      "success": true,
+      "timestamp": "2025-10-19T00:24:04.317Z",
+      "navTimeout": 20000
+    },
+    {
+      "step": "ua-set",
+      "success": true,
+      "timestamp": "2025-10-19T00:24:04.322Z",
+      "userAgent": "Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36"
+    },
+    {
+      "step": "login-goto",
+      "success": true,
+      "timestamp": "2025-10-19T00:24:06.149Z",
+      "loginUrl": "https://powerplayusa.net/login"
+    },
+    {
+      "step": "login-fields",
+      "success": true,
+      "timestamp": "2025-10-19T00:24:06.268Z",
+      "emailSel": "input[type=\"email\"]",
+      "passSel": "input[type=\"password\"]"
+    },
+    {
+      "step": "login-type",
+      "success": true,
+      "timestamp": "2025-10-19T00:24:07.079Z",
+      "emailLength": 23
+    },
+    {
+      "step": "login-submit-selector",
+      "success": true,
+      "timestamp": "2025-10-19T00:24:07.122Z",
+      "submitSel": "button[type=\"submit\"]"
+    },
+    {
+      "step": "login-submitted",
+      "success": true,
+      "timestamp": "2025-10-19T00:24:08.503Z",
+      "finalUrl": "https://powerplayusa.net/account"
+    },
+    {
+      "step": "target-goto",
+      "success": true,
+      "timestamp": "2025-10-19T00:24:09.680Z",
+      "finalUrl": "https://powerplayusa.net/account",
+      "attempt": "direct"
+    },
+    {
+      "step": "party-goto",
+      "success": true,
+      "timestamp": "2025-10-19T00:24:10.833Z",
+      "finalUrl": "https://powerplayusa.net/account",
+      "partyId": "1"
+    },
+    {
+      "step": "target-goto",
+      "success": true,
+      "timestamp": "2025-10-19T00:24:12.112Z",
+      "finalUrl": "https://powerplayusa.net/account",
+      "attempt": "after-party"
+    },
+    {
+      "step": "landing-goto",
+      "success": true,
+      "timestamp": "2025-10-19T00:24:13.286Z",
+      "finalUrl": "https://powerplayusa.net/account"
+    },
+    {
+      "step": "target-goto",
+      "success": true,
+      "timestamp": "2025-10-19T00:24:14.479Z",
+      "finalUrl": "https://powerplayusa.net/account",
+      "attempt": "after-landing"
+    },
+    {
+      "step": "target-verify",
+      "success": false,
+      "timestamp": "2025-10-19T00:24:14.479Z",
+      "finalUrl": "https://powerplayusa.net/account",
+      "expectedPath": "/parties/1/treasury"
+    },
+    {
+      "step": "error",
+      "success": false,
+      "timestamp": "2025-10-19T00:24:14.479Z",
+      "message": "Authenticated (form) but redirected away from target"
+    },
+    {
+      "step": "browser-close",
+      "success": true,
+      "timestamp": "2025-10-19T00:24:14.661Z"
+    }
+  ],
+  "screenshot": null
+}
