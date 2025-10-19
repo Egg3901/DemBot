@@ -1,5 +1,5 @@
 {
-  "updatedAt": "2025-10-19T00:50:21.184Z",
+  "updatedAt": "2025-10-19T00:52:39.219Z",
   "profiles": {
     "1000": {
       "id": 1000,
@@ -5079,17 +5079,17 @@
       "state": "New Mexico",
       "position": "Governor of New Mexico",
       "es": "300.0",
-      "co": "32.79%",
-      "nr": "48.73%",
-      "cash": "$436,624",
+      "co": "12.15%",
+      "nr": "38.21%",
+      "cash": "$753,123",
       "rolesNeeded": [
         "gov"
       ],
       "region": "west",
-      "lastOnlineText": "13 hours ago",
-      "lastOnlineAt": "2025-10-16T05:04:45.132Z",
-      "lastOnlineDays": 0,
-      "updatedAt": "2025-10-16T18:04:45.132Z"
+      "lastOnlineText": "1 days ago",
+      "lastOnlineAt": "2025-10-18T00:50:23.095Z",
+      "lastOnlineDays": 1,
+      "updatedAt": "2025-10-19T00:50:23.095Z"
     },
     "1279": {
       "id": 1279,
@@ -5099,17 +5099,17 @@
       "state": "Minnesota",
       "position": "U.S. Representative from Minnesota",
       "es": "267.0",
-      "co": "21.86%",
-      "nr": "35.61%",
-      "cash": "$744,159",
+      "co": "1.36%",
+      "nr": "24.74%",
+      "cash": "$1,171,542",
       "rolesNeeded": [
         "rep"
       ],
       "region": "rust_belt",
-      "lastOnlineText": "16 hours ago",
-      "lastOnlineAt": "2025-10-16T02:04:46.744Z",
+      "lastOnlineText": "5 hours ago",
+      "lastOnlineAt": "2025-10-18T19:50:25.128Z",
       "lastOnlineDays": 0,
-      "updatedAt": "2025-10-16T18:04:46.744Z"
+      "updatedAt": "2025-10-19T00:50:25.128Z"
     },
     "1280": {
       "id": 1280,
@@ -5124,10 +5124,10 @@
       "cash": "$364,450",
       "rolesNeeded": [],
       "region": "northeast",
-      "lastOnlineText": "13 days ago",
-      "lastOnlineAt": "2025-10-03T18:04:49.877Z",
-      "lastOnlineDays": 13,
-      "updatedAt": "2025-10-16T18:04:49.877Z"
+      "lastOnlineText": "15 days ago",
+      "lastOnlineAt": "2025-10-04T00:50:27.998Z",
+      "lastOnlineDays": 15,
+      "updatedAt": "2025-10-19T00:50:27.998Z"
     },
     "1281": {
       "id": 1281,
@@ -5138,14 +5138,14 @@
       "position": "Private Citizen",
       "es": "202.0",
       "co": "0.00%",
-      "nr": "29.41%",
-      "cash": "$1,411,086",
+      "nr": "18.57%",
+      "cash": "$1,769,620",
       "rolesNeeded": [],
       "region": "south",
-      "lastOnlineText": "2 hours ago",
-      "lastOnlineAt": "2025-10-16T16:04:51.519Z",
+      "lastOnlineText": "13 hours ago",
+      "lastOnlineAt": "2025-10-18T11:50:30.097Z",
       "lastOnlineDays": 0,
-      "updatedAt": "2025-10-16T18:04:51.519Z"
+      "updatedAt": "2025-10-19T00:50:30.097Z"
     },
     "1282": {
       "id": 1282,
@@ -5154,18 +5154,18 @@
       "party": "Democratic Party",
       "state": "Rhode Island",
       "position": "Governor of Rhode Island",
-      "es": "229.0",
-      "co": "0.00%",
-      "nr": "3.70%",
-      "cash": "$1,189,608",
+      "es": "234.0",
+      "co": "4.88%",
+      "nr": "0.00%",
+      "cash": "$842,173",
       "rolesNeeded": [
         "gov"
       ],
       "region": "northeast",
-      "lastOnlineText": "2 hours ago",
-      "lastOnlineAt": "2025-10-16T16:04:53.159Z",
-      "lastOnlineDays": 0,
-      "updatedAt": "2025-10-16T18:04:53.159Z"
+      "lastOnlineText": "1 days ago",
+      "lastOnlineAt": "2025-10-18T00:50:31.964Z",
+      "lastOnlineDays": 1,
+      "updatedAt": "2025-10-19T00:50:31.964Z"
     },
     "1283": {
       "id": 1283,
@@ -5176,14 +5176,14 @@
       "position": "Private Citizen",
       "es": "226.0",
       "co": "0.00%",
-      "nr": "30.96%",
-      "cash": "$1,640,546",
+      "nr": "19.79%",
+      "cash": "$1,991,040",
       "rolesNeeded": [],
       "region": "south",
-      "lastOnlineText": "7 days ago",
-      "lastOnlineAt": "2025-10-09T18:04:54.642Z",
-      "lastOnlineDays": 7,
-      "updatedAt": "2025-10-16T18:04:54.642Z"
+      "lastOnlineText": "10 days ago",
+      "lastOnlineAt": "2025-10-09T00:50:34.241Z",
+      "lastOnlineDays": 10,
+      "updatedAt": "2025-10-19T00:50:34.241Z"
     },
     "1284": {
       "id": 1284,
@@ -5192,18 +5192,18 @@
       "party": "Democratic Party",
       "state": "Hawaii",
       "position": "Governor of Hawaii",
-      "es": "219.0",
-      "co": "50.46%",
-      "nr": "66.81%",
-      "cash": "$115,262",
+      "es": "191.0",
+      "co": "30.29%",
+      "nr": "56.18%",
+      "cash": "$222,159",
       "rolesNeeded": [
         "gov"
       ],
       "region": "west",
-      "lastOnlineText": "28 minutes ago",
-      "lastOnlineAt": "2025-10-16T17:36:56.614Z",
+      "lastOnlineText": "5 hours ago",
+      "lastOnlineAt": "2025-10-18T19:50:36.276Z",
       "lastOnlineDays": 0,
-      "updatedAt": "2025-10-16T18:04:56.614Z"
+      "updatedAt": "2025-10-19T00:50:36.276Z"
     },
     "1285": {
       "id": 1285,
@@ -5213,17 +5213,17 @@
       "state": "New Jersey",
       "position": "U.S. Senator from New Jersey",
       "es": "280.0",
-      "co": "30.06%",
+      "co": "8.54%",
       "nr": "0.00%",
-      "cash": "$321,494",
+      "cash": "$1,197,284",
       "rolesNeeded": [
         "sen"
       ],
       "region": "northeast",
-      "lastOnlineText": "18 hours ago",
-      "lastOnlineAt": "2025-10-16T00:04:58.437Z",
-      "lastOnlineDays": 0,
-      "updatedAt": "2025-10-16T18:04:58.437Z"
+      "lastOnlineText": "3 days ago",
+      "lastOnlineAt": "2025-10-16T00:50:38.272Z",
+      "lastOnlineDays": 3,
+      "updatedAt": "2025-10-19T00:50:38.272Z"
     },
     "1286": {
       "id": 1286,
@@ -5232,16 +5232,16 @@
       "party": "Republican Party",
       "state": "Mississippi",
       "position": "Governor of Mississippi",
-      "es": "210.0",
-      "co": "20.12%",
-      "nr": "26.72%",
-      "cash": "$1,834,166",
+      "es": "231.0",
+      "co": "0.00%",
+      "nr": "16.12%",
+      "cash": "$3,075,607",
       "rolesNeeded": [],
       "region": "south",
-      "lastOnlineText": "19 hours ago",
-      "lastOnlineAt": "2025-10-15T23:05:00.065Z",
-      "lastOnlineDays": 0,
-      "updatedAt": "2025-10-16T18:05:00.065Z"
+      "lastOnlineText": "1 days ago",
+      "lastOnlineAt": "2025-10-18T00:50:39.857Z",
+      "lastOnlineDays": 1,
+      "updatedAt": "2025-10-19T00:50:39.857Z"
     },
     "1287": {
       "id": 1287,
@@ -5251,15 +5251,15 @@
       "state": "Mississippi",
       "position": "U.S. Senator from Mississippi",
       "es": "300.0",
-      "co": "7.12%",
-      "nr": "26.32%",
-      "cash": "$8,886,529",
+      "co": "0.00%",
+      "nr": "15.28%",
+      "cash": "$4,352,814",
       "rolesNeeded": [],
       "region": "south",
-      "lastOnlineText": "14 hours ago",
-      "lastOnlineAt": "2025-10-16T04:05:01.685Z",
-      "lastOnlineDays": 0,
-      "updatedAt": "2025-10-16T18:05:01.685Z"
+      "lastOnlineText": "1 days ago",
+      "lastOnlineAt": "2025-10-18T00:50:41.286Z",
+      "lastOnlineDays": 1,
+      "updatedAt": "2025-10-19T00:50:41.286Z"
     },
     "1288": {
       "id": 1288,
@@ -5268,16 +5268,16 @@
       "party": "Republican Party",
       "state": "Montana",
       "position": "U.S. Senator from Montana",
-      "es": "281.0",
-      "co": "62.48%",
-      "nr": "66.23%",
-      "cash": "$947,960",
+      "es": "292.0",
+      "co": "40.12%",
+      "nr": "55.84%",
+      "cash": "$2,052,887",
       "rolesNeeded": [],
       "region": "west",
-      "lastOnlineText": "19 hours ago",
-      "lastOnlineAt": "2025-10-15T23:05:03.632Z",
-      "lastOnlineDays": 0,
-      "updatedAt": "2025-10-16T18:05:03.632Z"
+      "lastOnlineText": "1 days ago",
+      "lastOnlineAt": "2025-10-18T00:50:43.038Z",
+      "lastOnlineDays": 1,
+      "updatedAt": "2025-10-19T00:50:43.038Z"
     },
     "1289": {
       "id": 1289,
@@ -5292,10 +5292,10 @@
       "cash": "$364,450",
       "rolesNeeded": [],
       "region": "northeast",
-      "lastOnlineText": "11 days ago",
-      "lastOnlineAt": "2025-10-05T18:05:05.236Z",
-      "lastOnlineDays": 11,
-      "updatedAt": "2025-10-16T18:05:05.236Z"
+      "lastOnlineText": "13 days ago",
+      "lastOnlineAt": "2025-10-06T00:50:45.014Z",
+      "lastOnlineDays": 13,
+      "updatedAt": "2025-10-19T00:50:45.014Z"
     },
     "1290": {
       "id": 1290,
@@ -5303,19 +5303,17 @@
       "discord": "markbacchus04",
       "party": "Democratic Party",
       "state": "Wisconsin",
-      "position": "U.S. Representative from Wisconsin",
+      "position": "Private Citizen",
       "es": "229.0",
       "co": "0.00%",
-      "nr": "20.01%",
-      "cash": "$629,478",
-      "rolesNeeded": [
-        "rep"
-      ],
+      "nr": "9.44%",
+      "cash": "$934,462",
+      "rolesNeeded": [],
       "region": "rust_belt",
-      "lastOnlineText": "14 hours ago",
-      "lastOnlineAt": "2025-10-16T04:05:07.196Z",
-      "lastOnlineDays": 0,
-      "updatedAt": "2025-10-16T18:05:07.196Z"
+      "lastOnlineText": "1 days ago",
+      "lastOnlineAt": "2025-10-18T00:50:46.885Z",
+      "lastOnlineDays": 1,
+      "updatedAt": "2025-10-19T00:50:46.886Z"
     },
     "1291": {
       "id": 1291,
@@ -5323,19 +5321,17 @@
       "discord": "markbacchus04",
       "party": "Democratic Party",
       "state": "Pennsylvania",
-      "position": "U.S. Representative from Pennsylvania",
+      "position": "Private Citizen",
       "es": "247.0",
-      "co": "9.20%",
-      "nr": "34.56%",
-      "cash": "$1,343,065",
-      "rolesNeeded": [
-        "rep"
-      ],
+      "co": "0.00%",
+      "nr": "24.20%",
+      "cash": "$2,175,210",
+      "rolesNeeded": [],
       "region": "northeast",
-      "lastOnlineText": "2 days ago",
-      "lastOnlineAt": "2025-10-14T18:05:08.792Z",
-      "lastOnlineDays": 2,
-      "updatedAt": "2025-10-16T18:05:08.792Z"
+      "lastOnlineText": "1 days ago",
+      "lastOnlineAt": "2025-10-18T00:50:48.374Z",
+      "lastOnlineDays": 1,
+      "updatedAt": "2025-10-19T00:50:48.374Z"
     },
     "1292": {
       "id": 1292,
@@ -5345,15 +5341,15 @@
       "state": "Michigan",
       "position": "Private Citizen",
       "es": "238.0",
-      "co": "60.31%",
-      "nr": "85.66%",
-      "cash": "$758,656",
+      "co": "40.05%",
+      "nr": "74.47%",
+      "cash": "$1,167,422",
       "rolesNeeded": [],
       "region": "rust_belt",
-      "lastOnlineText": "2 days ago",
-      "lastOnlineAt": "2025-10-14T18:05:10.387Z",
-      "lastOnlineDays": 2,
-      "updatedAt": "2025-10-16T18:05:10.387Z"
+      "lastOnlineText": "1 days ago",
+      "lastOnlineAt": "2025-10-18T00:50:49.986Z",
+      "lastOnlineDays": 1,
+      "updatedAt": "2025-10-19T00:50:49.986Z"
     },
     "1293": {
       "id": 1293,
@@ -5362,16 +5358,16 @@
       "party": "Republican Party",
       "state": "Wisconsin",
       "position": "U.S. Senator from Wisconsin",
-      "es": "260.0",
-      "co": "36.07%",
-      "nr": "52.97%",
-      "cash": "$386,738",
+      "es": "300.0",
+      "co": "11.42%",
+      "nr": "42.68%",
+      "cash": "$3,435,010",
       "rolesNeeded": [],
       "region": "rust_belt",
-      "lastOnlineText": "3 hours ago",
-      "lastOnlineAt": "2025-10-16T15:05:13.163Z",
-      "lastOnlineDays": 0,
-      "updatedAt": "2025-10-16T18:05:13.163Z"
+      "lastOnlineText": "2 days ago",
+      "lastOnlineAt": "2025-10-17T00:50:53.078Z",
+      "lastOnlineDays": 2,
+      "updatedAt": "2025-10-19T00:50:53.078Z"
     },
     "1294": {
       "id": 1294,
@@ -5379,17 +5375,17 @@
       "discord": "the_spicy_flamingo",
       "party": "Republican Party",
       "state": "Louisiana",
-      "position": "Private Citizen",
+      "position": "U.S. Representative from Louisiana",
       "es": "228.0",
       "co": "0.00%",
       "nr": "0.00%",
-      "cash": "$502,334",
+      "cash": "$548,196",
       "rolesNeeded": [],
       "region": "south",
-      "lastOnlineText": "21 hours ago",
-      "lastOnlineAt": "2025-10-15T21:05:15.778Z",
-      "lastOnlineDays": 0,
-      "updatedAt": "2025-10-16T18:05:15.778Z"
+      "lastOnlineText": "1 days ago",
+      "lastOnlineAt": "2025-10-18T00:50:55.860Z",
+      "lastOnlineDays": 1,
+      "updatedAt": "2025-10-19T00:50:55.860Z"
     },
     "1295": {
       "id": 1295,
@@ -5401,13 +5397,13 @@
       "es": "152.0",
       "co": "0.00%",
       "nr": "0.00%",
-      "cash": "$580,483",
+      "cash": "$657,757",
       "rolesNeeded": [],
       "region": "south",
-      "lastOnlineText": "11 days ago",
-      "lastOnlineAt": "2025-10-05T18:05:17.683Z",
-      "lastOnlineDays": 11,
-      "updatedAt": "2025-10-16T18:05:17.683Z"
+      "lastOnlineText": "13 days ago",
+      "lastOnlineAt": "2025-10-06T00:50:57.261Z",
+      "lastOnlineDays": 13,
+      "updatedAt": "2025-10-19T00:50:57.261Z"
     },
     "1296": {
       "id": 1296,
@@ -5422,10 +5418,10 @@
       "cash": "$310,910",
       "rolesNeeded": [],
       "region": "south",
-      "lastOnlineText": "10 days ago",
-      "lastOnlineAt": "2025-10-06T18:05:19.280Z",
-      "lastOnlineDays": 10,
-      "updatedAt": "2025-10-16T18:05:19.280Z"
+      "lastOnlineText": "13 days ago",
+      "lastOnlineAt": "2025-10-06T00:50:59.367Z",
+      "lastOnlineDays": 13,
+      "updatedAt": "2025-10-19T00:50:59.367Z"
     },
     "1297": {
       "id": 1297,
@@ -5440,10 +5436,10 @@
       "cash": "$610,910",
       "rolesNeeded": [],
       "region": "south",
-      "lastOnlineText": "6 days ago",
-      "lastOnlineAt": "2025-10-10T18:05:20.865Z",
-      "lastOnlineDays": 6,
-      "updatedAt": "2025-10-16T18:05:20.865Z"
+      "lastOnlineText": "9 days ago",
+      "lastOnlineAt": "2025-10-10T00:51:00.847Z",
+      "lastOnlineDays": 9,
+      "updatedAt": "2025-10-19T00:51:00.847Z"
     },
     "1298": {
       "id": 1298,
@@ -5452,18 +5448,18 @@
       "party": "Democratic Party",
       "state": "Mississippi",
       "position": "U.S. Representative from Mississippi",
-      "es": "209.0",
-      "co": "4.36%",
-      "nr": "43.58%",
-      "cash": "$561,411",
+      "es": "203.0",
+      "co": "0.00%",
+      "nr": "32.49%",
+      "cash": "$1,078,884",
       "rolesNeeded": [
         "rep"
       ],
       "region": "south",
-      "lastOnlineText": "14 hours ago",
-      "lastOnlineAt": "2025-10-16T04:05:22.503Z",
-      "lastOnlineDays": 0,
-      "updatedAt": "2025-10-16T18:05:22.503Z"
+      "lastOnlineText": "1 days ago",
+      "lastOnlineAt": "2025-10-18T00:51:02.511Z",
+      "lastOnlineDays": 1,
+      "updatedAt": "2025-10-19T00:51:02.511Z"
     },
     "1299": {
       "id": 1299,
@@ -5471,19 +5467,17 @@
       "discord": "jimmy3252",
       "party": "Democratic Party",
       "state": "West Virginia",
-      "position": "U.S. Representative from West Virginia",
-      "es": "206.0",
-      "co": "0.00%",
-      "nr": "6.37%",
-      "cash": "$1,020,533",
-      "rolesNeeded": [
-        "rep"
-      ],
+      "position": "Private Citizen",
+      "es": "180.0",
+      "co": "3.89%",
+      "nr": "5.57%",
+      "cash": "$1,184,056",
+      "rolesNeeded": [],
       "region": "south",
-      "lastOnlineText": "17 hours ago",
-      "lastOnlineAt": "2025-10-16T01:05:24.219Z",
-      "lastOnlineDays": 0,
-      "updatedAt": "2025-10-16T18:05:24.219Z"
+      "lastOnlineText": "1 days ago",
+      "lastOnlineAt": "2025-10-18T00:51:04.166Z",
+      "lastOnlineDays": 1,
+      "updatedAt": "2025-10-19T00:51:04.166Z"
     },
     "1300": {
       "id": 1300,
@@ -5492,18 +5486,18 @@
       "party": "Democratic Party",
       "state": "Missouri",
       "position": "U.S. Representative from Missouri",
-      "es": "201.0",
-      "co": "55.72%",
-      "nr": "54.67%",
-      "cash": "$344,409",
+      "es": "268.0",
+      "co": "50.64%",
+      "nr": "51.34%",
+      "cash": "$337,383",
       "rolesNeeded": [
         "rep"
       ],
       "region": "rust_belt",
-      "lastOnlineText": "4 hours ago",
-      "lastOnlineAt": "2025-10-16T14:05:27.958Z",
+      "lastOnlineText": "11 hours ago",
+      "lastOnlineAt": "2025-10-18T13:51:06.142Z",
       "lastOnlineDays": 0,
-      "updatedAt": "2025-10-16T18:05:27.958Z"
+      "updatedAt": "2025-10-19T00:51:06.142Z"
     },
     "1301": {
       "id": 1301,
@@ -5515,13 +5509,13 @@
       "es": "212.0",
       "co": "0.00%",
       "nr": "0.00%",
-      "cash": "$82,530",
+      "cash": "$116,496",
       "rolesNeeded": [],
       "region": "south",
-      "lastOnlineText": "4 days ago",
-      "lastOnlineAt": "2025-10-12T18:05:29.997Z",
-      "lastOnlineDays": 4,
-      "updatedAt": "2025-10-16T18:05:29.997Z"
+      "lastOnlineText": "7 days ago",
+      "lastOnlineAt": "2025-10-12T00:51:07.604Z",
+      "lastOnlineDays": 7,
+      "updatedAt": "2025-10-19T00:51:07.604Z"
     },
     "1302": {
       "id": 1302,
@@ -5530,16 +5524,16 @@
       "party": "Republican Party",
       "state": "Minnesota",
       "position": "Private Citizen",
-      "es": "185.0",
-      "co": "57.06%",
-      "nr": "57.17%",
-      "cash": "$156,978",
+      "es": "266.0",
+      "co": "48.21%",
+      "nr": "52.38%",
+      "cash": "$311,596",
       "rolesNeeded": [],
       "region": "rust_belt",
-      "lastOnlineText": "11 hours ago",
-      "lastOnlineAt": "2025-10-16T07:05:31.586Z",
+      "lastOnlineText": "28 minutes ago",
+      "lastOnlineAt": "2025-10-19T00:23:09.412Z",
       "lastOnlineDays": 0,
-      "updatedAt": "2025-10-16T18:05:31.586Z"
+      "updatedAt": "2025-10-19T00:51:09.412Z"
     },
     "1303": {
       "id": 1303,
@@ -5547,17 +5541,19 @@
       "discord": "inquisitorhatesxenos",
       "party": "Democratic Party",
       "state": "Massachusetts",
-      "position": "Private Citizen",
-      "es": "150.0",
+      "position": "U.S. Senator from Massachusetts",
+      "es": "229.0",
       "co": "0.00%",
-      "nr": "64.71%",
-      "cash": "$69,559",
-      "rolesNeeded": [],
+      "nr": "68.25%",
+      "cash": "$300,513",
+      "rolesNeeded": [
+        "sen"
+      ],
       "region": "northeast",
-      "lastOnlineText": "3 hours ago",
-      "lastOnlineAt": "2025-10-16T15:05:34.872Z",
+      "lastOnlineText": "4 hours ago",
+      "lastOnlineAt": "2025-10-18T20:51:12.572Z",
       "lastOnlineDays": 0,
-      "updatedAt": "2025-10-16T18:05:34.872Z"
+      "updatedAt": "2025-10-19T00:51:12.572Z"
     },
     "1304": {
       "id": 1304,
@@ -5567,15 +5563,15 @@
       "state": "Arizona",
       "position": "Private Citizen",
       "es": "177.0",
-      "co": "25.30%",
-      "nr": "40.04%",
-      "cash": "$391,076",
+      "co": "2.95%",
+      "nr": "29.49%",
+      "cash": "$559,777",
       "rolesNeeded": [],
       "region": "west",
-      "lastOnlineText": "1 days ago",
-      "lastOnlineAt": "2025-10-15T18:05:37.350Z",
-      "lastOnlineDays": 1,
-      "updatedAt": "2025-10-16T18:05:37.350Z"
+      "lastOnlineText": "4 days ago",
+      "lastOnlineAt": "2025-10-15T00:51:15.524Z",
+      "lastOnlineDays": 4,
+      "updatedAt": "2025-10-19T00:51:15.524Z"
     },
     "1305": {
       "id": 1305,
@@ -5584,16 +5580,16 @@
       "party": "Republican Party",
       "state": "California",
       "position": "Private Citizen",
-      "es": "212.0",
-      "co": "33.33%",
-      "nr": "44.44%",
-      "cash": "$234,384",
+      "es": "186.0",
+      "co": "49.79%",
+      "nr": "55.90%",
+      "cash": "$99,360",
       "rolesNeeded": [],
       "region": "west",
-      "lastOnlineText": "2 days ago",
-      "lastOnlineAt": "2025-10-14T18:05:38.966Z",
-      "lastOnlineDays": 2,
-      "updatedAt": "2025-10-16T18:05:38.966Z"
+      "lastOnlineText": "16 hours ago",
+      "lastOnlineAt": "2025-10-18T08:51:17.079Z",
+      "lastOnlineDays": 0,
+      "updatedAt": "2025-10-19T00:51:17.079Z"
     },
     "1306": {
       "id": 1306,
@@ -5602,16 +5598,16 @@
       "party": "Republican Party",
       "state": "Arkansas",
       "position": "U.S. Senator from Arkansas",
-      "es": "204.0",
-      "co": "67.41%",
-      "nr": "67.45%",
-      "cash": "$26,069",
+      "es": "299.0",
+      "co": "43.55%",
+      "nr": "57.39%",
+      "cash": "$698,150",
       "rolesNeeded": [],
       "region": "south",
-      "lastOnlineText": "1 hours ago",
-      "lastOnlineAt": "2025-10-16T17:05:40.556Z",
-      "lastOnlineDays": 0,
-      "updatedAt": "2025-10-16T18:05:40.556Z"
+      "lastOnlineText": "2 days ago",
+      "lastOnlineAt": "2025-10-17T00:51:18.701Z",
+      "lastOnlineDays": 2,
+      "updatedAt": "2025-10-19T00:51:18.701Z"
     },
     "1307": {
       "id": 1307,
@@ -5621,17 +5617,17 @@
       "state": "Florida",
       "position": "U.S. Representative from Florida",
       "es": "300.0",
-      "co": "73.36%",
-      "nr": "66.23%",
-      "cash": "$420,100",
+      "co": "59.09%",
+      "nr": "66.38%",
+      "cash": "$3,393,756",
       "rolesNeeded": [
         "rep"
       ],
       "region": "south",
-      "lastOnlineText": "31 minutes ago",
-      "lastOnlineAt": "2025-10-16T17:34:42.236Z",
-      "lastOnlineDays": 0,
-      "updatedAt": "2025-10-16T18:05:42.237Z"
+      "lastOnlineText": "1 days ago",
+      "lastOnlineAt": "2025-10-18T00:51:20.355Z",
+      "lastOnlineDays": 1,
+      "updatedAt": "2025-10-19T00:51:20.356Z"
     },
     "1308": {
       "id": 1308,
@@ -5646,10 +5642,10 @@
       "cash": "$290,328",
       "rolesNeeded": [],
       "region": "rust_belt",
-      "lastOnlineText": "9 days ago",
-      "lastOnlineAt": "2025-10-07T18:05:44.276Z",
-      "lastOnlineDays": 9,
-      "updatedAt": "2025-10-16T18:05:44.276Z"
+      "lastOnlineText": "11 days ago",
+      "lastOnlineAt": "2025-10-08T00:51:22.672Z",
+      "lastOnlineDays": 11,
+      "updatedAt": "2025-10-19T00:51:22.672Z"
     },
     "1309": {
       "id": 1309,
@@ -5664,15 +5660,15 @@
       "cash": "$288,505",
       "rolesNeeded": [],
       "region": "south",
-      "lastOnlineText": "9 days ago",
-      "lastOnlineAt": "2025-10-07T18:05:46.376Z",
-      "lastOnlineDays": 9,
-      "updatedAt": "2025-10-16T18:05:46.376Z"
+      "lastOnlineText": "11 days ago",
+      "lastOnlineAt": "2025-10-08T00:51:24.575Z",
+      "lastOnlineDays": 11,
+      "updatedAt": "2025-10-19T00:51:24.575Z"
     },
     "1310": {
       "id": 1310,
       "name": "miko",
-      "discord": "bushism04",
+      "discord": "lulitinn",
       "party": "Republican Party",
       "state": "Florida",
       "position": "Private Citizen",
@@ -5682,10 +5678,10 @@
       "cash": "$286,551",
       "rolesNeeded": [],
       "region": "south",
-      "lastOnlineText": "9 days ago",
-      "lastOnlineAt": "2025-10-07T18:05:48.005Z",
-      "lastOnlineDays": 9,
-      "updatedAt": "2025-10-16T18:05:48.005Z"
+      "lastOnlineText": "11 days ago",
+      "lastOnlineAt": "2025-10-08T00:51:26.678Z",
+      "lastOnlineDays": 11,
+      "updatedAt": "2025-10-19T00:51:26.678Z"
     },
     "1311": {
       "id": 1311,
@@ -5695,15 +5691,15 @@
       "state": "North Dakota",
       "position": "Governor of North Dakota",
       "es": "252.0",
-      "co": "17.71%",
-      "nr": "40.69%",
-      "cash": "$335,611",
+      "co": "0.00%",
+      "nr": "29.40%",
+      "cash": "$546,482",
       "rolesNeeded": [],
       "region": null,
-      "lastOnlineText": "2 days ago",
-      "lastOnlineAt": "2025-10-14T18:05:49.595Z",
-      "lastOnlineDays": 2,
-      "updatedAt": "2025-10-16T18:05:49.595Z"
+      "lastOnlineText": "5 days ago",
+      "lastOnlineAt": "2025-10-14T00:51:28.309Z",
+      "lastOnlineDays": 5,
+      "updatedAt": "2025-10-19T00:51:28.309Z"
     },
     "1312": {
       "id": 1312,
@@ -5712,16 +5708,16 @@
       "party": "Republican Party",
       "state": "Georgia",
       "position": "U.S. Representative from Georgia",
-      "es": "157.0",
-      "co": "76.63%",
-      "nr": "79.86%",
-      "cash": "$36,369",
+      "es": "278.0",
+      "co": "54.46%",
+      "nr": "69.37%",
+      "cash": "$246,067",
       "rolesNeeded": [],
       "region": "south",
-      "lastOnlineText": "8 hours ago",
-      "lastOnlineAt": "2025-10-16T10:05:52.379Z",
-      "lastOnlineDays": 0,
-      "updatedAt": "2025-10-16T18:05:52.379Z"
+      "lastOnlineText": "2 days ago",
+      "lastOnlineAt": "2025-10-17T00:51:31.749Z",
+      "lastOnlineDays": 2,
+      "updatedAt": "2025-10-19T00:51:31.749Z"
     },
     "1313": {
       "id": 1313,
@@ -5732,14 +5728,14 @@
       "position": "Private Citizen",
       "es": "184.0",
       "co": "0.00%",
-      "nr": "24.86%",
-      "cash": "$340,484",
+      "nr": "12.63%",
+      "cash": "$464,068",
       "rolesNeeded": [],
       "region": "south",
-      "lastOnlineText": "4 days ago",
-      "lastOnlineAt": "2025-10-12T18:05:54.499Z",
-      "lastOnlineDays": 4,
-      "updatedAt": "2025-10-16T18:05:54.499Z"
+      "lastOnlineText": "6 days ago",
+      "lastOnlineAt": "2025-10-13T00:51:33.919Z",
+      "lastOnlineDays": 6,
+      "updatedAt": "2025-10-19T00:51:33.919Z"
     },
     "1314": {
       "id": 1314,
@@ -5750,14 +5746,14 @@
       "position": "U.S. Senator from Mississippi",
       "es": "255.0",
       "co": "0.00%",
-      "nr": "15.20%",
-      "cash": "$45,365",
+      "nr": "4.40%",
+      "cash": "$527,661",
       "rolesNeeded": [],
       "region": "south",
-      "lastOnlineText": "8 hours ago",
-      "lastOnlineAt": "2025-10-16T10:05:55.960Z",
-      "lastOnlineDays": 0,
-      "updatedAt": "2025-10-16T18:05:55.960Z"
+      "lastOnlineText": "2 days ago",
+      "lastOnlineAt": "2025-10-17T00:51:35.561Z",
+      "lastOnlineDays": 2,
+      "updatedAt": "2025-10-19T00:51:35.561Z"
     },
     "1315": {
       "id": 1315,
@@ -5769,13 +5765,13 @@
       "es": "251.0",
       "co": "0.00%",
       "nr": "0.00%",
-      "cash": "$35,235",
+      "cash": "$411,569",
       "rolesNeeded": [],
       "region": null,
-      "lastOnlineText": "23 hours ago",
-      "lastOnlineAt": "2025-10-15T19:05:57.551Z",
-      "lastOnlineDays": 0,
-      "updatedAt": "2025-10-16T18:05:57.551Z"
+      "lastOnlineText": "3 days ago",
+      "lastOnlineAt": "2025-10-16T00:51:37.575Z",
+      "lastOnlineDays": 3,
+      "updatedAt": "2025-10-19T00:51:37.575Z"
     },
     "1316": {
       "id": 1316,
@@ -5790,10 +5786,10 @@
       "cash": "$257,745",
       "rolesNeeded": [],
       "region": "south",
-      "lastOnlineText": "8 days ago",
-      "lastOnlineAt": "2025-10-08T18:05:59.180Z",
-      "lastOnlineDays": 8,
-      "updatedAt": "2025-10-16T18:05:59.180Z"
+      "lastOnlineText": "10 days ago",
+      "lastOnlineAt": "2025-10-09T00:51:39.594Z",
+      "lastOnlineDays": 10,
+      "updatedAt": "2025-10-19T00:51:39.594Z"
     },
     "1317": {
       "id": 1317,
@@ -5801,17 +5797,17 @@
       "discord": "theofficialking0829",
       "party": "Republican Party",
       "state": "Arkansas",
-      "position": "Private Citizen",
-      "es": "201.0",
-      "co": "30.98%",
-      "nr": "50.27%",
-      "cash": "$116,554",
+      "position": "U.S. Representative from Arkansas",
+      "es": "233.0",
+      "co": "41.75%",
+      "nr": "49.29%",
+      "cash": "$151,644",
       "rolesNeeded": [],
       "region": "south",
-      "lastOnlineText": "6 hours ago",
-      "lastOnlineAt": "2025-10-16T12:06:00.561Z",
+      "lastOnlineText": "1 hours ago",
+      "lastOnlineAt": "2025-10-18T23:51:40.989Z",
       "lastOnlineDays": 0,
-      "updatedAt": "2025-10-16T18:06:00.561Z"
+      "updatedAt": "2025-10-19T00:51:40.989Z"
     },
     "1318": {
       "id": 1318,
@@ -5826,10 +5822,10 @@
       "cash": "$253,812",
       "rolesNeeded": [],
       "region": "south",
-      "lastOnlineText": "8 days ago",
-      "lastOnlineAt": "2025-10-08T18:06:02.171Z",
-      "lastOnlineDays": 8,
-      "updatedAt": "2025-10-16T18:06:02.171Z"
+      "lastOnlineText": "10 days ago",
+      "lastOnlineAt": "2025-10-09T00:51:43.008Z",
+      "lastOnlineDays": 10,
+      "updatedAt": "2025-10-19T00:51:43.008Z"
     },
     "1319": {
       "id": 1319,
@@ -5838,16 +5834,16 @@
       "party": "Democratic Party",
       "state": "Hawaii",
       "position": "Private Citizen",
-      "es": "207.0",
-      "co": "41.12%",
-      "nr": "67.57%",
-      "cash": "$75,138",
+      "es": "124.0",
+      "co": "65.06%",
+      "nr": "66.23%",
+      "cash": "$238,798",
       "rolesNeeded": [],
       "region": "west",
-      "lastOnlineText": "29 minutes ago",
-      "lastOnlineAt": "2025-10-16T17:37:03.754Z",
+      "lastOnlineText": "5 hours ago",
+      "lastOnlineAt": "2025-10-18T19:51:45.478Z",
       "lastOnlineDays": 0,
-      "updatedAt": "2025-10-16T18:06:03.754Z"
+      "updatedAt": "2025-10-19T00:51:45.478Z"
     },
     "1320": {
       "id": 1320,
@@ -5856,18 +5852,18 @@
       "party": "Democratic Party",
       "state": "Colorado",
       "position": "Governor of Colorado",
-      "es": "254.0",
-      "co": "31.59%",
-      "nr": "44.97%",
-      "cash": "$1,039,180",
+      "es": "224.0",
+      "co": "42.95%",
+      "nr": "49.09%",
+      "cash": "$448,366",
       "rolesNeeded": [
         "gov"
       ],
       "region": "west",
-      "lastOnlineText": "12 hours ago",
-      "lastOnlineAt": "2025-10-16T06:06:05.740Z",
+      "lastOnlineText": "1 hours ago",
+      "lastOnlineAt": "2025-10-18T23:51:47.015Z",
       "lastOnlineDays": 0,
-      "updatedAt": "2025-10-16T18:06:05.740Z"
+      "updatedAt": "2025-10-19T00:51:47.015Z"
     },
     "1321": {
       "id": 1321,
@@ -5878,14 +5874,14 @@
       "position": "U.S. Representative from South Carolina",
       "es": "251.0",
       "co": "0.00%",
-      "nr": "22.88%",
-      "cash": "$111,493",
+      "nr": "11.99%",
+      "cash": "$324,875",
       "rolesNeeded": [],
       "region": "south",
-      "lastOnlineText": "2 hours ago",
-      "lastOnlineAt": "2025-10-16T16:06:07.342Z",
+      "lastOnlineText": "59 minutes ago",
+      "lastOnlineAt": "2025-10-18T23:52:49.073Z",
       "lastOnlineDays": 0,
-      "updatedAt": "2025-10-16T18:06:07.342Z"
+      "updatedAt": "2025-10-19T00:51:49.074Z"
     },
     "1322": {
       "id": 1322,
@@ -5900,10 +5896,10 @@
       "cash": "$250,000",
       "rolesNeeded": [],
       "region": "northeast",
-      "lastOnlineText": "6 days ago",
-      "lastOnlineAt": "2025-10-10T18:06:08.915Z",
-      "lastOnlineDays": 6,
-      "updatedAt": "2025-10-16T18:06:08.915Z"
+      "lastOnlineText": "8 days ago",
+      "lastOnlineAt": "2025-10-11T00:51:50.652Z",
+      "lastOnlineDays": 8,
+      "updatedAt": "2025-10-19T00:51:50.652Z"
     },
     "1323": {
       "id": 1323,
@@ -5912,18 +5908,18 @@
       "party": "Democratic Party",
       "state": "Oregon",
       "position": "Governor of Oregon",
-      "es": "259.0",
-      "co": "42.04%",
-      "nr": "37.53%",
-      "cash": "$2,337,719",
+      "es": "245.0",
+      "co": "18.12%",
+      "nr": "26.61%",
+      "cash": "$1,927,216",
       "rolesNeeded": [
         "gov"
       ],
       "region": "west",
-      "lastOnlineText": "14 hours ago",
-      "lastOnlineAt": "2025-10-16T04:06:10.500Z",
-      "lastOnlineDays": 0,
-      "updatedAt": "2025-10-16T18:06:10.500Z"
+      "lastOnlineText": "1 days ago",
+      "lastOnlineAt": "2025-10-18T00:51:52.100Z",
+      "lastOnlineDays": 1,
+      "updatedAt": "2025-10-19T00:51:52.100Z"
     },
     "1324": {
       "id": 1324,
@@ -5932,16 +5928,16 @@
       "party": "Republican Party",
       "state": "Nevada",
       "position": "Private Citizen",
-      "es": "206.0",
-      "co": "38.56%",
-      "nr": "54.67%",
-      "cash": "$143,795",
+      "es": "235.0",
+      "co": "51.00%",
+      "nr": "51.42%",
+      "cash": "$295,278",
       "rolesNeeded": [],
       "region": "west",
-      "lastOnlineText": "2 hours ago",
-      "lastOnlineAt": "2025-10-16T16:06:12.085Z",
-      "lastOnlineDays": 0,
-      "updatedAt": "2025-10-16T18:06:12.085Z"
+      "lastOnlineText": "Online",
+      "lastOnlineAt": null,
+      "lastOnlineDays": null,
+      "updatedAt": "2025-10-19T00:51:53.743Z"
     },
     "1325": {
       "id": 1325,
@@ -5950,16 +5946,16 @@
       "party": "Democratic Party",
       "state": "Arizona",
       "position": "Private Citizen",
-      "es": "145.0",
-      "co": "79.32%",
-      "nr": "85.63%",
-      "cash": "$105,310",
+      "es": "250.0",
+      "co": "81.94%",
+      "nr": "89.24%",
+      "cash": "$762,503",
       "rolesNeeded": [],
       "region": "west",
-      "lastOnlineText": "25 minutes ago",
-      "lastOnlineAt": "2025-10-16T17:41:13.528Z",
-      "lastOnlineDays": 0,
-      "updatedAt": "2025-10-16T18:06:13.528Z"
+      "lastOnlineText": "1 days ago",
+      "lastOnlineAt": "2025-10-18T00:51:55.783Z",
+      "lastOnlineDays": 1,
+      "updatedAt": "2025-10-19T00:51:55.783Z"
     },
     "1326": {
       "id": 1326,
@@ -5967,17 +5963,19 @@
       "discord": "littledipperbigdipper",
       "party": "Democratic Party",
       "state": "Arizona",
-      "position": "Private Citizen",
-      "es": "180.0",
-      "co": "62.65%",
-      "nr": "66.32%",
-      "cash": "$115,657",
-      "rolesNeeded": [],
+      "position": "U.S. Representative from Arizona",
+      "es": "293.0",
+      "co": "42.27%",
+      "nr": "55.69%",
+      "cash": "$895,817",
+      "rolesNeeded": [
+        "rep"
+      ],
       "region": "west",
-      "lastOnlineText": "2 hours ago",
-      "lastOnlineAt": "2025-10-16T16:06:15.143Z",
-      "lastOnlineDays": 0,
-      "updatedAt": "2025-10-16T18:06:15.143Z"
+      "lastOnlineText": "1 days ago",
+      "lastOnlineAt": "2025-10-18T00:51:57.212Z",
+      "lastOnlineDays": 1,
+      "updatedAt": "2025-10-19T00:51:57.212Z"
     },
     "1327": {
       "id": 1327,
@@ -5985,17 +5983,19 @@
       "discord": "spbman1234",
       "party": "Democratic Party",
       "state": "New York",
-      "position": "Private Citizen",
-      "es": "182.0",
-      "co": "0.00%",
-      "nr": "30.55%",
-      "cash": "$138,834",
-      "rolesNeeded": [],
+      "position": "U.S. Senator from New York",
+      "es": "277.0",
+      "co": "40.28%",
+      "nr": "40.26%",
+      "cash": "$105,339",
+      "rolesNeeded": [
+        "sen"
+      ],
       "region": "northeast",
-      "lastOnlineText": "1 days ago",
-      "lastOnlineAt": "2025-10-15T18:06:17.064Z",
-      "lastOnlineDays": 1,
-      "updatedAt": "2025-10-16T18:06:17.064Z"
+      "lastOnlineText": "1 hours ago",
+      "lastOnlineAt": "2025-10-18T23:51:58.905Z",
+      "lastOnlineDays": 0,
+      "updatedAt": "2025-10-19T00:51:58.905Z"
     },
     "1328": {
       "id": 1328,
@@ -6003,17 +6003,17 @@
       "discord": "hamoodian",
       "party": "Republican Party",
       "state": "Illinois",
-      "position": "Private Citizen",
-      "es": "112.0",
-      "co": "0.00%",
-      "nr": "7.23%",
-      "cash": "$5,074,147",
+      "position": "U.S. Representative from Illinois",
+      "es": "231.0",
+      "co": "54.65%",
+      "nr": "57.65%",
+      "cash": "$4,874,027",
       "rolesNeeded": [],
       "region": "rust_belt",
       "lastOnlineText": "1 days ago",
-      "lastOnlineAt": "2025-10-15T18:06:18.881Z",
+      "lastOnlineAt": "2025-10-18T00:52:00.958Z",
       "lastOnlineDays": 1,
-      "updatedAt": "2025-10-16T18:06:18.881Z"
+      "updatedAt": "2025-10-19T00:52:00.958Z"
     },
     "1329": {
       "id": 1329,
@@ -6028,10 +6028,10 @@
       "cash": "$250,000",
       "rolesNeeded": [],
       "region": "south",
-      "lastOnlineText": "2 days ago",
-      "lastOnlineAt": "2025-10-14T18:06:20.417Z",
-      "lastOnlineDays": 2,
-      "updatedAt": "2025-10-16T18:06:20.417Z"
+      "lastOnlineText": "4 days ago",
+      "lastOnlineAt": "2025-10-15T00:52:03.098Z",
+      "lastOnlineDays": 4,
+      "updatedAt": "2025-10-19T00:52:03.098Z"
     },
     "1330": {
       "id": 1330,
@@ -6040,16 +6040,16 @@
       "party": "Democratic Party",
       "state": "New Jersey",
       "position": "Private Citizen",
-      "es": "177.0",
+      "es": "176.0",
       "co": "0.00%",
-      "nr": "44.36%",
-      "cash": "$223,298",
+      "nr": "50.20%",
+      "cash": "$320,063",
       "rolesNeeded": [],
       "region": "northeast",
-      "lastOnlineText": "1 days ago",
-      "lastOnlineAt": "2025-10-15T18:06:22.017Z",
-      "lastOnlineDays": 1,
-      "updatedAt": "2025-10-16T18:06:22.017Z"
+      "lastOnlineText": "4 hours ago",
+      "lastOnlineAt": "2025-10-18T20:52:04.702Z",
+      "lastOnlineDays": 0,
+      "updatedAt": "2025-10-19T00:52:04.702Z"
     },
     "1331": {
       "id": 1331,
@@ -6060,16 +6060,16 @@
       "position": "U.S. Senator from Rhode Island",
       "es": "252.0",
       "co": "0.00%",
-      "nr": "0.00%",
-      "cash": "$340,115",
+      "nr": "50.32%",
+      "cash": "$385,168",
       "rolesNeeded": [
         "sen"
       ],
       "region": "northeast",
-      "lastOnlineText": "20 hours ago",
-      "lastOnlineAt": "2025-10-15T22:06:23.450Z",
+      "lastOnlineText": "2 hours ago",
+      "lastOnlineAt": "2025-10-18T22:52:06.434Z",
       "lastOnlineDays": 0,
-      "updatedAt": "2025-10-16T18:06:23.450Z"
+      "updatedAt": "2025-10-19T00:52:06.434Z"
     },
     "1332": {
       "id": 1332,
@@ -6078,16 +6078,16 @@
       "party": "Republican Party",
       "state": "California",
       "position": "Private Citizen",
-      "es": "152.0",
+      "es": "151.0",
       "co": "0.00%",
-      "nr": "18.44%",
-      "cash": "$179,965",
+      "nr": "7.10%",
+      "cash": "$175,385",
       "rolesNeeded": [],
       "region": "west",
-      "lastOnlineText": "1 days ago",
-      "lastOnlineAt": "2025-10-15T18:06:25.027Z",
-      "lastOnlineDays": 1,
-      "updatedAt": "2025-10-16T18:06:25.027Z"
+      "lastOnlineText": "19 hours ago",
+      "lastOnlineAt": "2025-10-18T05:52:07.969Z",
+      "lastOnlineDays": 0,
+      "updatedAt": "2025-10-19T00:52:07.969Z"
     },
     "1333": {
       "id": 1333,
@@ -6095,17 +6095,17 @@
       "discord": "worst_nightmare_of_j.d._scholten",
       "party": "Republican Party",
       "state": "Iowa",
-      "position": "Private Citizen",
-      "es": "165.0",
-      "co": "32.33%",
-      "nr": "35.70%",
-      "cash": "$106,131",
+      "position": "U.S. Representative from Iowa",
+      "es": "261.0",
+      "co": "39.76%",
+      "nr": "30.29%",
+      "cash": "$224,245",
       "rolesNeeded": [],
       "region": "rust_belt",
-      "lastOnlineText": "1 hours ago",
-      "lastOnlineAt": "2025-10-16T17:06:26.603Z",
-      "lastOnlineDays": 0,
-      "updatedAt": "2025-10-16T18:06:26.603Z"
+      "lastOnlineText": "1 days ago",
+      "lastOnlineAt": "2025-10-18T00:52:09.745Z",
+      "lastOnlineDays": 1,
+      "updatedAt": "2025-10-19T00:52:09.745Z"
     },
     "1334": {
       "id": 1334,
@@ -6114,16 +6114,16 @@
       "party": "Democratic Party",
       "state": "Alabama",
       "position": "Private Citizen",
-      "es": "143.0",
+      "es": "151.0",
       "co": "0.00%",
       "nr": "0.00%",
       "cash": "$200,000",
       "rolesNeeded": [],
       "region": "south",
-      "lastOnlineText": "19 hours ago",
-      "lastOnlineAt": "2025-10-15T23:06:28.249Z",
-      "lastOnlineDays": 0,
-      "updatedAt": "2025-10-16T18:06:28.249Z"
+      "lastOnlineText": "3 days ago",
+      "lastOnlineAt": "2025-10-16T00:52:11.995Z",
+      "lastOnlineDays": 3,
+      "updatedAt": "2025-10-19T00:52:11.995Z"
     },
     "1335": {
       "id": 1335,
@@ -6132,16 +6132,34 @@
       "party": "Republican Party",
       "state": "Kentucky",
       "position": "Private Citizen",
-      "es": "115.0",
+      "es": "151.0",
       "co": "0.00%",
       "nr": "0.00%",
       "cash": "$250,000",
       "rolesNeeded": [],
       "region": "south",
-      "lastOnlineText": "6 hours ago",
-      "lastOnlineAt": "2025-10-16T12:06:30.314Z",
+      "lastOnlineText": "2 days ago",
+      "lastOnlineAt": "2025-10-17T00:52:13.634Z",
+      "lastOnlineDays": 2,
+      "updatedAt": "2025-10-19T00:52:13.634Z"
+    },
+    "1336": {
+      "id": 1336,
+      "name": "Thomas Jefferson",
+      "discord": "Verified",
+      "party": "Republican Party",
+      "state": "Virginia",
+      "position": "Private Citizen",
+      "es": "131.0",
+      "co": "35.52%",
+      "nr": "49.46%",
+      "cash": "$38,783",
+      "rolesNeeded": [],
+      "region": "south",
+      "lastOnlineText": "21 hours ago",
+      "lastOnlineAt": "2025-10-18T03:52:15.333Z",
       "lastOnlineDays": 0,
-      "updatedAt": "2025-10-16T18:06:30.314Z"
+      "updatedAt": "2025-10-19T00:52:15.333Z"
     }
   },
   "byDiscord": {
@@ -6263,7 +6281,8 @@
       1188,
       1201,
       1207,
-      1208
+      1208,
+      1336
     ],
     "febreezejedi": [
       1027,
@@ -6880,6 +6899,9 @@
       1039,
       1046,
       1051
+    ],
+    "lulitinn": [
+      1310
     ]
   }
 }
