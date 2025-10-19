@@ -83,6 +83,93 @@ setInterval(() => markHeartbeat(), 60_000).unref();
 // Runtime metrics sampling (cpu/memory/load)
 setInterval(() => sampleRuntime(), 60_000).unref();
 
+// ---- Comprehensive Error Handling ----
+let crashCount = 0;
+const MAX_CRASHES = 5;
+const CRASH_RESET_TIME = 300000; // 5 minutes
+
+function logCrash(type, error, context = {}) {
+  crashCount++;
+  const timestamp = new Date().toISOString();
+  const memoryUsage = process.memoryUsage();
+  
+  console.error(`\n🚨 CRASH DETECTED [${type}] #${crashCount}`);
+  console.error(`⏰ Time: ${timestamp}`);
+  console.error(`💾 Memory: RSS=${Math.round(memoryUsage.rss/1024/1024)}MB, Heap=${Math.round(memoryUsage.heapUsed/1024/1024)}MB`);
+  console.error(`🔍 Error: ${error?.message || String(error)}`);
+  console.error(`📊 Stack: ${error?.stack || 'No stack trace'}`);
+  
+  if (Object.keys(context).length > 0) {
+    console.error(`📝 Context: ${JSON.stringify(context, null, 2)}`);
+  }
+  
+  // Record crash in status tracker
+  try {
+    recordCommandError('SYSTEM_CRASH', error, { type, context, crashCount, timestamp });
+  } catch (trackerErr) {
+    console.error('Failed to record crash in tracker:', trackerErr);
+  }
+  
+  // Reset crash count after timeout
+  if (crashCount >= MAX_CRASHES) {
+    console.error(`\n💀 MAXIMUM CRASHES (${MAX_CRASHES}) REACHED - BOT WILL EXIT`);
+    setTimeout(() => {
+      console.error('🔄 Resetting crash counter...');
+      crashCount = 0;
+    }, CRASH_RESET_TIME);
+  }
+}
+
+// Handle uncaught exceptions
+process.on('uncaughtException', (error) => {
+  logCrash('UNCAUGHT_EXCEPTION', error, { 
+    pid: process.pid,
+    uptime: process.uptime(),
+    argv: process.argv.slice(0, 3) // Don't log full args for security
+  });
+  
+  if (crashCount >= MAX_CRASHES) {
+    console.error('💀 Too many crashes, exiting...');
+    process.exit(1);
+  }
+});
+
+// Handle unhandled promise rejections
+process.on('unhandledRejection', (reason, promise) => {
+  logCrash('UNHANDLED_REJECTION', reason, { 
+    promise: promise.toString(),
+    pid: process.pid,
+    uptime: process.uptime()
+  });
+  
+  if (crashCount >= MAX_CRASHES) {
+    console.error('💀 Too many crashes, exiting...');
+    process.exit(1);
+  }
+});
+
+// Monitor for memory leaks
+let lastMemoryCheck = Date.now();
+setInterval(() => {
+  const now = Date.now();
+  const memUsage = process.memoryUsage();
+  const rssMB = Math.round(memUsage.rss / 1024 / 1024);
+  const heapMB = Math.round(memUsage.heapUsed / 1024 / 1024);
+  
+  // Alert if memory usage is excessive
+  if (rssMB > 1000) { // 1GB
+    console.warn(`⚠️ High memory usage: RSS=${rssMB}MB, Heap=${heapMB}MB`);
+  }
+  
+  // Check for memory leaks (growing heap over time)
+  if (now - lastMemoryCheck > 300000) { // Every 5 minutes
+    if (heapMB > 500) { // 500MB heap
+      console.warn(`🔍 Memory check: Heap=${heapMB}MB (potential leak?)`);
+    }
+    lastMemoryCheck = now;
+  }
+}, 60000).unref(); // Check every minute
+
 // ---- Load commands ----
 const commandsPath = path.join(__dirname, 'commands');
 if (!fs.existsSync(commandsPath)) {
@@ -204,6 +291,14 @@ client.on(Events.GuildMemberAdd, async (member) => {
 client.on(Events.InteractionCreate, async (interaction) => {
   if (!interaction.isChatInputCommand()) return;
 
+  const startTime = Date.now();
+  const commandName = interaction.commandName;
+  const userId = interaction.user?.id;
+  const guildId = interaction.guild?.id;
+
+  // Enhanced logging for command execution
+  console.log(`🎯 Command: /${commandName} by ${userId} in ${guildId || 'DM'}`);
+
   // DM gating (why: prevent misuse in DMs)
   if (!interaction.inGuild()) {
     if (interaction.user.id !== ALLOWED_DM_USER) {
@@ -214,30 +309,83 @@ client.on(Events.InteractionCreate, async (interaction) => {
     }
   }
 
-  const cmd = client.commands.get(interaction.commandName);
-  if (!cmd) return;
+  const cmd = client.commands.get(commandName);
+  if (!cmd) {
+    console.warn(`❌ Unknown command: ${commandName}`);
+    return interaction.reply({
+      content: `Unknown command: \`/${commandName}\`. Use \`/help\` to see available commands.`,
+      ephemeral: true,
+    });
+  }
 
   try {
-    await cmd.execute(interaction);
+    // Execute command with timeout protection
+    const executionPromise = cmd.execute(interaction);
+    const timeoutPromise = new Promise((_, reject) => 
+      setTimeout(() => reject(new Error('Command execution timeout (30s)')), 30000)
+    );
+    
+    await Promise.race([executionPromise, timeoutPromise]);
+    
+    const duration = Date.now() - startTime;
+    console.log(`✅ Command /${commandName} completed in ${duration}ms`);
+    
     if (interaction._dembotHandledError) return;
     if (!interaction.deferred && !interaction.replied) {
-      console.warn(`Command ${interaction.commandName} returned without responding (maybe interaction expired).`);
-      recordCommandError(interaction.commandName, new Error('No response sent'));
+      console.warn(`⚠️ Command ${commandName} returned without responding (maybe interaction expired).`);
+      recordCommandError(commandName, new Error('No response sent'), { 
+        duration, 
+        userId, 
+        guildId,
+        timeout: false 
+      });
       return;
     }
-    recordCommandSuccess(interaction.commandName);
+    recordCommandSuccess(commandName);
   } catch (err) {
-    recordCommandError(interaction.commandName, err);
-    console.error(err);
-    const msg = { content: 'There was an error executing that command.', flags: MessageFlags.Ephemeral };
+    const duration = Date.now() - startTime;
+    const isTimeout = err.message.includes('timeout');
+    
+    console.error(`❌ Command /${commandName} failed after ${duration}ms:`, err.message);
+    console.error(`📊 Stack trace:`, err.stack);
+    
+    recordCommandError(commandName, err, { 
+      duration, 
+      userId, 
+      guildId,
+      timeout: isTimeout,
+      interactionType: interaction.type,
+      channelId: interaction.channel?.id
+    });
+    
+    // Enhanced error message based on error type
+    let errorMessage = 'There was an error executing that command.';
+    if (isTimeout) {
+      errorMessage = 'Command timed out. Please try again with a simpler request.';
+    } else if (err.message.includes('Missing') || err.message.includes('Invalid')) {
+      errorMessage = `Error: ${err.message}`;
+    } else if (err.message.includes('permission') || err.message.includes('access')) {
+      errorMessage = 'You do not have permission to use this command.';
+    }
+    
+    const msg = { 
+      content: errorMessage, 
+      flags: MessageFlags.Ephemeral 
+    };
+    
     try {
-      if (interaction.deferred || interaction.replied) await interaction.followUp(msg);
-      else await interaction.reply(msg);
+      if (interaction.deferred || interaction.replied) {
+        await interaction.followUp(msg);
+      } else {
+        await interaction.reply(msg);
+      }
     } catch (sendErr) {
       if (sendErr?.code === 10062) {
-        console.warn('Skipped error follow-up: interaction token expired.');
+        console.warn('⚠️ Skipped error follow-up: interaction token expired.');
+      } else if (sendErr?.code === 50013) {
+        console.warn('⚠️ Missing permissions to send error message.');
       } else {
-        console.error('Failed to notify user about the error:', sendErr);
+        console.error('❌ Failed to notify user about the error:', sendErr);
       }
     }
   }
