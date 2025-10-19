@@ -359,15 +359,16 @@ module.exports = {
       }
 
       const fields = [];
-      if (finalCandidates.length >= 2) {
-        const formatted = finalCandidates.slice(0, 2).map((cand) => {
+      if (finalCandidates.length) {
+        const formatted = finalCandidates.map((cand) => {
           const lines = [];
           lines.push(`**${cand.name}**${cand.percent != null ? ` - ${cand.percent}%` : ''}${cand.votes ? ` (${cand.votes} votes)` : ''}`);
           if (cand.stats) lines.push(cand.stats);
           if (cand.party) lines.push(cand.party);
           return lines.join('\n');
         }).join('\n\n');
-        fields.push({ name: 'Final Results', value: formatted, inline: false });
+        const note = finalCandidates.length === 1 ? `${formatted}\n_Unopposed_` : formatted;
+        fields.push({ name: 'Final Results', value: note, inline: false });
       } else if (latest && latest.rows.length >= 2) {
         const [a, b] = latest.rows;
         fields.push({
