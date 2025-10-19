@@ -4,51 +4,11 @@ const fs = require('node:fs');
 const path = require('node:path');
 const { loginAndGet, parseProfile, BASE } = require('../lib/ppusa');
 const { canManageBot } = require('../lib/permissions');
+const { ensureDbShape, mergeProfileRecord } = require('../lib/profile-cache');
 
 // Inactive (offline) role and threshold (days)
 const INACTIVE_ROLE_ID = '1427250767290564629';
 const OFFLINE_THRESHOLD_DAYS = 4;
-
-// Region mapping for US states -> one of: 'west', 'south', 'northeast', 'rust_belt'
-// Based on provided region/state combos image (DemBot project convention)
-const STATE_TO_REGION = (() => {
-  // West (Pacific + Mountain)
-  const west = new Set([
-    'alaska','hawaii',
-    'washington','oregon','california','nevada','idaho','montana','wyoming','utah','colorado','arizona','new mexico'
-  ]);
-
-  // South (Deep South + Southeast + South Central)
-  const south = new Set([
-    'alabama','arkansas','florida','georgia','kentucky','louisiana','mississippi','north carolina','oklahoma',
-    'south carolina','tennessee','texas','virginia','west virginia'
-  ]);
-
-  // Northeast (New England + Mid-Atlantic)
-  const northeast = new Set([
-    'connecticut','maine','massachusetts','new hampshire','new jersey','pennsylvania','rhode island','vermont','new york',
-    'delaware','maryland','district of columbia'
-  ]);
-
-  // Rust Belt (Upper Midwest/Great Lakes + adjacent industrial states)
-  const rustBelt = new Set([
-    'minnesota','wisconsin','michigan','illinois','indiana','ohio','iowa','missouri'
-  ]);
-
-  return { west, south, northeast, rustBelt };
-})();
-
-function stateToRegion(stateName) {
-  if (!stateName) return null;
-  const s = String(stateName).trim().toLowerCase();
-  // Strip leading "state of " if present
-  const clean = s.replace(/^state of\s+/i, '').trim();
-  if (STATE_TO_REGION.rustBelt.has(clean)) return 'rust_belt';
-  if (STATE_TO_REGION.northeast.has(clean)) return 'northeast';
-  if (STATE_TO_REGION.south.has(clean)) return 'south';
-  if (STATE_TO_REGION.west.has(clean)) return 'west';
-  return null;
-}
 
 const MAX_CONSECUTIVE_MISSES = 20;
 const DEFAULT_MAX_ID = Number(process.env.PPUSA_MAX_USER_ID || '0');
@@ -90,14 +50,19 @@ module.exports = {
 
     let db = { updatedAt: new Date().toISOString(), profiles: {}, byDiscord: {} };
     if (fs.existsSync(jsonPath)) {
-      try { db = JSON.parse(fs.readFileSync(jsonPath, 'utf8')); } catch {}
-      if (!db.profiles) db.profiles = {};
-      if (!db.byDiscord) db.byDiscord = {};
+      try {
+        db = ensureDbShape(JSON.parse(fs.readFileSync(jsonPath, 'utf8')));
+      } catch {
+        db = { updatedAt: new Date().toISOString(), profiles: {}, byDiscord: {} };
+      }
     }
+    db = ensureDbShape(db);
+    if (!db.updatedAt) db.updatedAt = new Date().toISOString();
 
     // Ensure a file exists immediately so users can see it while crawling
     const writeDb = () => {
-      fs.writeFileSync(jsonPath, JSON.stringify({ ...db, updatedAt: new Date().toISOString() }, null, 2));
+      const payload = { ...ensureDbShape(db), updatedAt: new Date().toISOString() };
+      fs.writeFileSync(jsonPath, JSON.stringify(payload, null, 2));
     };
     if (!fs.existsSync(jsonPath)) writeDb();
 
@@ -124,8 +89,9 @@ module.exports = {
         gov: '1406063203313782865',
         sen: '1406063162306072607',
         rep: '1406063176281358337',
+        cabinet: '1429342639907668048',
       };
-      const ROLE_NAMES = { gov: 'Governor', sen: 'Senator', rep: 'Representative' };
+      const ROLE_NAMES = { gov: 'Governor', sen: 'Senator', rep: 'Representative', cabinet: 'Cabinet' };
 
       // Region role IDs mapping
       const REGION_ROLE_IDS = {
@@ -368,45 +334,7 @@ module.exports = {
         }
         misses = 0;
 
-        // compute rolesNeeded based on Democratic Party + position
-        const rolesNeeded = [];
-        if (/Democratic/i.test(info.party || '') && info.position && !/Private\s*Citizen/i.test(info.position)) {
-          if (/Representative/i.test(info.position)) rolesNeeded.push('rep');
-          if (/Senator/i.test(info.position)) rolesNeeded.push('sen');
-          if (/Governor/i.test(info.position)) rolesNeeded.push('gov');
-        }
-
-        const region = stateToRegion(info.state || '');
-
-        db.profiles[id] = {
-          id,
-          name: info.name,
-          discord: info.discord || null,
-          party: info.party || null,
-          state: info.state || null,
-          position: info.position || null,
-          es: info.es || null,
-          co: info.co || null,
-          nr: info.nr || null,
-          cash: info.cash || null,
-          rolesNeeded,
-          region,
-          lastOnlineText: info.lastOnlineText || null,
-          lastOnlineAt: info.lastOnlineAt || null,
-          lastOnlineDays: typeof info.lastOnlineDays === 'number' ? info.lastOnlineDays : null,
-          updatedAt: new Date().toISOString(),
-        };
-        if (info.discord) {
-          const key = info.discord.toLowerCase();
-          const current = db.byDiscord[key];
-          if (Array.isArray(current)) {
-            if (!current.includes(id)) current.push(id);
-          } else if (current) {
-            db.byDiscord[key] = Array.from(new Set([Number(current), id]));
-          } else {
-            db.byDiscord[key] = [id];
-          }
-        }
+        mergeProfileRecord(db, id, info);
         found++;
 
         // Flush early: on first find, then every 25 finds, or every 300 checks, or every 10s
@@ -437,8 +365,9 @@ module.exports = {
           gov: '1406063203313782865',
           sen: '1406063162306072607',
           rep: '1406063176281358337',
+          cabinet: '1429342639907668048',
         };
-        const ROLE_NAMES = { gov: 'Governor', sen: 'Senator', rep: 'Representative' };
+        const ROLE_NAMES = { gov: 'Governor', sen: 'Senator', rep: 'Representative', cabinet: 'Cabinet' };
 
         // Region role IDs mapping
         const REGION_ROLE_IDS = {

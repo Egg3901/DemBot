@@ -10,6 +10,8 @@ const { authenticateAndNavigate, PPUSAAuthError } = require('../lib/ppusa-auth')
 const { config } = require('../lib/ppusa-config');
 const { normalizeStateName, resolveStateIdFromIndex } = require('../lib/state-utils');
 const { getDebugChoice, reportCommandError } = require('../lib/command-utils');
+const { parseProfile } = require('../lib/ppusa');
+const { loadProfileDb, writeProfileDb, mergeProfileRecord } = require('../lib/profile-cache');
 
 const BASE = config.baseUrl;
 const DEFAULT_DEBUG = !!config.debug;
@@ -353,27 +355,20 @@ module.exports = {
       });
     }
 
-    const jsonPath = path.join(process.cwd(), 'data', 'profiles.json');
-    let profilesDb = null;
+    const { db: profilesDb } = loadProfileDb();
+    let profilesDirty = false;
+    const profiles = profilesDb.profiles || {};
+    const byDiscord = profilesDb.byDiscord || {};
+
     if (discordUser || playerQueryRaw) {
-      if (!fs.existsSync(jsonPath)) {
+      const playerIsNumeric = !!playerQueryRaw && /^\d+$/.test(playerQueryRaw);
+      if (Object.keys(profiles).length === 0 && (!playerIsNumeric || discordUser)) {
         return interaction.reply({
           content: 'profiles.json not found. Run /update first to cache player data.',
           ephemeral: true,
         });
       }
-      try {
-        profilesDb = JSON.parse(fs.readFileSync(jsonPath, 'utf8'));
-      } catch (err) {
-        return interaction.reply({
-          content: `Failed to read profiles.json: ${err.message}`,
-          ephemeral: true,
-        });
-      }
     }
-
-    const profiles = profilesDb?.profiles || {};
-    const byDiscord = profilesDb?.byDiscord || {};
 
     const idSet = new Set();
     const addIds = (value) => {
@@ -500,7 +495,15 @@ module.exports = {
       let playerInfo = null;
       if (profileId) {
         const profilePage = await fetchHtmlWithSession(`${BASE}/users/${profileId}`, page, 'load');
+        const parsedProfile = parseProfile(profilePage.html);
         playerInfo = extractPlayerPoliticalInfo(profilePage.html, { baseUrl: BASE, profileId });
+        if (parsedProfile) {
+          mergeProfileRecord(profilesDb, profileId, parsedProfile);
+          profilesDirty = true;
+          if (parsedProfile.name && !playerInfo?.name) playerInfo = { ...playerInfo, name: parsedProfile.name };
+          if (parsedProfile.party && !playerInfo?.party) playerInfo = { ...playerInfo, party: parsedProfile.party };
+          if (parsedProfile.state && !playerInfo?.stateName) playerInfo = { ...playerInfo, stateName: parsedProfile.state };
+        }
         if (!stateTargetName && playerInfo?.stateName) {
           stateTargetName = playerInfo.stateName;
         }
@@ -659,6 +662,9 @@ module.exports = {
       });
     } finally {
       try { await browser?.close(); } catch {}
+      if (profilesDirty) {
+        try { writeProfileDb(profilesDb); } catch (_) {}
+      }
     }
   },
 };

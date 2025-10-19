@@ -1,9 +1,8 @@
 // commands/profile.js
 // Shows a player's current Power Play USA profile by Discord mention, username, name, or numeric id.
 const { SlashCommandBuilder } = require('discord.js');
-const fs = require('node:fs');
-const path = require('node:path');
 const { loginAndGet, parseProfile, BASE } = require('../lib/ppusa');
+const { loadProfileDb, writeProfileDb, mergeProfileRecord } = require('../lib/profile-cache');
 
 module.exports = {
   data: new SlashCommandBuilder()
@@ -37,17 +36,10 @@ module.exports = {
       return interaction.editReply('Provide a Discord user, mention, name, or numeric profile id.');
     }
 
-    const jsonPath = path.join(process.cwd(), 'data', 'profiles.json');
-    if (!fs.existsSync(jsonPath)) {
-      return interaction.editReply('profiles.json not found. Run /update first.');
-    }
-
-    let db;
-    try { db = JSON.parse(fs.readFileSync(jsonPath, 'utf8')); } catch (e) {
-      return interaction.editReply('Failed to read profiles.json.');
-    }
+    const { db } = loadProfileDb();
     const profiles = db.profiles || {};
     const byDiscord = db.byDiscord || {};
+    let dbDirty = false;
 
     const idSet = new Set();
 
@@ -142,6 +134,8 @@ module.exports = {
           }
           const html = await page.content();
           const info = parseProfile(html);
+          mergeProfileRecord(db, id, info);
+          dbDirty = true;
           const fields = [];
           if (info.discord) fields.push({ name: 'Discord', value: info.discord, inline: true });
           if (info.party) fields.push({ name: 'Party', value: info.party, inline: true });
@@ -185,8 +179,14 @@ module.exports = {
       }
 
       await interaction.editReply({ embeds });
+      if (dbDirty) {
+        try { writeProfileDb(db); } catch (_) {}
+      }
     } catch (err) {
       await interaction.editReply(`Error fetching profile(s): ${err?.message || String(err)}`);
+      if (dbDirty) {
+        try { writeProfileDb(db); } catch (_) {}
+      }
     } finally {
       try { await browser?.close(); } catch {}
     }
