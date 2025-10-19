@@ -2,6 +2,7 @@
 const { SlashCommandBuilder, PermissionsBitField } = require('discord.js');
 const fs = require('node:fs');
 const path = require('node:path');
+const cheerio = require('cheerio');
 const { loginAndGet, parseProfile, parseStateData, BASE } = require('../lib/ppusa');
 const { canManageBot } = require('../lib/permissions');
 const { ensureDbShape, mergeProfileRecord } = require('../lib/profile-cache');
@@ -425,14 +426,270 @@ async function scrapeStatesData(interaction, page, writeDb) {
  * Scrape race data
  */
 async function scrapeRacesData(interaction, page, writeDb) {
-  await interaction.editReply('Race data scraping not yet implemented.');
+  await interaction.editReply('Scraping race data from all states...');
+
+  // First, get the states index page to resolve state IDs
+  await page.goto(`${BASE}/national/states`, { waitUntil: 'networkidle2' });
+  const statesHtml = await page.content();
+
+  // Extract all state IDs from the states index
+  const stateIds = [];
+  const $ = cheerio.load(statesHtml);
+
+  $('a[href*="/states/"]').each((_, el) => {
+    const href = $(el).attr('href');
+    const match = href && href.match(/\/states\/(\d+)/);
+    if (match && match[1]) {
+      const stateId = parseInt(match[1]);
+      if (!stateIds.includes(stateId)) {
+        stateIds.push(stateId);
+      }
+    }
+  });
+
+  if (stateIds.length === 0) {
+    throw new Error('No states found on states index page');
+  }
+
+  let found = 0;
+  let checked = 0;
+
+  for (const stateId of stateIds) {
+    checked++;
+    try {
+      // Go to state page first
+      await page.goto(`${BASE}/states/${stateId}`, { waitUntil: 'networkidle2' });
+      await new Promise(resolve => setTimeout(resolve, 500)); // Brief pause
+
+      // Then go to races page
+      const resp = await page.goto(`${BASE}/states/${stateId}/races`, { waitUntil: 'networkidle2' });
+      const status = resp?.status?.() ?? 200;
+      const finalUrl = page.url();
+      const html = await page.content();
+
+      const isRacesUrl = /\/races\b/i.test(finalUrl);
+      if (status >= 400 || !isRacesUrl) continue;
+
+      // Parse races data from the page
+      const racesData = parseRacesFromStatePage(html);
+      if (racesData && Object.keys(racesData).length > 0) {
+        // Update the database with races data
+        const dataDir = path.join(process.cwd(), 'data');
+        const racesPath = path.join(dataDir, 'races.json');
+
+        let existingRaces = {};
+        if (fs.existsSync(racesPath)) {
+          try {
+            existingRaces = JSON.parse(fs.readFileSync(racesPath, 'utf8'));
+          } catch (err) {
+            console.error('Error reading existing races data:', err);
+          }
+        }
+
+        const updatedRaces = { ...existingRaces, ...racesData };
+        fs.writeFileSync(racesPath, JSON.stringify(updatedRaces, null, 2));
+
+        found++;
+
+        if (found % 5 === 0) {
+          await interaction.editReply(`Scraping race data... found data for ${found}/${checked} states.`);
+        }
+      }
+    } catch (err) {
+      console.error(`Error scraping races for state ${stateId}:`, err);
+    }
+  }
+
+  await interaction.editReply(`Scraped race data for ${found} states successfully.`);
+}
+
+/**
+ * Parse races data from a state races page
+ */
+function parseRacesFromStatePage(html) {
+  const $ = cheerio.load(html || '');
+
+  const racesData = {};
+
+  // Look for race sections - similar structure to primaries but for races
+  $('h4').each((_, el) => {
+    const header = $(el);
+    const raceText = header.text().trim().toLowerCase();
+
+    // Check if this is a race we care about
+    const raceTypes = ['senate class 1', 'senate class 2', 'senate class 3', 'governor', 'house of representatives'];
+    const matchedRace = raceTypes.find(race => raceText.includes(race.replace('class ', '')));
+
+    if (matchedRace) {
+      const raceKey = matchedRace.toLowerCase().replace(/\s+/g, '_');
+      const container = header.closest('.container, .container-fluid, .bg-white');
+      const table = container.find('table').first();
+
+      if (table.length) {
+        const raceData = { dem: null, gop: null };
+
+        table.find('tbody tr').each((_, tr) => {
+          const row = $(tr);
+          const a = row.find('a[href*="/races/"]').first();
+          if (a.length) {
+            const href = a.attr('href') || '';
+            const url = href.startsWith('http') ? href : new URL(href, BASE).toString();
+            const tds = row.find('td');
+            const partyText = (a.text() || '').toLowerCase();
+            const statusText = (tds.eq(1).text() || '').replace(/\s+/g, ' ').trim() || null;
+
+            const obj = { url, status: statusText };
+            if (partyText.includes('democrat')) raceData.dem = obj;
+            if (partyText.includes('republican')) raceData.gop = obj;
+          }
+        });
+
+        if (raceData.dem || raceData.gop) {
+          racesData[raceKey] = raceData;
+        }
+      }
+    }
+  });
+
+  return Object.keys(racesData).length > 0 ? racesData : null;
 }
 
 /**
  * Scrape primary data
  */
 async function scrapePrimariesData(interaction, page, writeDb) {
-  await interaction.editReply('Primary data scraping not yet implemented.');
+  const cheerio = require('cheerio');
+  const { normalizeStateName, resolveStateIdFromIndex } = require('../lib/state-utils');
+
+  await interaction.editReply('Scraping primary data from all states...');
+
+  // First, get the states index page to resolve state IDs
+  await page.goto(`${BASE}/national/states`, { waitUntil: 'networkidle2' });
+  const statesHtml = await page.content();
+
+  // Extract all state IDs from the states index
+  const stateIds = [];
+  const $ = cheerio.load(statesHtml);
+
+  $('a[href*="/states/"]').each((_, el) => {
+    const href = $(el).attr('href');
+    const match = href && href.match(/\/states\/(\d+)/);
+    if (match && match[1]) {
+      const stateId = parseInt(match[1]);
+      if (!stateIds.includes(stateId)) {
+        stateIds.push(stateId);
+      }
+    }
+  });
+
+  if (stateIds.length === 0) {
+    throw new Error('No states found on states index page');
+  }
+
+  let found = 0;
+  let checked = 0;
+
+  for (const stateId of stateIds) {
+    checked++;
+    try {
+      // Go to state page first (like primary command does)
+      await page.goto(`${BASE}/states/${stateId}`, { waitUntil: 'networkidle2' });
+      await new Promise(resolve => setTimeout(resolve, 500)); // Brief pause
+
+      // Then go to primaries page
+      const resp = await page.goto(`${BASE}/states/${stateId}/primaries`, { waitUntil: 'networkidle2' });
+      const status = resp?.status?.() ?? 200;
+      const finalUrl = page.url();
+      const html = await page.content();
+
+      const isPrimariesUrl = /\/primaries\b/i.test(finalUrl);
+      if (status >= 400 || !isPrimariesUrl) continue;
+
+      // Parse primaries data from the page
+      const primariesData = parsePrimariesFromStatePage(html);
+      if (primariesData && Object.keys(primariesData).length > 0) {
+        // Update the database with primaries data
+        const dataDir = path.join(process.cwd(), 'data');
+        const primariesPath = path.join(dataDir, 'primaries.json');
+
+        let existingPrimaries = {};
+        if (fs.existsSync(primariesPath)) {
+          try {
+            existingPrimaries = JSON.parse(fs.readFileSync(primariesPath, 'utf8'));
+          } catch (err) {
+            console.error('Error reading existing primaries data:', err);
+          }
+        }
+
+        const updatedPrimaries = { ...existingPrimaries, ...primariesData };
+        fs.writeFileSync(primariesPath, JSON.stringify(updatedPrimaries, null, 2));
+
+        found++;
+
+        if (found % 5 === 0) {
+          await interaction.editReply(`Scraping primary data... found data for ${found}/${checked} states.`);
+        }
+      }
+    } catch (err) {
+      console.error(`Error scraping primaries for state ${stateId}:`, err);
+    }
+  }
+
+  await interaction.editReply(`Scraped primary data for ${found} states successfully.`);
+}
+
+/**
+ * Parse primaries data from a state primaries page
+ */
+function parsePrimariesFromStatePage(html) {
+  const cheerio = require('cheerio');
+  const $ = cheerio.load(html || '');
+
+  const primariesData = {};
+
+  // Look for race sections (similar to primary command)
+  $('h4').each((_, el) => {
+    const header = $(el);
+    const raceText = header.text().trim().toLowerCase();
+
+    // Check if this is a race we care about
+    const raceTypes = ['senate class 1', 'senate class 2', 'senate class 3', 'governor', 'house of representatives'];
+    const matchedRace = raceTypes.find(race => raceText.includes(race.replace('class ', '')));
+
+    if (matchedRace) {
+      const raceKey = matchedRace.toLowerCase().replace(/\s+/g, '_');
+      const container = header.closest('.container, .container-fluid, .bg-white');
+      const table = container.find('table').first();
+
+      if (table.length) {
+        const raceData = { dem: null, gop: null };
+
+        table.find('tbody tr').each((_, tr) => {
+          const row = $(tr);
+          const a = row.find('a[href*="/primaries/"]').first();
+          if (a.length) {
+            const href = a.attr('href') || '';
+            const url = href.startsWith('http') ? href : new URL(href, BASE).toString();
+            const tds = row.find('td');
+            const partyText = (a.text() || '').toLowerCase();
+            const deadlineText = (tds.eq(1).text() || '').replace(/\s+/g, ' ').trim() || null;
+            const countText = (tds.eq(2).text() || '').trim();
+            const count = countText && /\d+/.test(countText) ? Number((countText.match(/\d+/) || [])[0]) : null;
+
+            const obj = { url, deadline: deadlineText, count };
+            if (partyText.includes('democrat')) raceData.dem = obj;
+            if (partyText.includes('republican')) raceData.gop = obj;
+          }
+        });
+
+        if (raceData.dem || raceData.gop) {
+          primariesData[raceKey] = raceData;
+        }
+      }
+    }
+  });
+
+  return Object.keys(primariesData).length > 0 ? primariesData : null;
 }
 
 module.exports = {
