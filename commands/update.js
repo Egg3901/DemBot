@@ -367,25 +367,66 @@ async function scrapeStatesData(interaction, page, writeDb) {
   let found = 0;
   let checked = 0;
   
-  // List of US states with their typical IDs (these would need to be determined from the site)
-  const stateIds = [
-    1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20,
-    21, 22, 23, 24, 25, 26, 27, 28, 29, 30, 31, 32, 33, 34, 35, 36, 37, 38, 39, 40,
-    41, 42, 43, 44, 45, 46, 47, 48, 49, 50
-  ];
-  
-  for (const stateId of stateIds) {
+  // Get state IDs from the states index page instead of hardcoded list
+  await interaction.editReply('Getting states list...');
+
+  try {
+    await page.goto(`${BASE}/national/states`, { waitUntil: 'domcontentloaded', timeout: 10000 });
+    const statesIndexHtml = await page.content();
+
+    // Extract state IDs from the index page
+    const stateIds = [];
+    const cheerio = require('cheerio');
+    const $ = cheerio.load(statesIndexHtml);
+
+    $('a[href*="/states/"]').each((_, el) => {
+      const href = $(el).attr('href');
+      const match = href && href.match(/\/states\/(\d+)/);
+      if (match && match[1]) {
+        const stateId = parseInt(match[1]);
+        if (!stateIds.includes(stateId)) {
+          stateIds.push(stateId);
+        }
+      }
+    });
+
+    if (stateIds.length === 0) {
+      throw new Error('No states found on states index page');
+    }
+
+    await interaction.editReply(`Found ${stateIds.length} states. Starting scrape...`);
+
+    // Process states in batches to avoid timeouts
+    const batchSize = 10;
+    const batches = [];
+    for (let i = 0; i < stateIds.length; i += batchSize) {
+      batches.push(stateIds.slice(i, i + batchSize));
+    }
+
+    for (let batchIndex = 0; batchIndex < batches.length; batchIndex++) {
+      const batch = batches[batchIndex];
+      const batchStart = batchIndex * batchSize + 1;
+      const batchEnd = Math.min((batchIndex + 1) * batchSize, stateIds.length);
+
+      await interaction.editReply(`Scraping states ${batchStart}-${batchEnd} of ${stateIds.length}...`);
+
+      for (const stateId of batch) {
     checked++;
     try {
-      const resp = await page.goto(`${BASE}/states/${stateId}`, { waitUntil: 'networkidle2' });
+          // Use faster loading options to avoid timeouts
+          const resp = await page.goto(`${BASE}/states/${stateId}`, {
+            waitUntil: 'domcontentloaded',
+            timeout: 8000
+          });
       const status = resp?.status?.() ?? 200;
       const finalUrl = page.url();
-      const html = await page.content();
       
       const isStateUrl = /\/states\//i.test(finalUrl);
       if (status >= 400 || !isStateUrl) continue;
       
+          const html = await page.content();
       const stateData = parseStateData(html);
+
       if (stateData && stateData.stateName) {
         statesData[stateId] = {
           id: stateId,
@@ -394,13 +435,26 @@ async function scrapeStatesData(interaction, page, writeDb) {
         };
         found++;
         
-        if (found % 5 === 0) {
-          await interaction.editReply(`Scraping state data... found ${found}/${checked} states. Latest: ${stateData.stateName}`);
+            // More frequent progress updates
+            if (found % 3 === 0 || checked % 5 === 0) {
+              await interaction.editReply(`Scraping state data... found ${found}/${stateIds.length} states. Latest: ${stateData.stateName} (${checked}/${stateIds.length} checked)`);
         }
       }
     } catch (err) {
-      console.error(`Error scraping state ${stateId}:`, err);
+          console.error(`Error scraping state ${stateId}:`, err?.message || err);
+          // Continue with next state instead of failing completely
+        }
+      }
+
+      // Brief pause between batches
+      if (batchIndex < batches.length - 1) {
+        await new Promise(resolve => setTimeout(resolve, 500));
+      }
     }
+
+  } catch (err) {
+    console.error('Error in state scraping setup:', err);
+    throw err;
   }
   
   // Update the database with state data
@@ -419,7 +473,7 @@ async function scrapeStatesData(interaction, page, writeDb) {
   const updatedStates = { ...existingStates, ...statesData };
   fs.writeFileSync(statesPath, JSON.stringify(updatedStates, null, 2));
   
-  await interaction.editReply(`Scraped ${found} states successfully.`);
+  await interaction.editReply(`Scraped ${found}/${stateIds.length} states successfully (${checked} total checked).`);
 }
 
 /**
@@ -454,53 +508,75 @@ async function scrapeRacesData(interaction, page, writeDb) {
   let found = 0;
   let checked = 0;
 
-  for (const stateId of stateIds) {
-    checked++;
-    try {
-      // Go to state page first
-      await page.goto(`${BASE}/states/${stateId}`, { waitUntil: 'networkidle2' });
-      await new Promise(resolve => setTimeout(resolve, 500)); // Brief pause
+  // Process states in batches to avoid timeouts
+  const batchSize = 8;
+  const batches = [];
+  for (let i = 0; i < stateIds.length; i += batchSize) {
+    batches.push(stateIds.slice(i, i + batchSize));
+  }
 
-      // Then go to races page
-      const resp = await page.goto(`${BASE}/states/${stateId}/races`, { waitUntil: 'networkidle2' });
-      const status = resp?.status?.() ?? 200;
-      const finalUrl = page.url();
-      const html = await page.content();
+  for (let batchIndex = 0; batchIndex < batches.length; batchIndex++) {
+    const batch = batches[batchIndex];
+    const batchStart = batchIndex * batchSize + 1;
+    const batchEnd = Math.min((batchIndex + 1) * batchSize, stateIds.length);
 
-      const isRacesUrl = /\/races\b/i.test(finalUrl);
-      if (status >= 400 || !isRacesUrl) continue;
+    await interaction.editReply(`Scraping races ${batchStart}-${batchEnd} of ${stateIds.length}...`);
 
-      // Parse races data from the page
-      const racesData = parseRacesFromStatePage(html);
-      if (racesData && Object.keys(racesData).length > 0) {
-        // Update the database with races data
-        const dataDir = path.join(process.cwd(), 'data');
-        const racesPath = path.join(dataDir, 'races.json');
+    for (const stateId of batch) {
+      checked++;
+      try {
+        // Go to state page first
+        await page.goto(`${BASE}/states/${stateId}`, { waitUntil: 'domcontentloaded', timeout: 8000 });
+        await new Promise(resolve => setTimeout(resolve, 300)); // Brief pause
 
-        let existingRaces = {};
-        if (fs.existsSync(racesPath)) {
-          try {
-            existingRaces = JSON.parse(fs.readFileSync(racesPath, 'utf8'));
-          } catch (err) {
-            console.error('Error reading existing races data:', err);
+        // Then go to races page
+        const resp = await page.goto(`${BASE}/states/${stateId}/races`, { waitUntil: 'domcontentloaded', timeout: 8000 });
+        const status = resp?.status?.() ?? 200;
+        const finalUrl = page.url();
+        const html = await page.content();
+
+        const isRacesUrl = /\/races\b/i.test(finalUrl);
+        if (status >= 400 || !isRacesUrl) continue;
+
+        // Parse races data from the page
+        const racesData = parseRacesFromStatePage(html);
+        if (racesData && Object.keys(racesData).length > 0) {
+          // Update the database with races data
+          const dataDir = path.join(process.cwd(), 'data');
+          const racesPath = path.join(dataDir, 'races.json');
+
+          let existingRaces = {};
+          if (fs.existsSync(racesPath)) {
+            try {
+              existingRaces = JSON.parse(fs.readFileSync(racesPath, 'utf8'));
+            } catch (err) {
+              console.error('Error reading existing races data:', err);
+            }
+          }
+
+          const updatedRaces = { ...existingRaces, ...racesData };
+          fs.writeFileSync(racesPath, JSON.stringify(updatedRaces, null, 2));
+
+          found++;
+
+          // More frequent progress updates
+          if (found % 3 === 0 || checked % 5 === 0) {
+            await interaction.editReply(`Scraping race data... found data for ${found}/${stateIds.length} states. Latest: State ${stateId} (${checked}/${stateIds.length} checked)`);
           }
         }
-
-        const updatedRaces = { ...existingRaces, ...racesData };
-        fs.writeFileSync(racesPath, JSON.stringify(updatedRaces, null, 2));
-
-        found++;
-
-        if (found % 5 === 0) {
-          await interaction.editReply(`Scraping race data... found data for ${found}/${checked} states.`);
-        }
+      } catch (err) {
+        console.error(`Error scraping races for state ${stateId}:`, err?.message || err);
+        // Continue with next state instead of failing completely
       }
-    } catch (err) {
-      console.error(`Error scraping races for state ${stateId}:`, err);
+    }
+
+    // Brief pause between batches
+    if (batchIndex < batches.length - 1) {
+      await new Promise(resolve => setTimeout(resolve, 500));
     }
   }
 
-  await interaction.editReply(`Scraped race data for ${found} states successfully.`);
+  await interaction.editReply(`Scraped race data for ${found}/${stateIds.length} states successfully (${checked} total checked).`);
 }
 
 /**
@@ -589,53 +665,75 @@ async function scrapePrimariesData(interaction, page, writeDb) {
   let found = 0;
   let checked = 0;
 
-  for (const stateId of stateIds) {
-    checked++;
-    try {
-      // Go to state page first (like primary command does)
-      await page.goto(`${BASE}/states/${stateId}`, { waitUntil: 'networkidle2' });
-      await new Promise(resolve => setTimeout(resolve, 500)); // Brief pause
+    // Process states in batches to avoid timeouts
+    const batchSize = 8;
+    const batches = [];
+    for (let i = 0; i < stateIds.length; i += batchSize) {
+      batches.push(stateIds.slice(i, i + batchSize));
+    }
 
-      // Then go to primaries page
-      const resp = await page.goto(`${BASE}/states/${stateId}/primaries`, { waitUntil: 'networkidle2' });
-      const status = resp?.status?.() ?? 200;
-      const finalUrl = page.url();
-      const html = await page.content();
+    for (let batchIndex = 0; batchIndex < batches.length; batchIndex++) {
+      const batch = batches[batchIndex];
+      const batchStart = batchIndex * batchSize + 1;
+      const batchEnd = Math.min((batchIndex + 1) * batchSize, stateIds.length);
 
-      const isPrimariesUrl = /\/primaries\b/i.test(finalUrl);
-      if (status >= 400 || !isPrimariesUrl) continue;
+      await interaction.editReply(`Scraping primaries ${batchStart}-${batchEnd} of ${stateIds.length}...`);
 
-      // Parse primaries data from the page
-      const primariesData = parsePrimariesFromStatePage(html);
-      if (primariesData && Object.keys(primariesData).length > 0) {
-        // Update the database with primaries data
-        const dataDir = path.join(process.cwd(), 'data');
-        const primariesPath = path.join(dataDir, 'primaries.json');
+      for (const stateId of batch) {
+        checked++;
+        try {
+          // Go to state page first (like primary command does)
+          await page.goto(`${BASE}/states/${stateId}`, { waitUntil: 'domcontentloaded', timeout: 8000 });
+          await new Promise(resolve => setTimeout(resolve, 300)); // Brief pause
 
-        let existingPrimaries = {};
-        if (fs.existsSync(primariesPath)) {
-          try {
-            existingPrimaries = JSON.parse(fs.readFileSync(primariesPath, 'utf8'));
-          } catch (err) {
-            console.error('Error reading existing primaries data:', err);
+          // Then go to primaries page
+          const resp = await page.goto(`${BASE}/states/${stateId}/primaries`, { waitUntil: 'domcontentloaded', timeout: 8000 });
+          const status = resp?.status?.() ?? 200;
+          const finalUrl = page.url();
+          const html = await page.content();
+
+          const isPrimariesUrl = /\/primaries\b/i.test(finalUrl);
+          if (status >= 400 || !isPrimariesUrl) continue;
+
+          // Parse primaries data from the page
+          const primariesData = parsePrimariesFromStatePage(html);
+          if (primariesData && Object.keys(primariesData).length > 0) {
+            // Update the database with primaries data
+            const dataDir = path.join(process.cwd(), 'data');
+            const primariesPath = path.join(dataDir, 'primaries.json');
+
+            let existingPrimaries = {};
+            if (fs.existsSync(primariesPath)) {
+              try {
+                existingPrimaries = JSON.parse(fs.readFileSync(primariesPath, 'utf8'));
+              } catch (err) {
+                console.error('Error reading existing primaries data:', err);
+              }
+            }
+
+            const updatedPrimaries = { ...existingPrimaries, ...primariesData };
+            fs.writeFileSync(primariesPath, JSON.stringify(updatedPrimaries, null, 2));
+
+            found++;
+
+            // More frequent progress updates
+            if (found % 3 === 0 || checked % 5 === 0) {
+              await interaction.editReply(`Scraping primary data... found data for ${found}/${stateIds.length} states. Latest: State ${stateId} (${checked}/${stateIds.length} checked)`);
+            }
           }
-        }
-
-        const updatedPrimaries = { ...existingPrimaries, ...primariesData };
-        fs.writeFileSync(primariesPath, JSON.stringify(updatedPrimaries, null, 2));
-
-        found++;
-
-        if (found % 5 === 0) {
-          await interaction.editReply(`Scraping primary data... found data for ${found}/${checked} states.`);
+        } catch (err) {
+          console.error(`Error scraping primaries for state ${stateId}:`, err?.message || err);
+          // Continue with next state instead of failing completely
         }
       }
-    } catch (err) {
-      console.error(`Error scraping primaries for state ${stateId}:`, err);
-    }
-  }
 
-  await interaction.editReply(`Scraped primary data for ${found} states successfully.`);
+      // Brief pause between batches
+      if (batchIndex < batches.length - 1) {
+        await new Promise(resolve => setTimeout(resolve, 500));
+      }
+    }
+
+  await interaction.editReply(`Scraped primary data for ${found}/${stateIds.length} states successfully (${checked} total checked).`);
 }
 
 /**
