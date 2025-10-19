@@ -199,6 +199,57 @@ function extractLatestPoll(html, stateName, raceLabel) {
 
 function extractFinalResultCandidates(html) {
   const $ = cheerio.load(html || '');
+  const clean = (text) => String(text || '').replace(/\u00a0/g, ' ').replace(/\s+/g, ' ').trim();
+  const metricsRegex = /\b(?:ES|CO|NR|AR|CR)\s*[:]/i;
+
+  const wrappers = $('#statewide-info .progress-wrapper, .progress-wrapper:has(.progress-label span:contains("Party"))');
+  const results = [];
+
+  wrappers.each((_, el) => {
+    const wrap = $(el);
+    const label = wrap.find('.progress-label').first();
+    if (!label.length) return;
+
+    let nameText = clean(label.find('a .text-primary, .text-primary').first().text());
+    if (!nameText) {
+      nameText = clean(label.contents().filter((__, node) => node.type === 'text').text());
+    }
+    const name = clean(nameText);
+    if (!name) return;
+
+    const statsNode = label
+      .find('span')
+      .filter((__, node) => metricsRegex.test($(node).text()))
+      .first();
+    const stats = clean(statsNode.text());
+
+    const partyNode = label
+      .find('span')
+      .filter((__, node) => /party/i.test($(node).text()))
+      .first();
+    const party = clean(partyNode.text());
+
+    const percentageNode = wrap
+      .find('.progress-percentage span')
+      .filter((__, node) => /%/.test($(node).text()))
+      .last();
+    const percentMatch = clean(percentageNode.text()).match(/([0-9]+(?:\.[0-9]+)?)/);
+    const percent = percentMatch ? Number(percentMatch[1]) : null;
+
+    const votesNode = wrap
+      .find('.progress-percentage span')
+      .filter((__, node) => /votes/i.test($(node).text()))
+      .first();
+    const votesMatch = clean(votesNode.text()).match(/([0-9][0-9,]*)/);
+    const votes = votesMatch ? votesMatch[1] : null;
+
+    results.push({ name, stats, party, votes, percent });
+  });
+
+  if (results.length) {
+    return results.sort((a, b) => (b.percent ?? -1) - (a.percent ?? -1));
+  }
+
   const heading = $('h4').filter((_, el) => ($(el).text() || '').trim().toLowerCase().includes('final results')).first();
   if (!heading.length) return [];
 
@@ -211,7 +262,7 @@ function extractFinalResultCandidates(html) {
   const section = sectionTexts.join('\n').replace(/\s+/g, ' ').trim();
   if (!section) return [];
 
-  const results = [];
+  const legacy = [];
   const regex = /([A-Za-z0-9' .-]+?)\s*\(([^)]*CO:[^)]*)\)\s*\(([^)]*Party)\)\s*\(([^)]+) votes\)\s*([0-9]+(?:\.[0-9]+)?)%/gi;
   let match;
   while ((match = regex.exec(section))) {
@@ -220,7 +271,7 @@ function extractFinalResultCandidates(html) {
     const party = match[3].replace(/^\(|\)$/g, '').trim();
     const votesRaw = match[4].replace(/,/g, '').trim();
     const percent = Number(match[5]);
-    results.push({
+    legacy.push({
       name,
       stats,
       party,
@@ -228,7 +279,7 @@ function extractFinalResultCandidates(html) {
       percent: Number.isFinite(percent) ? percent : null,
     });
   }
-  return results;
+  return legacy;
 }
 
 module.exports = {
