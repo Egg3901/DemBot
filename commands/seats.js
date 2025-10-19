@@ -6,8 +6,8 @@ const { loginAndGet, BASE } = require('../lib/ppusa');
 const cheerio = require('cheerio');
 
 const CHAMBER_OPTIONS = {
-  senate: { id: 2, label: 'United States Senate' },
-  house: { id: 3, label: 'United States House of Representatives' },
+  senate: { id: 1, label: 'United States Senate' },
+  house: { id: 2, label: 'United States House of Representatives' },
   congress: { id: null, label: 'United States Congress' },
 };
 
@@ -152,14 +152,14 @@ module.exports = {
     let browser;
     let page;
     try {
-      const initial = await loginAndGet(`${BASE}/chambers/${config.id || 2}`);
+      const initial = await loginAndGet(`${BASE}/chambers/${config.id || 1}`);
       browser = initial.browser;
       page = initial.page;
 
       const attachments = [];
 
       if (choice === 'senate') {
-        const senate = await fetchChamber(page, 2);
+        const senate = await fetchChamber(page, 1);
         if (senate.svgHtml) {
           const name = 'senate-seats.svg';
           attachments.push(new AttachmentBuilder(Buffer.from(senate.svgHtml, 'utf8'), { name }));
@@ -171,7 +171,7 @@ module.exports = {
       }
 
       if (choice === 'house') {
-        const house = await fetchChamber(page, 3);
+        const house = await fetchChamber(page, 2);
         if (house.svgHtml) {
           const name = 'house-seats.svg';
           attachments.push(new AttachmentBuilder(Buffer.from(house.svgHtml, 'utf8'), { name }));
@@ -183,8 +183,8 @@ module.exports = {
       }
 
       // Congress: both chambers
-      const senateData = await fetchChamber(page, 2);
-      const houseData = await fetchChamber(page, 3);
+      const senateData = await fetchChamber(page, 1);
+      const houseData = await fetchChamber(page, 2);
       if (senateData.svgHtml) {
         const name = 'senate-seats.svg';
         attachments.push(new AttachmentBuilder(Buffer.from(senateData.svgHtml, 'utf8'), { name }));
