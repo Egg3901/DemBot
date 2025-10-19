@@ -488,7 +488,10 @@ module.exports = {
     // Scrape mode (no roles), build/update profiles.json
     let browser, page;
     try {
-      const loginSeed = existingTargetIds.length ? existingTargetIds[0] : effectiveNewStartId;
+      const fallbackLoginId = allIds.length
+        ? allIds[allIds.length - 1]
+        : baseStartId;
+      const loginSeed = existingTargetIds.length ? existingTargetIds[0] : fallbackLoginId;
       const loginId = Number.isFinite(loginSeed) && loginSeed > 0 ? loginSeed : baseStartId;
       const sess = await loginAndGet(`${BASE}/users/${loginId}`);
       browser = sess.browser;
