@@ -19,6 +19,7 @@ const {
   markHeartbeat,
   recordCommandSuccess,
   recordCommandError,
+  sampleRuntime,
 } = require('./lib/status-tracker');
 const { startDashboardServer } = require('./lib/dashboard-server');
 
@@ -62,6 +63,8 @@ const commandsJSON = [];
 
 // Periodic heartbeat (keeps dashboard status fresh even without command traffic)
 setInterval(() => markHeartbeat(), 60_000).unref();
+// Runtime metrics sampling (cpu/memory/load)
+setInterval(() => sampleRuntime(), 60_000).unref();
 
 // ---- Load commands ----
 const commandsPath = path.join(__dirname, 'commands');
@@ -164,6 +167,7 @@ client.on(Events.InteractionCreate, async (interaction) => {
     if (interaction._dembotHandledError) return;
     if (!interaction.deferred && !interaction.replied) {
       console.warn(`Command ${interaction.commandName} returned without responding (maybe interaction expired).`);
+      recordCommandError(interaction.commandName, new Error('No response sent'));
       return;
     }
     recordCommandSuccess(interaction.commandName);
