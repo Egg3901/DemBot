@@ -1,0 +1,5889 @@
+{
+  "updatedAt": "2025-10-16T17:18:14.901Z",
+  "profiles": {
+    "1000": {
+      "id": 1000,
+      "name": "Lucy MacLean",
+      "discord": "doctorsus",
+      "party": "Democratic Party",
+      "state": "California",
+      "position": "U.S. Senator from California",
+      "es": "236.0",
+      "co": "39.56%",
+      "nr": "60.67%",
+      "cash": "$420,857",
+      "rolesNeeded": [
+        "sen"
+      ],
+      "region": "west",
+      "updatedAt": "2025-10-16T17:21:17.873Z"
+    },
+    "1001": {
+      "id": 1001,
+      "name": "Robert House",
+      "discord": "doctorsus",
+      "party": "Democratic Party",
+      "state": "Delaware",
+      "position": "U.S. Senator from Delaware",
+      "es": "251.0",
+      "co": "0.00%",
+      "nr": "22.12%",
+      "cash": "$2,215,264",
+      "rolesNeeded": [
+        "sen"
+      ],
+      "region": "northeast",
+      "updatedAt": "2025-10-16T17:21:19.978Z"
+    },
+    "1002": {
+      "id": 1002,
+      "name": "Knight Maximus",
+      "discord": "doctorsus",
+      "party": "Democratic Party",
+      "state": "Washington",
+      "position": "Governor of Washington",
+      "es": "230.0",
+      "co": "0.00%",
+      "nr": "0.00%",
+      "cash": "$1,608,225",
+      "rolesNeeded": [
+        "gov"
+      ],
+      "region": "west",
+      "updatedAt": "2025-10-16T17:21:21.637Z"
+    },
+    "1003": {
+      "id": 1003,
+      "name": "Charlie Kirk",
+      "discord": "rhinosarous",
+      "party": "Democratic Party",
+      "state": "California",
+      "position": "Private Citizen",
+      "es": "176.0",
+      "co": "0.00%",
+      "nr": "10.24%",
+      "cash": "$7,494,416",
+      "rolesNeeded": [],
+      "region": "west",
+      "updatedAt": "2025-10-16T17:21:23.588Z"
+    },
+    "1004": {
+      "id": 1004,
+      "name": "Kurt Cobain",
+      "discord": "rhinosarous",
+      "party": "Democratic Party",
+      "state": "Pennsylvania",
+      "position": "Private Citizen",
+      "es": "176.0",
+      "co": "0.00%",
+      "nr": "0.00%",
+      "cash": "$6,372,124",
+      "rolesNeeded": [],
+      "region": "northeast",
+      "updatedAt": "2025-10-16T17:21:24.872Z"
+    },
+    "1005": {
+      "id": 1005,
+      "name": "Eddie Vedder",
+      "discord": "rhinosarous",
+      "party": "Democratic Party",
+      "state": "Montana",
+      "position": "Private Citizen",
+      "es": "203.0",
+      "co": "0.00%",
+      "nr": "13.05%",
+      "cash": "$5,375,142",
+      "rolesNeeded": [],
+      "region": "west",
+      "updatedAt": "2025-10-16T17:21:28.682Z"
+    },
+    "1006": {
+      "id": 1006,
+      "name": "sadgasg",
+      "discord": "rhino__sigma",
+      "party": "Democratic Party",
+      "state": "Alabama",
+      "position": "Private Citizen",
+      "es": "300.0",
+      "co": "0.00%",
+      "nr": "0.00%",
+      "cash": "$192,048",
+      "rolesNeeded": [],
+      "region": "south",
+      "updatedAt": "2025-10-16T17:21:30.683Z"
+    },
+    "1007": {
+      "id": 1007,
+      "name": "Kate Middleton",
+      "discord": "eternally_sleeping.",
+      "party": "Republican Party",
+      "state": "South Dakota",
+      "position": "U.S. Senator from South Dakota",
+      "es": "300.0",
+      "co": "0.00%",
+      "nr": "44.60%",
+      "cash": "$1,218,291",
+      "rolesNeeded": [],
+      "region": null,
+      "updatedAt": "2025-10-16T17:21:32.201Z"
+    },
+    "1008": {
+      "id": 1008,
+      "name": "Gary Johnson",
+      "discord": "presidentgaryjohnson",
+      "party": "Democratic Party",
+      "state": "New Mexico",
+      "position": "Private Citizen",
+      "es": "193.0",
+      "co": "0.00%",
+      "nr": "8.20%",
+      "cash": "$4,729,311",
+      "rolesNeeded": [],
+      "region": "west",
+      "updatedAt": "2025-10-16T17:21:34.411Z"
+    },
+    "1009": {
+      "id": 1009,
+      "name": "Menka",
+      "discord": "vonaleph",
+      "party": "Democratic Party",
+      "state": "Washington",
+      "position": "President of the United States",
+      "es": "300.0",
+      "co": "35.38%",
+      "nr": "68.25%",
+      "cash": "$994,818",
+      "rolesNeeded": [],
+      "region": "west",
+      "updatedAt": "2025-10-16T17:21:37.089Z"
+    },
+    "1010": {
+      "id": 1010,
+      "name": "Jewdy Steinbaum",
+      "discord": "jewdyscoming",
+      "party": "Democratic Party",
+      "state": "Michigan",
+      "position": "Private Citizen",
+      "es": "203.0",
+      "co": "0.00%",
+      "nr": "7.68%",
+      "cash": "$11,995,542",
+      "rolesNeeded": [],
+      "region": "rust_belt",
+      "updatedAt": "2025-10-16T17:21:38.510Z"
+    },
+    "1011": {
+      "id": 1011,
+      "name": "Prince Phillip",
+      "discord": "trustfundfinance",
+      "party": "Republican Party",
+      "state": "California",
+      "position": "U.S. Representative from California",
+      "es": "209.0",
+      "co": "67.29%",
+      "nr": "71.65%",
+      "cash": "$7,225,024",
+      "rolesNeeded": [],
+      "region": "west",
+      "updatedAt": "2025-10-16T17:21:40.068Z"
+    },
+    "1012": {
+      "id": 1012,
+      "name": "Anna Paulina Luna",
+      "discord": "mercedes.mone",
+      "party": "Republican Party",
+      "state": "Tennessee",
+      "position": "U.S. Senator from Tennessee",
+      "es": "300.0",
+      "co": "0.00%",
+      "nr": "2.99%",
+      "cash": "$2,648,025",
+      "rolesNeeded": [],
+      "region": "south",
+      "updatedAt": "2025-10-16T17:21:43.593Z"
+    },
+    "1013": {
+      "id": 1013,
+      "name": "Ricky",
+      "discord": "cmdr_ricky",
+      "party": "Republican Party",
+      "state": "Georgia",
+      "position": "U.S. Senator from Georgia",
+      "es": "298.0",
+      "co": "53.82%",
+      "nr": "68.09%",
+      "cash": "$4,875,084",
+      "rolesNeeded": [],
+      "region": "south",
+      "updatedAt": "2025-10-16T17:21:45.196Z"
+    },
+    "1014": {
+      "id": 1014,
+      "name": "Donald J. Trump",
+      "discord": "geneva919",
+      "party": "Republican Party",
+      "state": "Florida",
+      "position": "U.S. Senator from Florida",
+      "es": "300.0",
+      "co": "43.67%",
+      "nr": "91.31%",
+      "cash": "$812,952",
+      "rolesNeeded": [],
+      "region": "south",
+      "updatedAt": "2025-10-16T17:21:48.015Z"
+    },
+    "1015": {
+      "id": 1015,
+      "name": "Arsene Kaviori",
+      "discord": "kawiorek.",
+      "party": "Democratic Party",
+      "state": "California",
+      "position": "U.S. Representative from California",
+      "es": "156.0",
+      "co": "66.27%",
+      "nr": "86.95%",
+      "cash": "$13,826,214",
+      "rolesNeeded": [
+        "rep"
+      ],
+      "region": "west",
+      "updatedAt": "2025-10-16T17:21:50.719Z"
+    },
+    "1016": {
+      "id": 1016,
+      "name": "Davie Pavon",
+      "discord": "davidpavon07",
+      "party": "Democratic Party",
+      "state": "Massachusetts",
+      "position": "U.S. Senator from Massachusetts",
+      "es": "300.0",
+      "co": "0.00%",
+      "nr": "45.77%",
+      "cash": "$2,393,948",
+      "rolesNeeded": [
+        "sen"
+      ],
+      "region": "northeast",
+      "updatedAt": "2025-10-16T17:21:53.930Z"
+    },
+    "1017": {
+      "id": 1017,
+      "name": "Chad Burner",
+      "discord": "scorchg_",
+      "party": "Democratic Party",
+      "state": "Washington",
+      "position": "U.S. Senator from Washington",
+      "es": "190.0",
+      "co": "54.93%",
+      "nr": "61.35%",
+      "cash": "$2,515,830",
+      "rolesNeeded": [
+        "sen"
+      ],
+      "region": "west",
+      "updatedAt": "2025-10-16T17:21:55.573Z"
+    },
+    "1018": {
+      "id": 1018,
+      "name": "David Valadao",
+      "discord": "berlinsucks",
+      "party": "Republican Party",
+      "state": "North Carolina",
+      "position": "U.S. Senator from North Carolina",
+      "es": "300.0",
+      "co": "66.81%",
+      "nr": "83.92%",
+      "cash": "$1,715,722",
+      "rolesNeeded": [],
+      "region": "south",
+      "updatedAt": "2025-10-16T17:21:57.160Z"
+    },
+    "1019": {
+      "id": 1019,
+      "name": "Jay Hurmond",
+      "discord": "arvandrr",
+      "party": "Democratic Party",
+      "state": "Connecticut",
+      "position": "U.S. Senator from Connecticut",
+      "es": "281.0",
+      "co": "0.00%",
+      "nr": "0.00%",
+      "cash": "$592,431",
+      "rolesNeeded": [
+        "sen"
+      ],
+      "region": "northeast",
+      "updatedAt": "2025-10-16T17:21:58.581Z"
+    },
+    "1020": {
+      "id": 1020,
+      "name": "AL SHARPTON",
+      "discord": "therealmakaveli",
+      "party": "Democratic Party",
+      "state": "North Carolina",
+      "position": "Private Citizen",
+      "es": "12.0",
+      "co": "99.82%",
+      "nr": "99.51%",
+      "cash": "$1,385,688",
+      "rolesNeeded": [],
+      "region": "south",
+      "updatedAt": "2025-10-16T17:22:00.032Z"
+    },
+    "1021": {
+      "id": 1021,
+      "name": "Nathan Smotrich",
+      "discord": "flounderingfool",
+      "party": "Republican Party",
+      "state": "Wyoming",
+      "position": "Governor of Wyoming",
+      "es": "228.0",
+      "co": "0.00%",
+      "nr": "1.66%",
+      "cash": "$3,737,553",
+      "rolesNeeded": [],
+      "region": "west",
+      "updatedAt": "2025-10-16T17:22:01.661Z"
+    },
+    "1022": {
+      "id": 1022,
+      "name": "Gears Braixen",
+      "discord": "gion915",
+      "party": "Republican Party",
+      "state": "Arizona",
+      "position": "U.S. Senator from Arizona",
+      "es": "205.0",
+      "co": "62.71%",
+      "nr": "66.43%",
+      "cash": "$791,846",
+      "rolesNeeded": [],
+      "region": "west",
+      "updatedAt": "2025-10-16T17:22:04.996Z"
+    },
+    "1023": {
+      "id": 1023,
+      "name": "povryan",
+      "discord": "povryan",
+      "party": "Democratic Party",
+      "state": "Kentucky",
+      "position": "Private Citizen",
+      "es": "285.0",
+      "co": "28.60%",
+      "nr": "65.91%",
+      "cash": "$12,291,519",
+      "rolesNeeded": [],
+      "region": "south",
+      "updatedAt": "2025-10-16T17:22:07.329Z"
+    },
+    "1024": {
+      "id": 1024,
+      "name": "Kimble Hookstraten",
+      "discord": "defaultyboii911",
+      "party": "Democratic Party",
+      "state": "Nevada",
+      "position": "Private Citizen",
+      "es": "209.0",
+      "co": "23.33%",
+      "nr": "40.18%",
+      "cash": "$227,344",
+      "rolesNeeded": [],
+      "region": "west",
+      "updatedAt": "2025-10-16T17:22:09.815Z"
+    },
+    "1025": {
+      "id": 1025,
+      "name": "Thomas Washington",
+      "discord": "beerkeg0",
+      "party": "Republican Party",
+      "state": "Kentucky",
+      "position": "Private Citizen",
+      "es": "191.0",
+      "co": "33.17%",
+      "nr": "50.53%",
+      "cash": "$893,985",
+      "rolesNeeded": [],
+      "region": "south",
+      "updatedAt": "2025-10-16T17:22:11.736Z"
+    },
+    "1026": {
+      "id": 1026,
+      "name": "John Conally",
+      "discord": "Verified",
+      "party": "Democratic Party",
+      "state": "Kentucky",
+      "position": "Private Citizen",
+      "es": "203.0",
+      "co": "0.00%",
+      "nr": "0.00%",
+      "cash": "$1,682,662",
+      "rolesNeeded": [],
+      "region": "south",
+      "updatedAt": "2025-10-16T17:22:13.888Z"
+    },
+    "1027": {
+      "id": 1027,
+      "name": "Thomas Jensen",
+      "discord": "febreezejedi",
+      "party": "Democratic Party",
+      "state": "Virginia",
+      "position": "Governor of Virginia",
+      "es": "230.0",
+      "co": "0.00%",
+      "nr": "0.00%",
+      "cash": "$1,448,185",
+      "rolesNeeded": [
+        "gov"
+      ],
+      "region": "south",
+      "updatedAt": "2025-10-16T17:22:16.347Z"
+    },
+    "1028": {
+      "id": 1028,
+      "name": "Wony Ashford",
+      "discord": "kym47",
+      "party": "Republican Party",
+      "state": "Utah",
+      "position": "Governor of Utah",
+      "es": "233.0",
+      "co": "46.96%",
+      "nr": "53.94%",
+      "cash": "$2,742,406",
+      "rolesNeeded": [],
+      "region": "west",
+      "updatedAt": "2025-10-16T17:22:17.949Z"
+    },
+    "1030": {
+      "id": 1030,
+      "name": "Russell Long",
+      "discord": "aussiecrackhead",
+      "party": "Republican Party",
+      "state": "North Dakota",
+      "position": "U.S. Senator from North Dakota",
+      "es": "252.0",
+      "co": "0.00%",
+      "nr": "0.00%",
+      "cash": "$6,609,189",
+      "rolesNeeded": [],
+      "region": null,
+      "updatedAt": "2025-10-16T17:22:22.968Z"
+    },
+    "1031": {
+      "id": 1031,
+      "name": "Solid Snake",
+      "discord": "povryan",
+      "party": "Democratic Party",
+      "state": "Maryland",
+      "position": "Private Citizen",
+      "es": "184.0",
+      "co": "0.00%",
+      "nr": "9.25%",
+      "cash": "$13,957,191",
+      "rolesNeeded": [],
+      "region": "northeast",
+      "updatedAt": "2025-10-16T17:22:26.109Z"
+    },
+    "1032": {
+      "id": 1032,
+      "name": "Sam Yorty",
+      "discord": "povryan",
+      "party": "Democratic Party",
+      "state": "Kentucky",
+      "position": "Private Citizen",
+      "es": "185.0",
+      "co": "0.00%",
+      "nr": "9.03%",
+      "cash": "$9,873,406",
+      "rolesNeeded": [],
+      "region": "south",
+      "updatedAt": "2025-10-16T17:22:29.097Z"
+    },
+    "1033": {
+      "id": 1033,
+      "name": "Finn Weston",
+      "discord": "weston411",
+      "party": "Democratic Party",
+      "state": "Missouri",
+      "position": "Private Citizen",
+      "es": "252.0",
+      "co": "56.20%",
+      "nr": "62.69%",
+      "cash": "$2,040,474",
+      "rolesNeeded": [],
+      "region": "rust_belt",
+      "updatedAt": "2025-10-16T17:22:31.274Z"
+    },
+    "1034": {
+      "id": 1034,
+      "name": "James David Vance",
+      "discord": "hawaji88",
+      "party": "Republican Party",
+      "state": "Texas",
+      "position": "Governor of Texas",
+      "es": "300.0",
+      "co": "0.00%",
+      "nr": "29.87%",
+      "cash": "$2,259,197",
+      "rolesNeeded": [],
+      "region": "south",
+      "updatedAt": "2025-10-16T17:22:32.890Z"
+    },
+    "1035": {
+      "id": 1035,
+      "name": "Celestia Kaviori",
+      "discord": "kawiorek.",
+      "party": "Democratic Party",
+      "state": "New York",
+      "position": "U.S. Representative from New York",
+      "es": "99.0",
+      "co": "64.50%",
+      "nr": "83.22%",
+      "cash": "$1,899,198",
+      "rolesNeeded": [
+        "rep"
+      ],
+      "region": "northeast",
+      "updatedAt": "2025-10-16T17:22:35.671Z"
+    },
+    "1036": {
+      "id": 1036,
+      "name": "Roseanne Park",
+      "discord": "zenthiusescalus",
+      "party": "Republican Party",
+      "state": "Ohio",
+      "position": "Private Citizen",
+      "es": "244.0",
+      "co": "46.83%",
+      "nr": "6.71%",
+      "cash": "$664,753",
+      "rolesNeeded": [],
+      "region": "rust_belt",
+      "updatedAt": "2025-10-16T17:22:37.509Z"
+    },
+    "1037": {
+      "id": 1037,
+      "name": "Emory",
+      "discord": "theparkranger_",
+      "party": "Democratic Party",
+      "state": "Vermont",
+      "position": "Governor of Vermont",
+      "es": "199.0",
+      "co": "59.26%",
+      "nr": "62.10%",
+      "cash": "$63,464",
+      "rolesNeeded": [
+        "gov"
+      ],
+      "region": "northeast",
+      "updatedAt": "2025-10-16T17:22:40.420Z"
+    },
+    "1038": {
+      "id": 1038,
+      "name": "Alexandria Ocasio-Cortez",
+      "discord": "mercedes.mone",
+      "party": "Republican Party",
+      "state": "Tennessee",
+      "position": "Governor of Tennessee",
+      "es": "230.0",
+      "co": "0.00%",
+      "nr": "13.78%",
+      "cash": "$3,053,845",
+      "rolesNeeded": [],
+      "region": "south",
+      "updatedAt": "2025-10-16T17:22:42.003Z"
+    },
+    "1039": {
+      "id": 1039,
+      "name": "Alexander Kiltverne",
+      "discord": "fullnameunknown",
+      "party": "Democratic Party",
+      "state": "Virginia",
+      "position": "U.S. Representative from Virginia",
+      "es": "300.0",
+      "co": "46.68%",
+      "nr": "67.80%",
+      "cash": "$1,581,628",
+      "rolesNeeded": [
+        "rep"
+      ],
+      "region": "south",
+      "updatedAt": "2025-10-16T17:22:44.955Z"
+    },
+    "1040": {
+      "id": 1040,
+      "name": "Dua Lipa",
+      "discord": "mercedes.mone",
+      "party": "Republican Party",
+      "state": "Tennessee",
+      "position": "U.S. Representative from Tennessee",
+      "es": "281.0",
+      "co": "0.00%",
+      "nr": "9.22%",
+      "cash": "$2,618,455",
+      "rolesNeeded": [],
+      "region": "south",
+      "updatedAt": "2025-10-16T17:22:46.599Z"
+    },
+    "1041": {
+      "id": 1041,
+      "name": "King Crab",
+      "discord": "karmablaster",
+      "party": "Democratic Party",
+      "state": "California",
+      "position": "Private Citizen",
+      "es": "202.0",
+      "co": "23.44%",
+      "nr": "39.71%",
+      "cash": "$11,678,673",
+      "rolesNeeded": [],
+      "region": "west",
+      "updatedAt": "2025-10-16T17:22:50.162Z"
+    },
+    "1042": {
+      "id": 1042,
+      "name": "John Zimmermann",
+      "discord": "grupp",
+      "party": "Democratic Party",
+      "state": "Delaware",
+      "position": "Governor of Delaware",
+      "es": "273.0",
+      "co": "44.78%",
+      "nr": "57.01%",
+      "cash": "$2,245,252",
+      "rolesNeeded": [
+        "gov"
+      ],
+      "region": "northeast",
+      "updatedAt": "2025-10-16T17:22:51.815Z"
+    },
+    "1043": {
+      "id": 1043,
+      "name": "Gaston Kaviori",
+      "discord": "kawiorek.",
+      "party": "Democratic Party",
+      "state": "Illinois",
+      "position": "U.S. Representative from Illinois",
+      "es": "106.0",
+      "co": "47.49%",
+      "nr": "70.86%",
+      "cash": "$882,354",
+      "rolesNeeded": [
+        "rep"
+      ],
+      "region": "rust_belt",
+      "updatedAt": "2025-10-16T17:22:55.373Z"
+    },
+    "1044": {
+      "id": 1044,
+      "name": "Geirhart Krausser",
+      "discord": "beast4208",
+      "party": "Democratic Party",
+      "state": "Oregon",
+      "position": "U.S. Senator from Oregon",
+      "es": "154.0",
+      "co": "0.00%",
+      "nr": "0.00%",
+      "cash": "$2,056,904",
+      "rolesNeeded": [
+        "sen"
+      ],
+      "region": "west",
+      "updatedAt": "2025-10-16T17:22:58.428Z"
+    },
+    "1045": {
+      "id": 1045,
+      "name": "Alexander",
+      "discord": "cmdr_ricky",
+      "party": "Republican Party",
+      "state": "Louisiana",
+      "position": "Private Citizen",
+      "es": "275.0",
+      "co": "53.74%",
+      "nr": "61.81%",
+      "cash": "$2,665,890",
+      "rolesNeeded": [],
+      "region": "south",
+      "updatedAt": "2025-10-16T17:23:00.636Z"
+    },
+    "1046": {
+      "id": 1046,
+      "name": "Salathiel Lovell",
+      "discord": "fullnameunknown",
+      "party": "Democratic Party",
+      "state": "North Carolina",
+      "position": "Private Citizen",
+      "es": "209.0",
+      "co": "53.62%",
+      "nr": "54.59%",
+      "cash": "$9,645,796",
+      "rolesNeeded": [],
+      "region": "south",
+      "updatedAt": "2025-10-16T17:23:02.289Z"
+    },
+    "1047": {
+      "id": 1047,
+      "name": "Franklin",
+      "discord": "cmdr_ricky",
+      "party": "Republican Party",
+      "state": "Louisiana",
+      "position": "U.S. Senator from Louisiana",
+      "es": "300.0",
+      "co": "53.96%",
+      "nr": "61.62%",
+      "cash": "$2,979,213",
+      "rolesNeeded": [],
+      "region": "south",
+      "updatedAt": "2025-10-16T17:23:03.934Z"
+    },
+    "1048": {
+      "id": 1048,
+      "name": "Queen Elizabeth II",
+      "discord": "eternally_sleeping.",
+      "party": "Republican Party",
+      "state": "Ohio",
+      "position": "Governor of Ohio",
+      "es": "231.0",
+      "co": "0.00%",
+      "nr": "0.00%",
+      "cash": "$1,419,188",
+      "rolesNeeded": [],
+      "region": "rust_belt",
+      "updatedAt": "2025-10-16T17:23:05.598Z"
+    },
+    "1049": {
+      "id": 1049,
+      "name": "Christopher Wallace",
+      "discord": "therealmakaveli",
+      "party": "Democratic Party",
+      "state": "North Carolina",
+      "position": "Private Citizen",
+      "es": "23.0",
+      "co": "74.03%",
+      "nr": "86.39%",
+      "cash": "$1,707,075",
+      "rolesNeeded": [],
+      "region": "south",
+      "updatedAt": "2025-10-16T17:23:08.243Z"
+    },
+    "1050": {
+      "id": 1050,
+      "name": "Grace Santos",
+      "discord": "sherman5851",
+      "party": "Democratic Party",
+      "state": "New Mexico",
+      "position": "U.S. Senator from New Mexico",
+      "es": "278.0",
+      "co": "11.31%",
+      "nr": "87.04%",
+      "cash": "$1,287,217",
+      "rolesNeeded": [
+        "sen"
+      ],
+      "region": "west",
+      "updatedAt": "2025-10-16T17:23:11.412Z"
+    },
+    "1051": {
+      "id": 1051,
+      "name": "Reyna Jae-in",
+      "discord": "fullnameunknown",
+      "party": "Democratic Party",
+      "state": "Ohio",
+      "position": "U.S. Representative from Ohio",
+      "es": "239.0",
+      "co": "56.71%",
+      "nr": "60.98%",
+      "cash": "$1,291,268",
+      "rolesNeeded": [
+        "rep"
+      ],
+      "region": "rust_belt",
+      "updatedAt": "2025-10-16T17:23:13.355Z"
+    },
+    "1052": {
+      "id": 1052,
+      "name": "Don Henley",
+      "discord": "scorchg_",
+      "party": "Democratic Party",
+      "state": "Vermont",
+      "position": "U.S. Senator from Vermont",
+      "es": "299.0",
+      "co": "59.49%",
+      "nr": "64.91%",
+      "cash": "$916,905",
+      "rolesNeeded": [
+        "sen"
+      ],
+      "region": "northeast",
+      "updatedAt": "2025-10-16T17:23:16.236Z"
+    },
+    "1053": {
+      "id": 1053,
+      "name": "Marco Inaros",
+      "discord": "febreezejedi",
+      "party": "Democratic Party",
+      "state": "Maryland",
+      "position": "U.S. Representative from Maryland",
+      "es": "229.0",
+      "co": "0.00%",
+      "nr": "0.00%",
+      "cash": "$1,035,114",
+      "rolesNeeded": [
+        "rep"
+      ],
+      "region": "northeast",
+      "updatedAt": "2025-10-16T17:23:18.544Z"
+    },
+    "1054": {
+      "id": 1054,
+      "name": "Averi",
+      "discord": "gion915",
+      "party": "Republican Party",
+      "state": "Arizona",
+      "position": "Governor of Arizona",
+      "es": "294.0",
+      "co": "73.41%",
+      "nr": "94.37%",
+      "cash": "$4,046,527",
+      "rolesNeeded": [],
+      "region": "west",
+      "updatedAt": "2025-10-16T17:23:21.256Z"
+    },
+    "1055": {
+      "id": 1055,
+      "name": "Nick Fuentes",
+      "discord": "gladius_z",
+      "party": "Republican Party",
+      "state": "Missouri",
+      "position": "U.S. Senator from Missouri",
+      "es": "202.0",
+      "co": "29.24%",
+      "nr": "51.04%",
+      "cash": "$473,850",
+      "rolesNeeded": [],
+      "region": "rust_belt",
+      "updatedAt": "2025-10-16T17:23:23.929Z"
+    },
+    "1056": {
+      "id": 1056,
+      "name": "Sadavir Errinwright",
+      "discord": "febreezejedi",
+      "party": "Democratic Party",
+      "state": "Connecticut",
+      "position": "U.S. Senator from Connecticut",
+      "es": "178.0",
+      "co": "0.00%",
+      "nr": "0.00%",
+      "cash": "$1,016,436",
+      "rolesNeeded": [
+        "sen"
+      ],
+      "region": "northeast",
+      "updatedAt": "2025-10-16T17:23:27.284Z"
+    },
+    "1057": {
+      "id": 1057,
+      "name": "Dr. Joshua “Jett” Lennox",
+      "discord": "Verified",
+      "party": "Democratic Party",
+      "state": "Wisconsin",
+      "position": "Private Citizen",
+      "es": "203.0",
+      "co": "0.00%",
+      "nr": "0.00%",
+      "cash": "$2,869,590",
+      "rolesNeeded": [],
+      "region": "rust_belt",
+      "updatedAt": "2025-10-16T17:23:28.877Z"
+    },
+    "1058": {
+      "id": 1058,
+      "name": "Michael Cox",
+      "discord": "therealmakaveli",
+      "party": "Democratic Party",
+      "state": "California",
+      "position": "Private Citizen",
+      "es": "178.0",
+      "co": "0.00%",
+      "nr": "0.00%",
+      "cash": "$3,036,841",
+      "rolesNeeded": [],
+      "region": "west",
+      "updatedAt": "2025-10-16T17:23:31.642Z"
+    },
+    "1059": {
+      "id": 1059,
+      "name": "Robert Rhinehardt",
+      "discord": "Verified",
+      "party": "Republican Party",
+      "state": "Nevada",
+      "position": "Private Citizen",
+      "es": "201.0",
+      "co": "0.00%",
+      "nr": "20.68%",
+      "cash": "$2,500,615",
+      "rolesNeeded": [],
+      "region": "west",
+      "updatedAt": "2025-10-16T17:23:32.956Z"
+    },
+    "1060": {
+      "id": 1060,
+      "name": "Tiffany Wilson",
+      "discord": "Verified",
+      "party": "Democratic Party",
+      "state": "Georgia",
+      "position": "Private Citizen",
+      "es": "201.0",
+      "co": "0.00%",
+      "nr": "9.66%",
+      "cash": "$3,558,730",
+      "rolesNeeded": [],
+      "region": "south",
+      "updatedAt": "2025-10-16T17:23:34.250Z"
+    },
+    "1061": {
+      "id": 1061,
+      "name": "Margo Martin",
+      "discord": "hawaji88",
+      "party": "Republican Party",
+      "state": "Michigan",
+      "position": "Governor of Michigan",
+      "es": "294.0",
+      "co": "72.60%",
+      "nr": "86.55%",
+      "cash": "$888,721",
+      "rolesNeeded": [],
+      "region": "rust_belt",
+      "updatedAt": "2025-10-16T17:23:36.130Z"
+    },
+    "1062": {
+      "id": 1062,
+      "name": "The Corpse of Lenin",
+      "discord": "vonaleph",
+      "party": "Democratic Party",
+      "state": "Maine",
+      "position": "Private Citizen",
+      "es": "247.0",
+      "co": "71.03%",
+      "nr": "86.40%",
+      "cash": "$1,071,051",
+      "rolesNeeded": [],
+      "region": "northeast",
+      "updatedAt": "2025-10-16T17:23:39.209Z"
+    },
+    "1063": {
+      "id": 1063,
+      "name": "Joe Quimby",
+      "discord": "Verified",
+      "party": "Democratic Party",
+      "state": "Connecticut",
+      "position": "Private Citizen",
+      "es": "201.0",
+      "co": "0.00%",
+      "nr": "0.00%",
+      "cash": "$2,225,922",
+      "rolesNeeded": [],
+      "region": "northeast",
+      "updatedAt": "2025-10-16T17:23:41.787Z"
+    },
+    "1064": {
+      "id": 1064,
+      "name": "Karoline Leavitt",
+      "discord": "hawaji88",
+      "party": "Republican Party",
+      "state": "New Hampshire",
+      "position": "Governor of New Hampshire",
+      "es": "231.0",
+      "co": "0.00%",
+      "nr": "25.99%",
+      "cash": "$1,104,105",
+      "rolesNeeded": [],
+      "region": "northeast",
+      "updatedAt": "2025-10-16T17:23:43.232Z"
+    },
+    "1065": {
+      "id": 1065,
+      "name": "The Real Abraham Lincoln",
+      "discord": "Verified",
+      "party": "Democratic Party",
+      "state": "Illinois",
+      "position": "Private Citizen",
+      "es": "202.0",
+      "co": "0.00%",
+      "nr": "0.00%",
+      "cash": "$3,919,209",
+      "rolesNeeded": [],
+      "region": "rust_belt",
+      "updatedAt": "2025-10-16T17:23:45.870Z"
+    },
+    "1066": {
+      "id": 1066,
+      "name": "Joseph Steiner",
+      "discord": "beast4208",
+      "party": "Democratic Party",
+      "state": "Virginia",
+      "position": "U.S. Senator from Virginia",
+      "es": "253.0",
+      "co": "0.00%",
+      "nr": "32.26%",
+      "cash": "$682,512",
+      "rolesNeeded": [
+        "sen"
+      ],
+      "region": "south",
+      "updatedAt": "2025-10-16T17:23:48.830Z"
+    },
+    "1067": {
+      "id": 1067,
+      "name": "Khad Burner",
+      "discord": "scorchg_",
+      "party": "Democratic Party",
+      "state": "Nevada",
+      "position": "U.S. Representative from Nevada",
+      "es": "272.0",
+      "co": "59.97%",
+      "nr": "64.62%",
+      "cash": "$2,140,799",
+      "rolesNeeded": [
+        "rep"
+      ],
+      "region": "west",
+      "updatedAt": "2025-10-16T17:23:50.563Z"
+    },
+    "1068": {
+      "id": 1068,
+      "name": "Alexander Morales",
+      "discord": "galaxydoge420",
+      "party": "Democratic Party",
+      "state": "Wisconsin",
+      "position": "Private Citizen",
+      "es": "90.0",
+      "co": "64.57%",
+      "nr": "66.48%",
+      "cash": "$45,925",
+      "rolesNeeded": [],
+      "region": "rust_belt",
+      "updatedAt": "2025-10-16T17:23:52.402Z"
+    },
+    "1069": {
+      "id": 1069,
+      "name": "Princess Diana",
+      "discord": "eternally_sleeping.",
+      "party": "Republican Party",
+      "state": "Pennsylvania",
+      "position": "U.S. Senator from Pennsylvania",
+      "es": "255.0",
+      "co": "0.00%",
+      "nr": "0.00%",
+      "cash": "$1,472,365",
+      "rolesNeeded": [],
+      "region": "northeast",
+      "updatedAt": "2025-10-16T17:23:54.030Z"
+    },
+    "1070": {
+      "id": 1070,
+      "name": "Mac Miller",
+      "discord": "Verified",
+      "party": "Democratic Party",
+      "state": "New Jersey",
+      "position": "Private Citizen",
+      "es": "202.0",
+      "co": "0.00%",
+      "nr": "0.00%",
+      "cash": "$5,422,914",
+      "rolesNeeded": [],
+      "region": "northeast",
+      "updatedAt": "2025-10-16T17:23:55.332Z"
+    },
+    "1071": {
+      "id": 1071,
+      "name": "Aaron Shore",
+      "discord": "defaultyboii911",
+      "party": "Democratic Party",
+      "state": "Nevada",
+      "position": "Private Citizen",
+      "es": "104.0",
+      "co": "98.07%",
+      "nr": "99.04%",
+      "cash": "$333,406",
+      "rolesNeeded": [],
+      "region": "west",
+      "updatedAt": "2025-10-16T17:23:57.877Z"
+    },
+    "1072": {
+      "id": 1072,
+      "name": "Latrell Spencer",
+      "discord": "Verified",
+      "party": "Democratic Party",
+      "state": "Georgia",
+      "position": "Private Citizen",
+      "es": "203.0",
+      "co": "0.00%",
+      "nr": "0.00%",
+      "cash": "$5,898,864",
+      "rolesNeeded": [],
+      "region": "south",
+      "updatedAt": "2025-10-16T17:24:00.327Z"
+    },
+    "1073": {
+      "id": 1073,
+      "name": "AMBERLYNN REID",
+      "discord": "defaultyboii911",
+      "party": "Democratic Party",
+      "state": "New Hampshire",
+      "position": "Private Citizen",
+      "es": "96.0",
+      "co": "97.24%",
+      "nr": "97.70%",
+      "cash": "$959,398",
+      "rolesNeeded": [],
+      "region": "northeast",
+      "updatedAt": "2025-10-16T17:24:02.264Z"
+    },
+    "1074": {
+      "id": 1074,
+      "name": "Ethel Cain",
+      "discord": "empressofyiti",
+      "party": "Democratic Party",
+      "state": "New York",
+      "position": "Governor of New York",
+      "es": "235.0",
+      "co": "31.06%",
+      "nr": "52.96%",
+      "cash": "$776,642",
+      "rolesNeeded": [
+        "gov"
+      ],
+      "region": "northeast",
+      "updatedAt": "2025-10-16T17:24:04.750Z"
+    },
+    "1075": {
+      "id": 1075,
+      "name": "Brooke Mansfield",
+      "discord": "buttch33ks",
+      "party": "Republican Party",
+      "state": "Missouri",
+      "position": "Private Citizen",
+      "es": "201.0",
+      "co": "0.00%",
+      "nr": "29.60%",
+      "cash": "$2,594,678",
+      "rolesNeeded": [],
+      "region": "rust_belt",
+      "updatedAt": "2025-10-16T17:24:06.285Z"
+    },
+    "1076": {
+      "id": 1076,
+      "name": "Devin John Warner",
+      "discord": "arvandrr",
+      "party": "Democratic Party",
+      "state": "Virginia",
+      "position": "U.S. Senator from Virginia",
+      "es": "205.0",
+      "co": "38.68%",
+      "nr": "49.89%",
+      "cash": "$517,909",
+      "rolesNeeded": [
+        "sen"
+      ],
+      "region": "south",
+      "updatedAt": "2025-10-16T17:24:08.344Z"
+    },
+    "1077": {
+      "id": 1077,
+      "name": "Bowtie",
+      "discord": "bowtiewashere",
+      "party": "Republican Party",
+      "state": "Arizona",
+      "position": "Private Citizen",
+      "es": "228.0",
+      "co": "0.00%",
+      "nr": "0.00%",
+      "cash": "$1,671,110",
+      "rolesNeeded": [],
+      "region": "west",
+      "updatedAt": "2025-10-16T17:24:10.032Z"
+    },
+    "1078": {
+      "id": 1078,
+      "name": "Josh Ryan",
+      "discord": "lilbuddyspd11",
+      "party": "Republican Party",
+      "state": "Arizona",
+      "position": "Private Citizen",
+      "es": "152.0",
+      "co": "0.00%",
+      "nr": "0.00%",
+      "cash": "$160,030",
+      "rolesNeeded": [],
+      "region": "west",
+      "updatedAt": "2025-10-16T17:24:11.625Z"
+    },
+    "1079": {
+      "id": 1079,
+      "name": "Barbie",
+      "discord": "arvandrr",
+      "party": "Democratic Party",
+      "state": "Iowa",
+      "position": "U.S. Representative from Iowa",
+      "es": "231.0",
+      "co": "0.00%",
+      "nr": "6.41%",
+      "cash": "$259,653",
+      "rolesNeeded": [
+        "rep"
+      ],
+      "region": "rust_belt",
+      "updatedAt": "2025-10-16T17:24:13.120Z"
+    },
+    "1080": {
+      "id": 1080,
+      "name": "Sabo-Tabby",
+      "discord": "vonaleph",
+      "party": "Democratic Party",
+      "state": "Massachusetts",
+      "position": "U.S. Senator from Massachusetts",
+      "es": "178.0",
+      "co": "0.00%",
+      "nr": "0.00%",
+      "cash": "$854,122",
+      "rolesNeeded": [
+        "sen"
+      ],
+      "region": "northeast",
+      "updatedAt": "2025-10-16T17:24:16.236Z"
+    },
+    "1081": {
+      "id": 1081,
+      "name": "Jasmine Crockett",
+      "discord": "Verified",
+      "party": "Democratic Party",
+      "state": "Michigan",
+      "position": "Private Citizen",
+      "es": "206.0",
+      "co": "0.00%",
+      "nr": "38.11%",
+      "cash": "$2,470,846",
+      "rolesNeeded": [],
+      "region": "rust_belt",
+      "updatedAt": "2025-10-16T17:24:17.533Z"
+    },
+    "1082": {
+      "id": 1082,
+      "name": "Kilka",
+      "discord": "kilka666",
+      "party": "Republican Party",
+      "state": "Nevada",
+      "position": "Governor of Nevada",
+      "es": "291.0",
+      "co": "73.19%",
+      "nr": "87.11%",
+      "cash": "$4,740,614",
+      "rolesNeeded": [],
+      "region": "west",
+      "updatedAt": "2025-10-16T17:24:20.602Z"
+    },
+    "1083": {
+      "id": 1083,
+      "name": "Medusa",
+      "discord": "yaera.",
+      "party": "Democratic Party",
+      "state": "Maine",
+      "position": "Private Citizen",
+      "es": "203.0",
+      "co": "0.00%",
+      "nr": "0.00%",
+      "cash": "$4,007,560",
+      "rolesNeeded": [],
+      "region": "northeast",
+      "updatedAt": "2025-10-16T17:24:22.336Z"
+    },
+    "1084": {
+      "id": 1084,
+      "name": "Jim Bolger",
+      "discord": "muttznz",
+      "party": "Democratic Party",
+      "state": "Oregon",
+      "position": "U.S. Representative from Oregon",
+      "es": "300.0",
+      "co": "36.04%",
+      "nr": "57.24%",
+      "cash": "$2,408,096",
+      "rolesNeeded": [
+        "rep"
+      ],
+      "region": "west",
+      "updatedAt": "2025-10-16T17:24:24.063Z"
+    },
+    "1085": {
+      "id": 1085,
+      "name": "Cecelia Starburn",
+      "discord": "cecedawn",
+      "party": "Democratic Party",
+      "state": "Michigan",
+      "position": "U.S. Representative from Michigan",
+      "es": "262.0",
+      "co": "32.49%",
+      "nr": "51.76%",
+      "cash": "$2,895,759",
+      "rolesNeeded": [
+        "rep"
+      ],
+      "region": "rust_belt",
+      "updatedAt": "2025-10-16T17:24:25.996Z"
+    },
+    "1086": {
+      "id": 1086,
+      "name": "Dazbog",
+      "discord": "dazbog07",
+      "party": "Democratic Party",
+      "state": "Minnesota",
+      "position": "Private Citizen",
+      "es": "203.0",
+      "co": "0.00%",
+      "nr": "0.00%",
+      "cash": "$6,437,637",
+      "rolesNeeded": [],
+      "region": "rust_belt",
+      "updatedAt": "2025-10-16T17:24:27.740Z"
+    },
+    "1087": {
+      "id": 1087,
+      "name": "Doja Cat",
+      "discord": "zenthiusescalus",
+      "party": "Republican Party",
+      "state": "Utah",
+      "position": "U.S. Senator from Utah",
+      "es": "290.0",
+      "co": "24.23%",
+      "nr": "29.71%",
+      "cash": "$1,023,062",
+      "rolesNeeded": [],
+      "region": "west",
+      "updatedAt": "2025-10-16T17:24:29.663Z"
+    },
+    "1088": {
+      "id": 1088,
+      "name": "Alyssa Stephens",
+      "discord": "zenthiusescalus",
+      "party": "Republican Party",
+      "state": "Nebraska",
+      "position": "Governor of Nebraska",
+      "es": "243.0",
+      "co": "0.00%",
+      "nr": "0.00%",
+      "cash": "$1,199,140",
+      "rolesNeeded": [],
+      "region": null,
+      "updatedAt": "2025-10-16T17:24:31.350Z"
+    },
+    "1089": {
+      "id": 1089,
+      "name": "Veronica Martinez",
+      "discord": "homophobiclesbian",
+      "party": "Democratic Party",
+      "state": "New Jersey",
+      "position": "U.S. Representative from New Jersey",
+      "es": "226.0",
+      "co": "0.00%",
+      "nr": "0.00%",
+      "cash": "$2,085,097",
+      "rolesNeeded": [
+        "rep"
+      ],
+      "region": "northeast",
+      "updatedAt": "2025-10-16T17:24:34.018Z"
+    },
+    "1090": {
+      "id": 1090,
+      "name": "Nick Offerman",
+      "discord": "etherbound",
+      "party": "Democratic Party",
+      "state": "Illinois",
+      "position": "Private Citizen",
+      "es": "203.0",
+      "co": "0.00%",
+      "nr": "0.00%",
+      "cash": "$7,588,291",
+      "rolesNeeded": [],
+      "region": "rust_belt",
+      "updatedAt": "2025-10-16T17:24:35.375Z"
+    },
+    "1091": {
+      "id": 1091,
+      "name": "Koulik Ghosh",
+      "discord": "surtibong",
+      "party": "Democratic Party",
+      "state": "Nebraska",
+      "position": "U.S. Representative from Nebraska",
+      "es": "171.0",
+      "co": "0.00%",
+      "nr": "0.00%",
+      "cash": "$1,073,797",
+      "rolesNeeded": [
+        "rep"
+      ],
+      "region": null,
+      "updatedAt": "2025-10-16T17:24:37.207Z"
+    },
+    "1093": {
+      "id": 1093,
+      "name": "Guy Fawkes",
+      "discord": "insane686",
+      "party": "Republican Party",
+      "state": "Indiana",
+      "position": "U.S. Senator from Indiana",
+      "es": "183.0",
+      "co": "0.00%",
+      "nr": "57.35%",
+      "cash": "$1,314,520",
+      "rolesNeeded": [],
+      "region": "rust_belt",
+      "updatedAt": "2025-10-16T17:24:40.280Z"
+    },
+    "1095": {
+      "id": 1095,
+      "name": "Shiva",
+      "discord": "tsarlita",
+      "party": "Democratic Party",
+      "state": "Minnesota",
+      "position": "U.S. Senator from Minnesota",
+      "es": "252.0",
+      "co": "0.00%",
+      "nr": "0.00%",
+      "cash": "$9,024,820",
+      "rolesNeeded": [
+        "sen"
+      ],
+      "region": "rust_belt",
+      "updatedAt": "2025-10-16T17:24:43.402Z"
+    },
+    "1096": {
+      "id": 1096,
+      "name": "Halima Nosirova",
+      "discord": "homophobiclesbian",
+      "party": "Democratic Party",
+      "state": "South Dakota",
+      "position": "U.S. Representative from South Dakota",
+      "es": "226.0",
+      "co": "0.00%",
+      "nr": "0.00%",
+      "cash": "$1,855,085",
+      "rolesNeeded": [
+        "rep"
+      ],
+      "region": null,
+      "updatedAt": "2025-10-16T17:24:44.813Z"
+    },
+    "1097": {
+      "id": 1097,
+      "name": "Brian Murray",
+      "discord": "hawkhorn",
+      "party": "Republican Party",
+      "state": "Nebraska",
+      "position": "Private Citizen",
+      "es": "201.0",
+      "co": "0.00%",
+      "nr": "0.00%",
+      "cash": "$7,218,098",
+      "rolesNeeded": [],
+      "region": null,
+      "updatedAt": "2025-10-16T17:24:46.562Z"
+    },
+    "1098": {
+      "id": 1098,
+      "name": "Baba Yaga",
+      "discord": "yagabababa",
+      "party": "Democratic Party",
+      "state": "Delaware",
+      "position": "Private Citizen",
+      "es": "201.0",
+      "co": "0.00%",
+      "nr": "0.00%",
+      "cash": "$4,785,035",
+      "rolesNeeded": [],
+      "region": "northeast",
+      "updatedAt": "2025-10-16T17:24:48.531Z"
+    },
+    "1099": {
+      "id": 1099,
+      "name": "Lucky Luciano",
+      "discord": "mafolobrown",
+      "party": "Democratic Party",
+      "state": "Delaware",
+      "position": "Private Citizen",
+      "es": "203.0",
+      "co": "0.00%",
+      "nr": "0.00%",
+      "cash": "$5,185,782",
+      "rolesNeeded": [],
+      "region": "northeast",
+      "updatedAt": "2025-10-16T17:24:49.873Z"
+    },
+    "1100": {
+      "id": 1100,
+      "name": "Mecha Bill Clinton",
+      "discord": "hmdps3",
+      "party": "Democratic Party",
+      "state": "Missouri",
+      "position": "Private Citizen",
+      "es": "202.0",
+      "co": "0.00%",
+      "nr": "0.00%",
+      "cash": "$8,505,596",
+      "rolesNeeded": [],
+      "region": "rust_belt",
+      "updatedAt": "2025-10-16T17:24:51.429Z"
+    },
+    "1101": {
+      "id": 1101,
+      "name": "Emma Rose Parks",
+      "discord": "_deviloftherhine",
+      "party": "Democratic Party",
+      "state": "California",
+      "position": "U.S. Senator from California",
+      "es": "82.0",
+      "co": "67.86%",
+      "nr": "42.70%",
+      "cash": "$3,346,368",
+      "rolesNeeded": [
+        "sen"
+      ],
+      "region": "west",
+      "updatedAt": "2025-10-16T17:24:54.444Z"
+    },
+    "1102": {
+      "id": 1102,
+      "name": "Charles J. Kirk",
+      "discord": "geneva919",
+      "party": "Republican Party",
+      "state": "Florida",
+      "position": "Governor of Florida",
+      "es": "253.0",
+      "co": "17.67%",
+      "nr": "44.64%",
+      "cash": "$650,497",
+      "rolesNeeded": [],
+      "region": "south",
+      "updatedAt": "2025-10-16T17:24:55.952Z"
+    },
+    "1103": {
+      "id": 1103,
+      "name": "Sabina Chege",
+      "discord": "_sabina.",
+      "party": "Republican Party",
+      "state": "Alabama",
+      "position": "Private Citizen",
+      "es": "273.0",
+      "co": "0.00%",
+      "nr": "0.00%",
+      "cash": "$2,071,616",
+      "rolesNeeded": [],
+      "region": "south",
+      "updatedAt": "2025-10-16T17:24:57.893Z"
+    },
+    "1104": {
+      "id": 1104,
+      "name": "Michael Corleone",
+      "discord": "geneva919",
+      "party": "Republican Party",
+      "state": "Florida",
+      "position": "U.S. Senator from Florida",
+      "es": "281.0",
+      "co": "14.82%",
+      "nr": "43.88%",
+      "cash": "$685,757",
+      "rolesNeeded": [],
+      "region": "south",
+      "updatedAt": "2025-10-16T17:24:59.548Z"
+    },
+    "1105": {
+      "id": 1105,
+      "name": "Johan Underwood",
+      "discord": "johanpats",
+      "party": "Democratic Party",
+      "state": "South Carolina",
+      "position": "Private Citizen",
+      "es": "266.0",
+      "co": "0.00%",
+      "nr": "14.09%",
+      "cash": "$4,846,959",
+      "rolesNeeded": [],
+      "region": "south",
+      "updatedAt": "2025-10-16T17:25:01.288Z"
+    },
+    "1106": {
+      "id": 1106,
+      "name": "Osman Khan",
+      "discord": "alikhan.55",
+      "party": "Democratic Party",
+      "state": "Kansas",
+      "position": "Private Citizen",
+      "es": "204.0",
+      "co": "46.85%",
+      "nr": "50.95%",
+      "cash": "$3,514,419",
+      "rolesNeeded": [],
+      "region": null,
+      "updatedAt": "2025-10-16T17:25:02.931Z"
+    },
+    "1107": {
+      "id": 1107,
+      "name": "Sophie McIntosh",
+      "discord": "sophiet.union",
+      "party": "Democratic Party",
+      "state": "Illinois",
+      "position": "U.S. Senator from Illinois",
+      "es": "260.0",
+      "co": "0.00%",
+      "nr": "31.07%",
+      "cash": "$3,956,063",
+      "rolesNeeded": [
+        "sen"
+      ],
+      "region": "rust_belt",
+      "updatedAt": "2025-10-16T17:25:06.201Z"
+    },
+    "1108": {
+      "id": 1108,
+      "name": "Velma's Glasses",
+      "discord": "berrystrong",
+      "party": "Democratic Party",
+      "state": "Arizona",
+      "position": "Private Citizen",
+      "es": "238.0",
+      "co": "70.76%",
+      "nr": "83.33%",
+      "cash": "$729,627",
+      "rolesNeeded": [],
+      "region": "west",
+      "updatedAt": "2025-10-16T17:25:08.112Z"
+    },
+    "1109": {
+      "id": 1109,
+      "name": "A.C. Tunt",
+      "discord": "fimconte",
+      "party": "Republican Party",
+      "state": "Ohio",
+      "position": "U.S. Senator from Ohio",
+      "es": "225.0",
+      "co": "0.00%",
+      "nr": "64.15%",
+      "cash": "$72,244,895",
+      "rolesNeeded": [],
+      "region": "rust_belt",
+      "updatedAt": "2025-10-16T17:25:09.483Z"
+    },
+    "1110": {
+      "id": 1110,
+      "name": "James Martin",
+      "discord": "brutusthegreat123",
+      "party": "Republican Party",
+      "state": "Utah",
+      "position": "U.S. Senator from Utah",
+      "es": "152.0",
+      "co": "0.00%",
+      "nr": "0.00%",
+      "cash": "$6,928,151",
+      "rolesNeeded": [],
+      "region": "west",
+      "updatedAt": "2025-10-16T17:25:11.132Z"
+    },
+    "1111": {
+      "id": 1111,
+      "name": "Obama Care",
+      "discord": "obama_care44",
+      "party": "Republican Party",
+      "state": "North Dakota",
+      "position": "Private Citizen",
+      "es": "300.0",
+      "co": "0.00%",
+      "nr": "0.00%",
+      "cash": "$593,407",
+      "rolesNeeded": [],
+      "region": null,
+      "updatedAt": "2025-10-16T17:25:13.140Z"
+    },
+    "1112": {
+      "id": 1112,
+      "name": "Phil A. Buster",
+      "discord": "anthony.11dt",
+      "party": "Democratic Party",
+      "state": "Minnesota",
+      "position": "U.S. Senator from Minnesota",
+      "es": "210.0",
+      "co": "39.98%",
+      "nr": "47.46%",
+      "cash": "$1,121,813",
+      "rolesNeeded": [
+        "sen"
+      ],
+      "region": "rust_belt",
+      "updatedAt": "2025-10-16T17:25:15.682Z"
+    },
+    "1113": {
+      "id": 1113,
+      "name": "Wang Yi",
+      "discord": "realpalpatine",
+      "party": "Democratic Party",
+      "state": "Georgia",
+      "position": "Private Citizen",
+      "es": "198.0",
+      "co": "0.00%",
+      "nr": "8.80%",
+      "cash": "$6,482,745",
+      "rolesNeeded": [],
+      "region": "south",
+      "updatedAt": "2025-10-16T17:25:17.544Z"
+    },
+    "1114": {
+      "id": 1114,
+      "name": "Samuel Edward Konkin III",
+      "discord": "jiricepelka.scrt",
+      "party": "Democratic Party",
+      "state": "Alabama",
+      "position": "Private Citizen",
+      "es": "203.0",
+      "co": "0.00%",
+      "nr": "0.00%",
+      "cash": "$2,146,708",
+      "rolesNeeded": [],
+      "region": "south",
+      "updatedAt": "2025-10-16T17:25:19.629Z"
+    },
+    "1115": {
+      "id": 1115,
+      "name": "Yvonne Strahovski",
+      "discord": "adbellum",
+      "party": "Republican Party",
+      "state": "Alaska",
+      "position": "U.S. Senator from Alaska",
+      "es": "283.0",
+      "co": "14.04%",
+      "nr": "36.27%",
+      "cash": "$3,634,242",
+      "rolesNeeded": [],
+      "region": "west",
+      "updatedAt": "2025-10-16T17:25:22.526Z"
+    },
+    "1116": {
+      "id": 1116,
+      "name": "Urs App",
+      "discord": "urrsss",
+      "party": "Democratic Party",
+      "state": "Pennsylvania",
+      "position": "Private Citizen",
+      "es": "265.0",
+      "co": "61.12%",
+      "nr": "78.19%",
+      "cash": "$564,098",
+      "rolesNeeded": [],
+      "region": "northeast",
+      "updatedAt": "2025-10-16T17:25:24.257Z"
+    },
+    "1117": {
+      "id": 1117,
+      "name": "Jim Justice",
+      "discord": "justzim",
+      "party": "Democratic Party",
+      "state": "New Mexico",
+      "position": "Private Citizen",
+      "es": "203.0",
+      "co": "0.00%",
+      "nr": "0.00%",
+      "cash": "$2,464,275",
+      "rolesNeeded": [],
+      "region": "west",
+      "updatedAt": "2025-10-16T17:25:27.003Z"
+    },
+    "1118": {
+      "id": 1118,
+      "name": "Montgomery",
+      "discord": "mateo9811",
+      "party": "Republican Party",
+      "state": "Idaho",
+      "position": "U.S. Senator from Idaho",
+      "es": "251.0",
+      "co": "0.00%",
+      "nr": "0.00%",
+      "cash": "$3,355,156",
+      "rolesNeeded": [],
+      "region": "west",
+      "updatedAt": "2025-10-16T17:25:28.793Z"
+    },
+    "1119": {
+      "id": 1119,
+      "name": "Dr. Phillip Calvin McGraw",
+      "discord": "kduggan91",
+      "party": "Democratic Party",
+      "state": "New Mexico",
+      "position": "U.S. Senator from New Mexico",
+      "es": "223.0",
+      "co": "52.38%",
+      "nr": "60.76%",
+      "cash": "$2,526,812",
+      "rolesNeeded": [
+        "sen"
+      ],
+      "region": "west",
+      "updatedAt": "2025-10-16T17:25:30.672Z"
+    },
+    "1120": {
+      "id": 1120,
+      "name": "Charles Oppenheimer",
+      "discord": "bd79",
+      "party": "Democratic Party",
+      "state": "New York",
+      "position": "Vice President of the United States",
+      "es": "300.0",
+      "co": "73.53%",
+      "nr": "90.86%",
+      "cash": "$2,392,530",
+      "rolesNeeded": [],
+      "region": "northeast",
+      "updatedAt": "2025-10-16T17:25:32.331Z"
+    },
+    "1121": {
+      "id": 1121,
+      "name": "Vito Scaletta",
+      "discord": "goodvibejay",
+      "party": "Democratic Party",
+      "state": "Michigan",
+      "position": "Private Citizen",
+      "es": "209.0",
+      "co": "36.76%",
+      "nr": "94.99%",
+      "cash": "$282,481",
+      "rolesNeeded": [],
+      "region": "rust_belt",
+      "updatedAt": "2025-10-16T17:25:33.950Z"
+    },
+    "1122": {
+      "id": 1122,
+      "name": "Erika Kirk",
+      "discord": "phoenixflamesong",
+      "party": "Republican Party",
+      "state": "Arizona",
+      "position": "U.S. Senator from Arizona",
+      "es": "300.0",
+      "co": "88.92%",
+      "nr": "91.17%",
+      "cash": "$167,466",
+      "rolesNeeded": [],
+      "region": "west",
+      "updatedAt": "2025-10-16T17:25:35.354Z"
+    },
+    "1123": {
+      "id": 1123,
+      "name": "Lord El-Melloi",
+      "discord": "lordelmelloiii",
+      "party": "Republican Party",
+      "state": "Texas",
+      "position": "U.S. Senator from Texas",
+      "es": "300.0",
+      "co": "46.61%",
+      "nr": "95.11%",
+      "cash": "$6,847,946",
+      "rolesNeeded": [],
+      "region": "south",
+      "updatedAt": "2025-10-16T17:25:37.188Z"
+    },
+    "1124": {
+      "id": 1124,
+      "name": "Bobby Barkly",
+      "discord": "poketron6000",
+      "party": "Democratic Party",
+      "state": "Minnesota",
+      "position": "Governor of Minnesota",
+      "es": "270.0",
+      "co": "48.48%",
+      "nr": "52.04%",
+      "cash": "$698,590",
+      "rolesNeeded": [
+        "gov"
+      ],
+      "region": "rust_belt",
+      "updatedAt": "2025-10-16T17:25:39.256Z"
+    },
+    "1125": {
+      "id": 1125,
+      "name": "Caleb Travinski",
+      "discord": "mdmrn",
+      "party": "Democratic Party",
+      "state": "Maryland",
+      "position": "Private Citizen",
+      "es": "180.0",
+      "co": "66.56%",
+      "nr": "99.71%",
+      "cash": "$808",
+      "rolesNeeded": [],
+      "region": "northeast",
+      "updatedAt": "2025-10-16T17:25:41.463Z"
+    },
+    "1126": {
+      "id": 1126,
+      "name": "Ase Kreatifa",
+      "discord": "mr.ase",
+      "party": "Republican Party",
+      "state": "Wyoming",
+      "position": "U.S. Senator from Wyoming",
+      "es": "282.0",
+      "co": "17.25%",
+      "nr": "42.35%",
+      "cash": "$7,851,763",
+      "rolesNeeded": [],
+      "region": "west",
+      "updatedAt": "2025-10-16T17:25:43.381Z"
+    },
+    "1127": {
+      "id": 1127,
+      "name": "Kamala D. Harris",
+      "discord": "kyrieween",
+      "party": "Republican Party",
+      "state": "Montana",
+      "position": "Governor of Montana",
+      "es": "262.0",
+      "co": "0.13%",
+      "nr": "22.57%",
+      "cash": "$340,575",
+      "rolesNeeded": [],
+      "region": "west",
+      "updatedAt": "2025-10-16T17:25:45.348Z"
+    },
+    "1128": {
+      "id": 1128,
+      "name": "Dick Cheney",
+      "discord": "dickcheney2001",
+      "party": "Republican Party",
+      "state": "Ohio",
+      "position": "Private Citizen",
+      "es": "260.0",
+      "co": "4.47%",
+      "nr": "34.31%",
+      "cash": "$2,033,227",
+      "rolesNeeded": [],
+      "region": "rust_belt",
+      "updatedAt": "2025-10-16T17:25:47.398Z"
+    },
+    "1129": {
+      "id": 1129,
+      "name": "Smedley Butler",
+      "discord": "jordanmilly",
+      "party": "Democratic Party",
+      "state": "Pennsylvania",
+      "position": "Private Citizen",
+      "es": "189.0",
+      "co": "0.00%",
+      "nr": "20.20%",
+      "cash": "$6,983,653",
+      "rolesNeeded": [],
+      "region": "northeast",
+      "updatedAt": "2025-10-16T17:25:49.281Z"
+    },
+    "1130": {
+      "id": 1130,
+      "name": "Sombr",
+      "discord": "maria045781",
+      "party": "Republican Party",
+      "state": "Maine",
+      "position": "Private Citizen",
+      "es": "300.0",
+      "co": "0.00%",
+      "nr": "0.00%",
+      "cash": "$60,910",
+      "rolesNeeded": [],
+      "region": "northeast",
+      "updatedAt": "2025-10-16T17:25:51.365Z"
+    },
+    "1131": {
+      "id": 1131,
+      "name": "McAppleD",
+      "discord": "mcappled",
+      "party": "Democratic Party",
+      "state": "Maryland",
+      "position": "Governor of Maryland",
+      "es": "278.0",
+      "co": "65.56%",
+      "nr": "0.00%",
+      "cash": "$28,414",
+      "rolesNeeded": [
+        "gov"
+      ],
+      "region": "northeast",
+      "updatedAt": "2025-10-16T17:25:56.916Z"
+    },
+    "1132": {
+      "id": 1132,
+      "name": "Sarah Huckabee Sanders",
+      "discord": "kduggan91",
+      "party": "Democratic Party",
+      "state": "Hawaii",
+      "position": "U.S. Senator from Hawaii",
+      "es": "220.0",
+      "co": "50.58%",
+      "nr": "60.20%",
+      "cash": "$2,939,051",
+      "rolesNeeded": [
+        "sen"
+      ],
+      "region": "west",
+      "updatedAt": "2025-10-16T17:26:01.583Z"
+    },
+    "1133": {
+      "id": 1133,
+      "name": "Lana Del Rey",
+      "discord": "giorgakiss_3963",
+      "party": "Republican Party",
+      "state": "Texas",
+      "position": "U.S. Representative from Texas",
+      "es": "300.0",
+      "co": "36.94%",
+      "nr": "75.36%",
+      "cash": "$4,904,832",
+      "rolesNeeded": [],
+      "region": "south",
+      "updatedAt": "2025-10-16T17:26:03.262Z"
+    },
+    "1134": {
+      "id": 1134,
+      "name": "Hasan Piker",
+      "discord": "Verified",
+      "party": "Democratic Party",
+      "state": "Pennsylvania",
+      "position": "Private Citizen",
+      "es": "202.0",
+      "co": "0.00%",
+      "nr": "10.76%",
+      "cash": "$6,302,513",
+      "rolesNeeded": [],
+      "region": "northeast",
+      "updatedAt": "2025-10-16T17:26:04.385Z"
+    },
+    "1135": {
+      "id": 1135,
+      "name": "Rumi",
+      "discord": "phoenixflamesong",
+      "party": "Republican Party",
+      "state": "Georgia",
+      "position": "Governor of Georgia",
+      "es": "293.0",
+      "co": "70.67%",
+      "nr": "84.97%",
+      "cash": "$658,865",
+      "rolesNeeded": [],
+      "region": "south",
+      "updatedAt": "2025-10-16T17:26:05.805Z"
+    },
+    "1136": {
+      "id": 1136,
+      "name": "Joe Manchin",
+      "discord": "mcappled",
+      "party": "Democratic Party",
+      "state": "Maryland",
+      "position": "U.S. Senator from Maryland",
+      "es": "296.0",
+      "co": "63.66%",
+      "nr": "0.00%",
+      "cash": "$28,844",
+      "rolesNeeded": [
+        "sen"
+      ],
+      "region": "northeast",
+      "updatedAt": "2025-10-16T17:26:08.491Z"
+    },
+    "1137": {
+      "id": 1137,
+      "name": "Uncle Baby Billy",
+      "discord": "chungoboingoby",
+      "party": "Democratic Party",
+      "state": "Maine",
+      "position": "Private Citizen",
+      "es": "197.0",
+      "co": "31.88%",
+      "nr": "52.01%",
+      "cash": "$1,732,331",
+      "rolesNeeded": [],
+      "region": "northeast",
+      "updatedAt": "2025-10-16T17:26:10.542Z"
+    },
+    "1138": {
+      "id": 1138,
+      "name": "Rick Grimes",
+      "discord": "giorgakiss_3963",
+      "party": "Republican Party",
+      "state": "Georgia",
+      "position": "U.S. Senator from Georgia",
+      "es": "300.0",
+      "co": "69.79%",
+      "nr": "91.88%",
+      "cash": "$2,998,921",
+      "rolesNeeded": [],
+      "region": "south",
+      "updatedAt": "2025-10-16T17:26:11.817Z"
+    },
+    "1139": {
+      "id": 1139,
+      "name": "Hank MacLean",
+      "discord": "giorgakiss_3963",
+      "party": "Republican Party",
+      "state": "Indiana",
+      "position": "U.S. Senator from Indiana",
+      "es": "206.0",
+      "co": "13.00%",
+      "nr": "92.23%",
+      "cash": "$451,433",
+      "rolesNeeded": [],
+      "region": "rust_belt",
+      "updatedAt": "2025-10-16T17:26:13.410Z"
+    },
+    "1140": {
+      "id": 1140,
+      "name": "Lamar Alexander",
+      "discord": "mcappled",
+      "party": "Democratic Party",
+      "state": "Maryland",
+      "position": "U.S. Senator from Maryland",
+      "es": "277.0",
+      "co": "34.48%",
+      "nr": "0.00%",
+      "cash": "$24,802",
+      "rolesNeeded": [
+        "sen"
+      ],
+      "region": "northeast",
+      "updatedAt": "2025-10-16T17:26:16.161Z"
+    },
+    "1141": {
+      "id": 1141,
+      "name": "Cal Bradford",
+      "discord": "jxckuk",
+      "party": "Republican Party",
+      "state": "Michigan",
+      "position": "U.S. Senator from Michigan",
+      "es": "300.0",
+      "co": "34.42%",
+      "nr": "9.26%",
+      "cash": "$3,690,924",
+      "rolesNeeded": [],
+      "region": "rust_belt",
+      "updatedAt": "2025-10-16T17:26:17.812Z"
+    },
+    "1142": {
+      "id": 1142,
+      "name": "Tom Kirkman",
+      "discord": "jxckuk",
+      "party": "Republican Party",
+      "state": "Michigan",
+      "position": "U.S. Representative from Michigan",
+      "es": "255.0",
+      "co": "33.76%",
+      "nr": "54.28%",
+      "cash": "$3,958,622",
+      "rolesNeeded": [],
+      "region": "rust_belt",
+      "updatedAt": "2025-10-16T17:26:19.401Z"
+    },
+    "1143": {
+      "id": 1143,
+      "name": "Leo McGarry",
+      "discord": "jxckuk",
+      "party": "Republican Party",
+      "state": "Michigan",
+      "position": "U.S. Senator from Michigan",
+      "es": "171.0",
+      "co": "0.00%",
+      "nr": "41.67%",
+      "cash": "$6,649,285",
+      "rolesNeeded": [],
+      "region": "rust_belt",
+      "updatedAt": "2025-10-16T17:26:21.191Z"
+    },
+    "1144": {
+      "id": 1144,
+      "name": "Imam Khomeini",
+      "discord": "scionofwinter",
+      "party": "Democratic Party",
+      "state": "Connecticut",
+      "position": "Governor of Connecticut",
+      "es": "228.0",
+      "co": "0.00%",
+      "nr": "60.96%",
+      "cash": "$1,335,753",
+      "rolesNeeded": [
+        "gov"
+      ],
+      "region": "northeast",
+      "updatedAt": "2025-10-16T17:26:22.767Z"
+    },
+    "1145": {
+      "id": 1145,
+      "name": "Barry McCockiner",
+      "discord": ".beersheva.",
+      "party": "Republican Party",
+      "state": "Iowa",
+      "position": "Governor of Iowa",
+      "es": "230.0",
+      "co": "0.00%",
+      "nr": "28.84%",
+      "cash": "$14,800,065",
+      "rolesNeeded": [],
+      "region": "rust_belt",
+      "updatedAt": "2025-10-16T17:26:24.378Z"
+    },
+    "1146": {
+      "id": 1146,
+      "name": "Richard Spencer",
+      "discord": ".crazycreeperdoctor",
+      "party": "Republican Party",
+      "state": "Wisconsin",
+      "position": "U.S. Senator from Wisconsin",
+      "es": "218.0",
+      "co": "93.47%",
+      "nr": "97.08%",
+      "cash": "$1,556,310",
+      "rolesNeeded": [],
+      "region": "rust_belt",
+      "updatedAt": "2025-10-16T17:26:26.006Z"
+    },
+    "1147": {
+      "id": 1147,
+      "name": "Roy Moore",
+      "discord": ".crazycreeperdoctor",
+      "party": "Republican Party",
+      "state": "Wisconsin",
+      "position": "Governor of Wisconsin",
+      "es": "281.0",
+      "co": "68.91%",
+      "nr": "83.90%",
+      "cash": "$3,086,882",
+      "rolesNeeded": [],
+      "region": "rust_belt",
+      "updatedAt": "2025-10-16T17:26:27.617Z"
+    },
+    "1148": {
+      "id": 1148,
+      "name": "Andrew Tate",
+      "discord": ".crazycreeperdoctor",
+      "party": "Republican Party",
+      "state": "Maine",
+      "position": "Governor of Maine",
+      "es": "295.0",
+      "co": "71.35%",
+      "nr": "86.98%",
+      "cash": "$1,095,452",
+      "rolesNeeded": [],
+      "region": "northeast",
+      "updatedAt": "2025-10-16T17:26:29.239Z"
+    },
+    "1149": {
+      "id": 1149,
+      "name": "Mira",
+      "discord": "phoenixflamesong",
+      "party": "Republican Party",
+      "state": "West Virginia",
+      "position": "Governor of West Virginia",
+      "es": "227.0",
+      "co": "0.00%",
+      "nr": "0.00%",
+      "cash": "$891,257",
+      "rolesNeeded": [],
+      "region": "south",
+      "updatedAt": "2025-10-16T17:26:31.365Z"
+    },
+    "1150": {
+      "id": 1150,
+      "name": "Aeroplane Projections",
+      "discord": "aeroplane_",
+      "party": "Democratic Party",
+      "state": "Maryland",
+      "position": "Private Citizen",
+      "es": "202.0",
+      "co": "0.00%",
+      "nr": "0.00%",
+      "cash": "$2,766,170",
+      "rolesNeeded": [],
+      "region": "northeast",
+      "updatedAt": "2025-10-16T17:26:33.588Z"
+    },
+    "1151": {
+      "id": 1151,
+      "name": "James Ernest",
+      "discord": "thisaintover2028",
+      "party": "Republican Party",
+      "state": "Kentucky",
+      "position": "U.S. Senator from Kentucky",
+      "es": "300.0",
+      "co": "36.63%",
+      "nr": "90.90%",
+      "cash": "$13,620,668",
+      "rolesNeeded": [],
+      "region": "south",
+      "updatedAt": "2025-10-16T17:26:36.384Z"
+    },
+    "1152": {
+      "id": 1152,
+      "name": "Aina Parks",
+      "discord": "_deviloftherhine",
+      "party": "Democratic Party",
+      "state": "Illinois",
+      "position": "Governor of Illinois",
+      "es": "110.0",
+      "co": "67.96%",
+      "nr": "21.59%",
+      "cash": "$2,103,129",
+      "rolesNeeded": [
+        "gov"
+      ],
+      "region": "rust_belt",
+      "updatedAt": "2025-10-16T17:26:38.007Z"
+    },
+    "1153": {
+      "id": 1153,
+      "name": "Lisa Parks",
+      "discord": "_deviloftherhine",
+      "party": "Democratic Party",
+      "state": "Illinois",
+      "position": "U.S. Senator from Illinois",
+      "es": "81.0",
+      "co": "67.05%",
+      "nr": "61.92%",
+      "cash": "$2,518,641",
+      "rolesNeeded": [
+        "sen"
+      ],
+      "region": "rust_belt",
+      "updatedAt": "2025-10-16T17:26:40.809Z"
+    },
+    "1154": {
+      "id": 1154,
+      "name": "Arthur Morgan",
+      "discord": "Verified",
+      "party": "Democratic Party",
+      "state": "New Jersey",
+      "position": "Private Citizen",
+      "es": "202.0",
+      "co": "0.00%",
+      "nr": "0.00%",
+      "cash": "$3,892,691",
+      "rolesNeeded": [],
+      "region": "northeast",
+      "updatedAt": "2025-10-16T17:26:42.095Z"
+    },
+    "1155": {
+      "id": 1155,
+      "name": "Kyle Butler",
+      "discord": "james.4550.",
+      "party": "Democratic Party",
+      "state": "Texas",
+      "position": "U.S. Representative from Texas",
+      "es": "255.0",
+      "co": "0.00%",
+      "nr": "33.19%",
+      "cash": "$2,387,995",
+      "rolesNeeded": [
+        "rep"
+      ],
+      "region": "south",
+      "updatedAt": "2025-10-16T17:26:43.727Z"
+    },
+    "1156": {
+      "id": 1156,
+      "name": "Terrell Wallace",
+      "discord": "tdwall26",
+      "party": "Democratic Party",
+      "state": "New Hampshire",
+      "position": "Private Citizen",
+      "es": "203.0",
+      "co": "0.00%",
+      "nr": "27.14%",
+      "cash": "$6,598,344",
+      "rolesNeeded": [],
+      "region": "northeast",
+      "updatedAt": "2025-10-16T17:26:45.329Z"
+    },
+    "1157": {
+      "id": 1157,
+      "name": "Gavin Newsom",
+      "discord": "egg3901",
+      "party": "Democratic Party",
+      "state": "California",
+      "position": "White House Chief of Staff",
+      "es": "78.0",
+      "co": "59.74%",
+      "nr": "57.73%",
+      "cash": "$566,305",
+      "rolesNeeded": [],
+      "region": "west",
+      "updatedAt": "2025-10-16T17:26:48.270Z"
+    },
+    "1158": {
+      "id": 1158,
+      "name": "Babydog Wallace",
+      "discord": "tdwall26",
+      "party": "Democratic Party",
+      "state": "New Hampshire",
+      "position": "Private Citizen",
+      "es": "179.0",
+      "co": "0.00%",
+      "nr": "13.75%",
+      "cash": "$8,069,557",
+      "rolesNeeded": [],
+      "region": "northeast",
+      "updatedAt": "2025-10-16T17:26:50.347Z"
+    },
+    "1159": {
+      "id": 1159,
+      "name": "Rome Flynn",
+      "discord": "tdwall26",
+      "party": "Democratic Party",
+      "state": "New Hampshire",
+      "position": "U.S. Representative from New Hampshire",
+      "es": "206.0",
+      "co": "0.00%",
+      "nr": "0.00%",
+      "cash": "$4,124,189",
+      "rolesNeeded": [
+        "rep"
+      ],
+      "region": "northeast",
+      "updatedAt": "2025-10-16T17:26:51.980Z"
+    },
+    "1160": {
+      "id": 1160,
+      "name": "Frédérique Bel",
+      "discord": "adbellum",
+      "party": "Republican Party",
+      "state": "Alaska",
+      "position": "U.S. Senator from Alaska",
+      "es": "293.0",
+      "co": "37.02%",
+      "nr": "47.03%",
+      "cash": "$4,381,493",
+      "rolesNeeded": [],
+      "region": "west",
+      "updatedAt": "2025-10-16T17:26:54.897Z"
+    },
+    "1161": {
+      "id": 1161,
+      "name": "General Hannibal",
+      "discord": "generalcannibal",
+      "party": "Republican Party",
+      "state": "Arkansas",
+      "position": "Governor of Arkansas",
+      "es": "236.0",
+      "co": "36.54%",
+      "nr": "44.81%",
+      "cash": "$3,465,238",
+      "rolesNeeded": [],
+      "region": "south",
+      "updatedAt": "2025-10-16T17:26:56.272Z"
+    },
+    "1162": {
+      "id": 1162,
+      "name": "Eddard Stark",
+      "discord": "generalcannibal",
+      "party": "Republican Party",
+      "state": "Kansas",
+      "position": "U.S. Senator from Kansas",
+      "es": "259.0",
+      "co": "35.62%",
+      "nr": "46.92%",
+      "cash": "$4,128,295",
+      "rolesNeeded": [],
+      "region": null,
+      "updatedAt": "2025-10-16T17:26:57.860Z"
+    },
+    "1163": {
+      "id": 1163,
+      "name": "The Black Prince",
+      "discord": "generalcannibal",
+      "party": "Republican Party",
+      "state": "Iowa",
+      "position": "U.S. Senator from Iowa",
+      "es": "263.0",
+      "co": "37.67%",
+      "nr": "44.93%",
+      "cash": "$3,402,455",
+      "rolesNeeded": [],
+      "region": "rust_belt",
+      "updatedAt": "2025-10-16T17:26:59.700Z"
+    },
+    "1164": {
+      "id": 1164,
+      "name": "Claude Auchinleck",
+      "discord": "mateo9811",
+      "party": "Republican Party",
+      "state": "Maine",
+      "position": "U.S. Senator from Maine",
+      "es": "189.0",
+      "co": "0.00%",
+      "nr": "48.41%",
+      "cash": "$1,811,819",
+      "rolesNeeded": [],
+      "region": "northeast",
+      "updatedAt": "2025-10-16T17:27:01.676Z"
+    },
+    "1165": {
+      "id": 1165,
+      "name": "Peggy O'Brian",
+      "discord": "stoichia",
+      "party": "Democratic Party",
+      "state": "Texas",
+      "position": "Private Citizen",
+      "es": "202.0",
+      "co": "0.00%",
+      "nr": "0.00%",
+      "cash": "$5,908,969",
+      "rolesNeeded": [],
+      "region": "south",
+      "updatedAt": "2025-10-16T17:27:03.255Z"
+    },
+    "1166": {
+      "id": 1166,
+      "name": "Thomas Meer",
+      "discord": "fimconte",
+      "party": "Republican Party",
+      "state": "Tennessee",
+      "position": "U.S. Senator from Tennessee",
+      "es": "143.0",
+      "co": "0.00%",
+      "nr": "61.29%",
+      "cash": "$1,831,778",
+      "rolesNeeded": [],
+      "region": "south",
+      "updatedAt": "2025-10-16T17:27:04.627Z"
+    },
+    "1167": {
+      "id": 1167,
+      "name": "Lucius Vanderbilt",
+      "discord": "fimconte",
+      "party": "Republican Party",
+      "state": "Kansas",
+      "position": "Governor of Kansas",
+      "es": "194.0",
+      "co": "0.00%",
+      "nr": "64.12%",
+      "cash": "$1,843,197",
+      "rolesNeeded": [],
+      "region": null,
+      "updatedAt": "2025-10-16T17:27:06.079Z"
+    },
+    "1168": {
+      "id": 1168,
+      "name": "Rgold",
+      "discord": "rgold12",
+      "party": "Republican Party",
+      "state": "Nebraska",
+      "position": "U.S. Senator from Nebraska",
+      "es": "198.0",
+      "co": "0.00%",
+      "nr": "26.22%",
+      "cash": "$11,903,180",
+      "rolesNeeded": [],
+      "region": null,
+      "updatedAt": "2025-10-16T17:27:07.936Z"
+    },
+    "1169": {
+      "id": 1169,
+      "name": "Jimmy M.F.N. Hoffa",
+      "discord": "fdr9434",
+      "party": "Democratic Party",
+      "state": "Wisconsin",
+      "position": "Private Citizen",
+      "es": "226.0",
+      "co": "0.00%",
+      "nr": "36.87%",
+      "cash": "$1,643,052",
+      "rolesNeeded": [],
+      "region": "rust_belt",
+      "updatedAt": "2025-10-16T17:27:10.720Z"
+    },
+    "1170": {
+      "id": 1170,
+      "name": "D. MacArthur",
+      "discord": "asemuasuno",
+      "party": "Republican Party",
+      "state": "Alabama",
+      "position": "Governor of Alabama",
+      "es": "233.0",
+      "co": "0.00%",
+      "nr": "51.84%",
+      "cash": "$1,907,922",
+      "rolesNeeded": [],
+      "region": "south",
+      "updatedAt": "2025-10-16T17:27:12.665Z"
+    },
+    "1171": {
+      "id": 1171,
+      "name": "Steve Kornacki",
+      "discord": "Verified",
+      "party": "Democratic Party",
+      "state": "California",
+      "position": "Private Citizen",
+      "es": "204.0",
+      "co": "0.00%",
+      "nr": "0.00%",
+      "cash": "$4,561,418",
+      "rolesNeeded": [],
+      "region": "west",
+      "updatedAt": "2025-10-16T17:27:14.097Z"
+    },
+    "1172": {
+      "id": 1172,
+      "name": "Mark Kelly",
+      "discord": "Verified",
+      "party": "Democratic Party",
+      "state": "Arizona",
+      "position": "Private Citizen",
+      "es": "208.0",
+      "co": "0.00%",
+      "nr": "6.29%",
+      "cash": "$2,690,156",
+      "rolesNeeded": [],
+      "region": "west",
+      "updatedAt": "2025-10-16T17:27:15.188Z"
+    },
+    "1173": {
+      "id": 1173,
+      "name": "Barrack Obama",
+      "discord": "x.spaceman",
+      "party": "Democratic Party",
+      "state": "Arkansas",
+      "position": "Private Citizen",
+      "es": "219.0",
+      "co": "34.69%",
+      "nr": "47.59%",
+      "cash": "$4,635,306",
+      "rolesNeeded": [],
+      "region": "south",
+      "updatedAt": "2025-10-16T17:27:16.670Z"
+    },
+    "1174": {
+      "id": 1174,
+      "name": "Donald Trump Junior",
+      "discord": "magadonaldtrumpjr",
+      "party": "Republican Party",
+      "state": "Idaho",
+      "position": "U.S. Senator from Idaho",
+      "es": "253.0",
+      "co": "0.00%",
+      "nr": "22.08%",
+      "cash": "$4,585,926",
+      "rolesNeeded": [],
+      "region": "west",
+      "updatedAt": "2025-10-16T17:27:18.137Z"
+    },
+    "1175": {
+      "id": 1175,
+      "name": "Reines",
+      "discord": "reineselmelloiarchistorte",
+      "party": "Republican Party",
+      "state": "New York",
+      "position": "U.S. Representative from New York",
+      "es": "300.0",
+      "co": "71.15%",
+      "nr": "94.05%",
+      "cash": "$11,008,005",
+      "rolesNeeded": [],
+      "region": "northeast",
+      "updatedAt": "2025-10-16T17:27:20.141Z"
+    },
+    "1176": {
+      "id": 1176,
+      "name": "Esteban Sorrento-Gillis",
+      "discord": "dsgerrinwright",
+      "party": "Republican Party",
+      "state": "Nevada",
+      "position": "U.S. Senator from Nevada",
+      "es": "252.0",
+      "co": "95.62%",
+      "nr": "97.65%",
+      "cash": "$327,205",
+      "rolesNeeded": [],
+      "region": "west",
+      "updatedAt": "2025-10-16T17:27:22.166Z"
+    },
+    "1177": {
+      "id": 1177,
+      "name": "Chrisjen Avasarala",
+      "discord": "dsgerrinwright",
+      "party": "Republican Party",
+      "state": "Nevada",
+      "position": "U.S. Senator from Nevada",
+      "es": "223.0",
+      "co": "59.83%",
+      "nr": "47.98%",
+      "cash": "$1,681,372",
+      "rolesNeeded": [],
+      "region": "west",
+      "updatedAt": "2025-10-16T17:27:24.132Z"
+    },
+    "1178": {
+      "id": 1178,
+      "name": "James Holden",
+      "discord": "dsgerrinwright",
+      "party": "Republican Party",
+      "state": "Montana",
+      "position": "U.S. Senator from Montana",
+      "es": "180.0",
+      "co": "0.00%",
+      "nr": "42.73%",
+      "cash": "$1,320,880",
+      "rolesNeeded": [],
+      "region": "west",
+      "updatedAt": "2025-10-16T17:27:26.227Z"
+    },
+    "1179": {
+      "id": 1179,
+      "name": "Selina Kyle",
+      "discord": "lillyhattrick",
+      "party": "Democratic Party",
+      "state": "Arizona",
+      "position": "Private Citizen",
+      "es": "201.0",
+      "co": "0.00%",
+      "nr": "0.00%",
+      "cash": "$4,821,030",
+      "rolesNeeded": [],
+      "region": "west",
+      "updatedAt": "2025-10-16T17:27:28.177Z"
+    },
+    "1180": {
+      "id": 1180,
+      "name": "Vermin Supreme",
+      "discord": "hircinegarden",
+      "party": "Democratic Party",
+      "state": "Tennessee",
+      "position": "Private Citizen",
+      "es": "201.0",
+      "co": "0.00%",
+      "nr": "0.00%",
+      "cash": "$5,230,526",
+      "rolesNeeded": [],
+      "region": "south",
+      "updatedAt": "2025-10-16T17:27:30.006Z"
+    },
+    "1181": {
+      "id": 1181,
+      "name": "Brad Finstad",
+      "discord": "berlinsucks",
+      "party": "Republican Party",
+      "state": "North Carolina",
+      "position": "Governor of North Carolina",
+      "es": "247.0",
+      "co": "67.48%",
+      "nr": "67.74%",
+      "cash": "$412,721",
+      "rolesNeeded": [],
+      "region": "south",
+      "updatedAt": "2025-10-16T17:27:32.050Z"
+    },
+    "1182": {
+      "id": 1182,
+      "name": "Nicole Malliotakis",
+      "discord": "berlinsucks",
+      "party": "Republican Party",
+      "state": "North Carolina",
+      "position": "U.S. Senator from North Carolina",
+      "es": "276.0",
+      "co": "0.00%",
+      "nr": "47.48%",
+      "cash": "$576,922",
+      "rolesNeeded": [],
+      "region": "south",
+      "updatedAt": "2025-10-16T17:27:33.515Z"
+    },
+    "1183": {
+      "id": 1183,
+      "name": "Dienda Sherbert",
+      "discord": "dehkari",
+      "party": "Democratic Party",
+      "state": "Wisconsin",
+      "position": "Private Citizen",
+      "es": "243.0",
+      "co": "69.59%",
+      "nr": "83.62%",
+      "cash": "$1,924,855",
+      "rolesNeeded": [],
+      "region": "rust_belt",
+      "updatedAt": "2025-10-16T17:27:36.297Z"
+    },
+    "1184": {
+      "id": 1184,
+      "name": "Anthony Bell",
+      "discord": "fw.swisher",
+      "party": "Democratic Party",
+      "state": "Maryland",
+      "position": "Private Citizen",
+      "es": "300.0",
+      "co": "0.00%",
+      "nr": "0.00%",
+      "cash": "$425,873",
+      "rolesNeeded": [],
+      "region": "northeast",
+      "updatedAt": "2025-10-16T17:27:38.253Z"
+    },
+    "1185": {
+      "id": 1185,
+      "name": "Mark Dayton",
+      "discord": "markdayton204",
+      "party": "Democratic Party",
+      "state": "Massachusetts",
+      "position": "Private Citizen",
+      "es": "205.0",
+      "co": "0.00%",
+      "nr": "0.00%",
+      "cash": "$12,118,328",
+      "rolesNeeded": [],
+      "region": "northeast",
+      "updatedAt": "2025-10-16T17:27:39.658Z"
+    },
+    "1186": {
+      "id": 1186,
+      "name": "John Shake",
+      "discord": "johnshake47",
+      "party": "Republican Party",
+      "state": "Arizona",
+      "position": "Private Citizen",
+      "es": "300.0",
+      "co": "0.00%",
+      "nr": "0.00%",
+      "cash": "$60,910",
+      "rolesNeeded": [],
+      "region": "west",
+      "updatedAt": "2025-10-16T17:27:41.585Z"
+    },
+    "1187": {
+      "id": 1187,
+      "name": "Mikki Dayton",
+      "discord": "Verified",
+      "party": "Democratic Party",
+      "state": "Michigan",
+      "position": "Private Citizen",
+      "es": "204.0",
+      "co": "0.00%",
+      "nr": "0.00%",
+      "cash": "$3,398,528",
+      "rolesNeeded": [],
+      "region": "rust_belt",
+      "updatedAt": "2025-10-16T17:27:42.643Z"
+    },
+    "1188": {
+      "id": 1188,
+      "name": "Timothy Kaine",
+      "discord": "Verified",
+      "party": "Democratic Party",
+      "state": "Virginia",
+      "position": "Private Citizen",
+      "es": "204.0",
+      "co": "0.00%",
+      "nr": "0.00%",
+      "cash": "$2,683,100",
+      "rolesNeeded": [],
+      "region": "south",
+      "updatedAt": "2025-10-16T17:27:43.700Z"
+    },
+    "1189": {
+      "id": 1189,
+      "name": "Steve King",
+      "discord": ".beersheva.",
+      "party": "Republican Party",
+      "state": "Iowa",
+      "position": "U.S. Senator from Iowa",
+      "es": "253.0",
+      "co": "0.00%",
+      "nr": "25.69%",
+      "cash": "$13,680,121",
+      "rolesNeeded": [],
+      "region": "rust_belt",
+      "updatedAt": "2025-10-16T17:27:45.587Z"
+    },
+    "1190": {
+      "id": 1190,
+      "name": "Jay Rockefeller",
+      "discord": ".beersheva.",
+      "party": "Republican Party",
+      "state": "West Virginia",
+      "position": "U.S. Senator from West Virginia",
+      "es": "269.0",
+      "co": "0.00%",
+      "nr": "28.51%",
+      "cash": "$11,676,256",
+      "rolesNeeded": [],
+      "region": "south",
+      "updatedAt": "2025-10-16T17:27:47.196Z"
+    },
+    "1191": {
+      "id": 1191,
+      "name": "Ashley Westwood",
+      "discord": "lordelmelloiii",
+      "party": "Republican Party",
+      "state": "Alabama",
+      "position": "U.S. Senator from Alabama",
+      "es": "277.0",
+      "co": "31.58%",
+      "nr": "65.77%",
+      "cash": "$3,227,395",
+      "rolesNeeded": [],
+      "region": "south",
+      "updatedAt": "2025-10-16T17:27:49.189Z"
+    },
+    "1192": {
+      "id": 1192,
+      "name": "Lacus Clyne",
+      "discord": "reineselmelloiarchistorte",
+      "party": "Republican Party",
+      "state": "Oklahoma",
+      "position": "U.S. Senator from Oklahoma",
+      "es": "271.0",
+      "co": "2.34%",
+      "nr": "43.02%",
+      "cash": "$6,514,524",
+      "rolesNeeded": [],
+      "region": "south",
+      "updatedAt": "2025-10-16T17:27:50.603Z"
+    },
+    "1193": {
+      "id": 1193,
+      "name": "John Philips",
+      "discord": "johnphilips088",
+      "party": "Republican Party",
+      "state": "Pennsylvania",
+      "position": "U.S. Representative from Pennsylvania",
+      "es": "265.0",
+      "co": "24.09%",
+      "nr": "42.95%",
+      "cash": "$1,726,630",
+      "rolesNeeded": [],
+      "region": "northeast",
+      "updatedAt": "2025-10-16T17:27:52.021Z"
+    },
+    "1194": {
+      "id": 1194,
+      "name": "Reines Alonso",
+      "discord": "reineselmelloiarchistorte",
+      "party": "Republican Party",
+      "state": "Oklahoma",
+      "position": "U.S. Senator from Oklahoma",
+      "es": "283.0",
+      "co": "18.16%",
+      "nr": "73.65%",
+      "cash": "$13,633,643",
+      "rolesNeeded": [],
+      "region": "south",
+      "updatedAt": "2025-10-16T17:27:53.529Z"
+    },
+    "1195": {
+      "id": 1195,
+      "name": "Sultan",
+      "discord": "asemuasuno",
+      "party": "Republican Party",
+      "state": "Alabama",
+      "position": "U.S. Senator from Alabama",
+      "es": "251.0",
+      "co": "0.00%",
+      "nr": "50.84%",
+      "cash": "$1,427,556",
+      "rolesNeeded": [],
+      "region": "south",
+      "updatedAt": "2025-10-16T17:27:55.155Z"
+    },
+    "1196": {
+      "id": 1196,
+      "name": "Stalino",
+      "discord": "la_stalino",
+      "party": "Democratic Party",
+      "state": "Massachusetts",
+      "position": "Governor of Massachusetts",
+      "es": "295.0",
+      "co": "46.66%",
+      "nr": "77.85%",
+      "cash": "$2,008,882",
+      "rolesNeeded": [
+        "gov"
+      ],
+      "region": "northeast",
+      "updatedAt": "2025-10-16T17:27:56.793Z"
+    },
+    "1197": {
+      "id": 1197,
+      "name": "Jorn Andersen",
+      "discord": "lordelmelloiii",
+      "party": "Republican Party",
+      "state": "Florida",
+      "position": "U.S. Representative from Florida",
+      "es": "251.0",
+      "co": "78.29%",
+      "nr": "84.24%",
+      "cash": "$1,900,988",
+      "rolesNeeded": [],
+      "region": "south",
+      "updatedAt": "2025-10-16T17:27:58.318Z"
+    },
+    "1198": {
+      "id": 1198,
+      "name": "Jimmy Hoffa",
+      "discord": "johnphilips088",
+      "party": "Republican Party",
+      "state": "Pennsylvania",
+      "position": "U.S. Senator from Pennsylvania",
+      "es": "194.0",
+      "co": "93.82%",
+      "nr": "96.93%",
+      "cash": "$734,962",
+      "rolesNeeded": [],
+      "region": "northeast",
+      "updatedAt": "2025-10-16T17:28:00.086Z"
+    },
+    "1199": {
+      "id": 1199,
+      "name": "Ricky Dalton",
+      "discord": "johnphilips088",
+      "party": "Republican Party",
+      "state": "Pennsylvania",
+      "position": "Governor of Pennsylvania",
+      "es": "293.0",
+      "co": "62.03%",
+      "nr": "81.50%",
+      "cash": "$3,292,899",
+      "rolesNeeded": [],
+      "region": "northeast",
+      "updatedAt": "2025-10-16T17:28:01.478Z"
+    },
+    "1200": {
+      "id": 1200,
+      "name": "Tiara Basori",
+      "discord": "la_stalino",
+      "party": "Democratic Party",
+      "state": "Massachusetts",
+      "position": "U.S. Representative from Massachusetts",
+      "es": "272.0",
+      "co": "15.26%",
+      "nr": "56.30%",
+      "cash": "$2,354,090",
+      "rolesNeeded": [
+        "rep"
+      ],
+      "region": "northeast",
+      "updatedAt": "2025-10-16T17:28:03.140Z"
+    },
+    "1201": {
+      "id": 1201,
+      "name": "The Antler Queen",
+      "discord": "Verified",
+      "party": "Democratic Party",
+      "state": "Illinois",
+      "position": "Private Citizen",
+      "es": "201.0",
+      "co": "0.00%",
+      "nr": "0.00%",
+      "cash": "$5,501,394",
+      "rolesNeeded": [],
+      "region": "rust_belt",
+      "updatedAt": "2025-10-16T17:28:04.341Z"
+    },
+    "1202": {
+      "id": 1202,
+      "name": "Boss Hogg",
+      "discord": ".vgk",
+      "party": "Democratic Party",
+      "state": "Washington",
+      "position": "U.S. Senator from Washington",
+      "es": "254.0",
+      "co": "0.00%",
+      "nr": "22.77%",
+      "cash": "$191,692",
+      "rolesNeeded": [
+        "sen"
+      ],
+      "region": "west",
+      "updatedAt": "2025-10-16T17:28:06.778Z"
+    },
+    "1203": {
+      "id": 1203,
+      "name": "John Wick",
+      "discord": "gladius_z",
+      "party": "Republican Party",
+      "state": "Maine",
+      "position": "U.S. Senator from Maine",
+      "es": "240.0",
+      "co": "52.11%",
+      "nr": "85.34%",
+      "cash": "$1,040,929",
+      "rolesNeeded": [],
+      "region": "northeast",
+      "updatedAt": "2025-10-16T17:28:08.655Z"
+    },
+    "1204": {
+      "id": 1204,
+      "name": "Dak Prescott",
+      "discord": "gladius_z",
+      "party": "Republican Party",
+      "state": "New Hampshire",
+      "position": "U.S. Senator from New Hampshire",
+      "es": "300.0",
+      "co": "60.69%",
+      "nr": "66.70%",
+      "cash": "$4,242,305",
+      "rolesNeeded": [],
+      "region": "northeast",
+      "updatedAt": "2025-10-16T17:28:10.193Z"
+    },
+    "1205": {
+      "id": 1205,
+      "name": "Sumi",
+      "discord": "sakurasawa5249",
+      "party": "Republican Party",
+      "state": "Oklahoma",
+      "position": "Governor of Oklahoma",
+      "es": "228.0",
+      "co": "0.00%",
+      "nr": "38.51%",
+      "cash": "$3,737,034",
+      "rolesNeeded": [],
+      "region": "south",
+      "updatedAt": "2025-10-16T17:28:11.767Z"
+    },
+    "1206": {
+      "id": 1206,
+      "name": "Plana",
+      "discord": "la_stalino",
+      "party": "Democratic Party",
+      "state": "Georgia",
+      "position": "Private Citizen",
+      "es": "163.0",
+      "co": "0.00%",
+      "nr": "0.00%",
+      "cash": "$857,520",
+      "rolesNeeded": [],
+      "region": "south",
+      "updatedAt": "2025-10-16T17:28:13.364Z"
+    },
+    "1207": {
+      "id": 1207,
+      "name": "Sophie McDonald",
+      "discord": "Verified",
+      "party": "Democratic Party",
+      "state": "California",
+      "position": "Private Citizen",
+      "es": "204.0",
+      "co": "0.00%",
+      "nr": "0.00%",
+      "cash": "$6,835,130",
+      "rolesNeeded": [],
+      "region": "west",
+      "updatedAt": "2025-10-16T17:28:14.841Z"
+    },
+    "1208": {
+      "id": 1208,
+      "name": "Sophie McLean",
+      "discord": "Verified",
+      "party": "Democratic Party",
+      "state": "New York",
+      "position": "Private Citizen",
+      "es": "206.0",
+      "co": "0.00%",
+      "nr": "0.00%",
+      "cash": "$6,328,933",
+      "rolesNeeded": [],
+      "region": "northeast",
+      "updatedAt": "2025-10-16T17:28:15.976Z"
+    },
+    "1209": {
+      "id": 1209,
+      "name": "Nikolaj",
+      "discord": "supermax2409",
+      "party": "Republican Party",
+      "state": "Florida",
+      "position": "Private Citizen",
+      "es": "300.0",
+      "co": "0.00%",
+      "nr": "0.00%",
+      "cash": "$60,910",
+      "rolesNeeded": [],
+      "region": "south",
+      "updatedAt": "2025-10-16T17:28:17.569Z"
+    },
+    "1210": {
+      "id": 1210,
+      "name": "Xi Jinping",
+      "discord": "presidentxi_",
+      "party": "Republican Party",
+      "state": "Idaho",
+      "position": "Governor of Idaho",
+      "es": "278.0",
+      "co": "0.00%",
+      "nr": "32.91%",
+      "cash": "$1,960,613",
+      "rolesNeeded": [],
+      "region": "west",
+      "updatedAt": "2025-10-16T17:28:20.788Z"
+    },
+    "1211": {
+      "id": 1211,
+      "name": "Justin Peter Griffin",
+      "discord": "thewarriorsproductionsyt",
+      "party": "Republican Party",
+      "state": "Texas",
+      "position": "Private Citizen",
+      "es": "289.0",
+      "co": "0.00%",
+      "nr": "0.00%",
+      "cash": "$1,665,458",
+      "rolesNeeded": [],
+      "region": "south",
+      "updatedAt": "2025-10-16T17:28:22.412Z"
+    },
+    "1212": {
+      "id": 1212,
+      "name": "Deprince",
+      "discord": "deprince",
+      "party": "Republican Party",
+      "state": "Alaska",
+      "position": "U.S. Representative from Alaska",
+      "es": "300.0",
+      "co": "33.22%",
+      "nr": "44.66%",
+      "cash": "$670,671",
+      "rolesNeeded": [],
+      "region": "west",
+      "updatedAt": "2025-10-16T17:28:24.015Z"
+    },
+    "1213": {
+      "id": 1213,
+      "name": "Brendan",
+      "discord": "saucecomplex",
+      "party": "Republican Party",
+      "state": "District of Columbia",
+      "position": "Private Citizen",
+      "es": "176.0",
+      "co": "0.00%",
+      "nr": "16.12%",
+      "cash": "$202,694",
+      "rolesNeeded": [],
+      "region": "northeast",
+      "updatedAt": "2025-10-16T17:28:26.925Z"
+    },
+    "1214": {
+      "id": 1214,
+      "name": "Ismail al-McAngus",
+      "discord": "agnastthrower",
+      "party": "Democratic Party",
+      "state": "Oregon",
+      "position": "U.S. Senator from Oregon",
+      "es": "271.0",
+      "co": "7.26%",
+      "nr": "44.03%",
+      "cash": "$3,282,374",
+      "rolesNeeded": [
+        "sen"
+      ],
+      "region": "west",
+      "updatedAt": "2025-10-16T17:28:28.469Z"
+    },
+    "1215": {
+      "id": 1215,
+      "name": "Kaelin Astrowind",
+      "discord": "deannofficial",
+      "party": "Republican Party",
+      "state": "Vermont",
+      "position": "Private Citizen",
+      "es": "175.0",
+      "co": "0.00%",
+      "nr": "22.23%",
+      "cash": "$3,720,057",
+      "rolesNeeded": [],
+      "region": "northeast",
+      "updatedAt": "2025-10-16T17:28:30.302Z"
+    },
+    "1216": {
+      "id": 1216,
+      "name": "Alex Parrish",
+      "discord": "musedo.",
+      "party": "Republican Party",
+      "state": "New Hampshire",
+      "position": "U.S. Senator from New Hampshire",
+      "es": "287.0",
+      "co": "62.23%",
+      "nr": "82.15%",
+      "cash": "$809,841",
+      "rolesNeeded": [],
+      "region": "northeast",
+      "updatedAt": "2025-10-16T17:28:31.722Z"
+    },
+    "1217": {
+      "id": 1217,
+      "name": "adamokke",
+      "discord": "adamokke04",
+      "party": "Democratic Party",
+      "state": "Minnesota",
+      "position": "Private Citizen",
+      "es": "184.0",
+      "co": "34.73%",
+      "nr": "60.64%",
+      "cash": "$843,805",
+      "rolesNeeded": [],
+      "region": "rust_belt",
+      "updatedAt": "2025-10-16T17:28:33.301Z"
+    },
+    "1218": {
+      "id": 1218,
+      "name": "Claire Haas",
+      "discord": "musedo.",
+      "party": "Republican Party",
+      "state": "Texas",
+      "position": "U.S. Senator from Texas",
+      "es": "231.0",
+      "co": "0.00%",
+      "nr": "0.00%",
+      "cash": "$1,351,357",
+      "rolesNeeded": [],
+      "region": "south",
+      "updatedAt": "2025-10-16T17:28:34.910Z"
+    },
+    "1219": {
+      "id": 1219,
+      "name": "Clay Haas",
+      "discord": "musedo.",
+      "party": "Republican Party",
+      "state": "Missouri",
+      "position": "U.S. Senator from Missouri",
+      "es": "252.0",
+      "co": "0.00%",
+      "nr": "0.00%",
+      "cash": "$523,659",
+      "rolesNeeded": [],
+      "region": "rust_belt",
+      "updatedAt": "2025-10-16T17:28:36.290Z"
+    },
+    "1220": {
+      "id": 1220,
+      "name": "Richard Nixon",
+      "discord": "otdo",
+      "party": "Republican Party",
+      "state": "California",
+      "position": "Private Citizen",
+      "es": "177.0",
+      "co": "0.00%",
+      "nr": "0.00%",
+      "cash": "$56,835",
+      "rolesNeeded": [],
+      "region": "west",
+      "updatedAt": "2025-10-16T17:28:37.930Z"
+    },
+    "1221": {
+      "id": 1221,
+      "name": "Civil Ernest",
+      "discord": "thisaintover2028",
+      "party": "Republican Party",
+      "state": "Kentucky",
+      "position": "U.S. Representative from Kentucky",
+      "es": "229.0",
+      "co": "0.00%",
+      "nr": "0.00%",
+      "cash": "$849,619",
+      "rolesNeeded": [],
+      "region": "south",
+      "updatedAt": "2025-10-16T17:28:39.515Z"
+    },
+    "1222": {
+      "id": 1222,
+      "name": "Blake Ernest",
+      "discord": "thisaintover2028",
+      "party": "Republican Party",
+      "state": "Vermont",
+      "position": "Private Citizen",
+      "es": "176.0",
+      "co": "0.00%",
+      "nr": "0.00%",
+      "cash": "$972,994",
+      "rolesNeeded": [],
+      "region": "northeast",
+      "updatedAt": "2025-10-16T17:28:41.562Z"
+    },
+    "1223": {
+      "id": 1223,
+      "name": "Moshe Greenbaum",
+      "discord": "sababa",
+      "party": "Democratic Party",
+      "state": "Pennsylvania",
+      "position": "Private Citizen",
+      "es": "201.0",
+      "co": "54.13%",
+      "nr": "62.56%",
+      "cash": "$4,165,051",
+      "rolesNeeded": [],
+      "region": "northeast",
+      "updatedAt": "2025-10-16T17:28:43.176Z"
+    },
+    "1224": {
+      "id": 1224,
+      "name": "Kara Danvers",
+      "discord": "yoitzdan",
+      "party": "Republican Party",
+      "state": "South Carolina",
+      "position": "Governor of South Carolina",
+      "es": "272.0",
+      "co": "52.35%",
+      "nr": "60.59%",
+      "cash": "$616,053",
+      "rolesNeeded": [],
+      "region": "south",
+      "updatedAt": "2025-10-16T17:28:44.752Z"
+    },
+    "1225": {
+      "id": 1225,
+      "name": "Trevor Lawrence",
+      "discord": "presidentgaryjohnson",
+      "party": "Democratic Party",
+      "state": "New York",
+      "position": "U.S. Senator from New York",
+      "es": "277.0",
+      "co": "0.00%",
+      "nr": "13.89%",
+      "cash": "$3,862,162",
+      "rolesNeeded": [
+        "sen"
+      ],
+      "region": "northeast",
+      "updatedAt": "2025-10-16T17:28:47.749Z"
+    },
+    "1226": {
+      "id": 1226,
+      "name": "Shane Lavery",
+      "discord": "radbut_sad",
+      "party": "Democratic Party",
+      "state": "Colorado",
+      "position": "U.S. Representative from Colorado",
+      "es": "231.0",
+      "co": "0.00%",
+      "nr": "8.17%",
+      "cash": "$1,817,968",
+      "rolesNeeded": [
+        "rep"
+      ],
+      "region": "west",
+      "updatedAt": "2025-10-16T17:28:49.274Z"
+    },
+    "1227": {
+      "id": 1227,
+      "name": "Caiden Stachowicz",
+      "discord": "grape1",
+      "party": "Republican Party",
+      "state": "Indiana",
+      "position": "Governor of Indiana",
+      "es": "279.0",
+      "co": "0.00%",
+      "nr": "29.77%",
+      "cash": "$2,691,431",
+      "rolesNeeded": [],
+      "region": "rust_belt",
+      "updatedAt": "2025-10-16T17:28:50.849Z"
+    },
+    "1228": {
+      "id": 1228,
+      "name": "Johnny Silverhand",
+      "discord": "alrich",
+      "party": "Republican Party",
+      "state": "Mississippi",
+      "position": "Private Citizen",
+      "es": "176.0",
+      "co": "0.00%",
+      "nr": "0.00%",
+      "cash": "$49,091",
+      "rolesNeeded": [],
+      "region": "south",
+      "updatedAt": "2025-10-16T17:28:53.598Z"
+    },
+    "1229": {
+      "id": 1229,
+      "name": "Ryan Blenton",
+      "discord": "ryan0075847",
+      "party": "Democratic Party",
+      "state": "Florida",
+      "position": "Private Citizen",
+      "es": "210.0",
+      "co": "0.00%",
+      "nr": "0.00%",
+      "cash": "$755,150",
+      "rolesNeeded": [],
+      "region": "south",
+      "updatedAt": "2025-10-16T17:28:55.200Z"
+    },
+    "1230": {
+      "id": 1230,
+      "name": "Solomon Reed",
+      "discord": "alrich",
+      "party": "Republican Party",
+      "state": "Wyoming",
+      "position": "U.S. Senator from Wyoming",
+      "es": "255.0",
+      "co": "0.00%",
+      "nr": "30.33%",
+      "cash": "$332,490",
+      "rolesNeeded": [],
+      "region": "west",
+      "updatedAt": "2025-10-16T17:28:56.800Z"
+    },
+    "1231": {
+      "id": 1231,
+      "name": "Goro Takemura",
+      "discord": "alrich",
+      "party": "Republican Party",
+      "state": "South Carolina",
+      "position": "U.S. Senator from South Carolina",
+      "es": "254.0",
+      "co": "0.00%",
+      "nr": "0.00%",
+      "cash": "$452,023",
+      "rolesNeeded": [],
+      "region": "south",
+      "updatedAt": "2025-10-16T17:28:59.329Z"
+    },
+    "1232": {
+      "id": 1232,
+      "name": "FDR",
+      "discord": "fdr9434",
+      "party": "Democratic Party",
+      "state": "Washington",
+      "position": "Private Citizen",
+      "es": "203.0",
+      "co": "0.00%",
+      "nr": "0.00%",
+      "cash": "$3,976,923",
+      "rolesNeeded": [],
+      "region": "west",
+      "updatedAt": "2025-10-16T17:29:00.915Z"
+    },
+    "1233": {
+      "id": 1233,
+      "name": "William Wynn",
+      "discord": "fdr9434",
+      "party": "Democratic Party",
+      "state": "Wisconsin",
+      "position": "Private Citizen",
+      "es": "202.0",
+      "co": "0.00%",
+      "nr": "0.00%",
+      "cash": "$2,004,502",
+      "rolesNeeded": [],
+      "region": "rust_belt",
+      "updatedAt": "2025-10-16T17:29:03.120Z"
+    },
+    "1234": {
+      "id": 1234,
+      "name": "Vladimir Tenev",
+      "discord": ".windoek",
+      "party": "Democratic Party",
+      "state": "Alabama",
+      "position": "Private Citizen",
+      "es": "210.0",
+      "co": "0.00%",
+      "nr": "0.00%",
+      "cash": "$192,048",
+      "rolesNeeded": [],
+      "region": "south",
+      "updatedAt": "2025-10-16T17:29:04.639Z"
+    },
+    "1235": {
+      "id": 1235,
+      "name": "Krishna K. Agrawal",
+      "discord": "grape1",
+      "party": "Republican Party",
+      "state": "North Carolina",
+      "position": "U.S. Representative from North Carolina",
+      "es": "290.0",
+      "co": "68.10%",
+      "nr": "85.34%",
+      "cash": "$27,967,196",
+      "rolesNeeded": [],
+      "region": "south",
+      "updatedAt": "2025-10-16T17:29:06.218Z"
+    },
+    "1236": {
+      "id": 1236,
+      "name": "Tung Tung Tung Sahur",
+      "discord": "grape1",
+      "party": "Republican Party",
+      "state": "South Carolina",
+      "position": "U.S. Senator from South Carolina",
+      "es": "256.0",
+      "co": "0.00%",
+      "nr": "31.63%",
+      "cash": "$1,733,827",
+      "rolesNeeded": [],
+      "region": "south",
+      "updatedAt": "2025-10-16T17:29:07.805Z"
+    },
+    "1237": {
+      "id": 1237,
+      "name": "Clifford Rounds",
+      "discord": "crispycole3",
+      "party": "Republican Party",
+      "state": "Missouri",
+      "position": "Governor of Missouri",
+      "es": "260.0",
+      "co": "40.00%",
+      "nr": "49.35%",
+      "cash": "$842,784",
+      "rolesNeeded": [],
+      "region": "rust_belt",
+      "updatedAt": "2025-10-16T17:29:09.411Z"
+    },
+    "1238": {
+      "id": 1238,
+      "name": "Roger Stone",
+      "discord": "otdo",
+      "party": "Republican Party",
+      "state": "California",
+      "position": "Private Citizen",
+      "es": "178.0",
+      "co": "0.00%",
+      "nr": "0.00%",
+      "cash": "$570,850",
+      "rolesNeeded": [],
+      "region": "west",
+      "updatedAt": "2025-10-16T17:29:10.994Z"
+    },
+    "1239": {
+      "id": 1239,
+      "name": "Paul Manafort",
+      "discord": "otdo",
+      "party": "Republican Party",
+      "state": "California",
+      "position": "Private Citizen",
+      "es": "177.0",
+      "co": "0.00%",
+      "nr": "0.00%",
+      "cash": "$104,376",
+      "rolesNeeded": [],
+      "region": "west",
+      "updatedAt": "2025-10-16T17:29:13.131Z"
+    },
+    "1240": {
+      "id": 1240,
+      "name": "Belcalis Marlenis Almánza",
+      "discord": "egg3901",
+      "party": "Democratic Party",
+      "state": "Georgia",
+      "position": "U.S. Representative from Georgia",
+      "es": "220.0",
+      "co": "63.29%",
+      "nr": "66.48%",
+      "cash": "$1,585,483",
+      "rolesNeeded": [
+        "rep"
+      ],
+      "region": "south",
+      "updatedAt": "2025-10-16T17:29:15.437Z"
+    },
+    "1241": {
+      "id": 1241,
+      "name": "Isis Naija Gaston",
+      "discord": "egg3901",
+      "party": "Democratic Party",
+      "state": "Michigan",
+      "position": "Private Citizen",
+      "es": "130.0",
+      "co": "99.71%",
+      "nr": "99.44%",
+      "cash": "$832,486",
+      "rolesNeeded": [],
+      "region": "rust_belt",
+      "updatedAt": "2025-10-16T17:29:18.299Z"
+    },
+    "1242": {
+      "id": 1242,
+      "name": "Joe Locke",
+      "discord": "bd79",
+      "party": "Democratic Party",
+      "state": "Georgia",
+      "position": "Private Citizen",
+      "es": "230.0",
+      "co": "64.96%",
+      "nr": "81.23%",
+      "cash": "$3,221,495",
+      "rolesNeeded": [],
+      "region": "south",
+      "updatedAt": "2025-10-16T17:29:20.625Z"
+    },
+    "1243": {
+      "id": 1243,
+      "name": "Francis DeLesepes",
+      "discord": "josephrandolph",
+      "party": "Republican Party",
+      "state": "Arkansas",
+      "position": "U.S. Senator from Arkansas",
+      "es": "226.0",
+      "co": "0.00%",
+      "nr": "0.00%",
+      "cash": "$134,326",
+      "rolesNeeded": [],
+      "region": "south",
+      "updatedAt": "2025-10-16T17:29:22.235Z"
+    },
+    "1244": {
+      "id": 1244,
+      "name": "???",
+      "discord": "the.bassist.",
+      "party": "Democratic Party",
+      "state": "Mississippi",
+      "position": "Private Citizen",
+      "es": "152.0",
+      "co": "0.00%",
+      "nr": "6.44%",
+      "cash": "$20,908,077",
+      "rolesNeeded": [],
+      "region": "south",
+      "updatedAt": "2025-10-16T17:29:25.488Z"
+    },
+    "1245": {
+      "id": 1245,
+      "name": "Prince William",
+      "discord": "trustfundfinance",
+      "party": "Republican Party",
+      "state": "Kentucky",
+      "position": "U.S. Senator from Kentucky",
+      "es": "290.0",
+      "co": "27.97%",
+      "nr": "47.66%",
+      "cash": "$3,762,098",
+      "rolesNeeded": [],
+      "region": "south",
+      "updatedAt": "2025-10-16T17:29:27.087Z"
+    },
+    "1246": {
+      "id": 1246,
+      "name": "King Charles III",
+      "discord": "trustfundfinance",
+      "party": "Republican Party",
+      "state": "Louisiana",
+      "position": "U.S. Senator from Louisiana",
+      "es": "255.0",
+      "co": "0.00%",
+      "nr": "31.39%",
+      "cash": "$1,986,517",
+      "rolesNeeded": [],
+      "region": "south",
+      "updatedAt": "2025-10-16T17:29:28.620Z"
+    },
+    "1247": {
+      "id": 1247,
+      "name": "Tadeo Castro",
+      "discord": "taydeo",
+      "party": "Democratic Party",
+      "state": "Arizona",
+      "position": "Private Citizen",
+      "es": "178.0",
+      "co": "0.00%",
+      "nr": "18.77%",
+      "cash": "$3,874,360",
+      "rolesNeeded": [],
+      "region": "west",
+      "updatedAt": "2025-10-16T17:29:31.201Z"
+    },
+    "1248": {
+      "id": 1248,
+      "name": "Lou Skunt",
+      "discord": "kagforever",
+      "party": "Democratic Party",
+      "state": "Hawaii",
+      "position": "U.S. Senator from Hawaii",
+      "es": "254.0",
+      "co": "0.00%",
+      "nr": "0.00%",
+      "cash": "$5,610,042",
+      "rolesNeeded": [
+        "sen"
+      ],
+      "region": "west",
+      "updatedAt": "2025-10-16T17:29:34.273Z"
+    },
+    "1249": {
+      "id": 1249,
+      "name": "Settings",
+      "discord": "taydeo",
+      "party": "Democratic Party",
+      "state": "Delaware",
+      "position": "U.S. Senator from Delaware",
+      "es": "185.0",
+      "co": "0.00%",
+      "nr": "11.72%",
+      "cash": "$2,587,713",
+      "rolesNeeded": [
+        "sen"
+      ],
+      "region": "northeast",
+      "updatedAt": "2025-10-16T17:29:37.186Z"
+    },
+    "1250": {
+      "id": 1250,
+      "name": "?",
+      "discord": "the.bassist.",
+      "party": "Democratic Party",
+      "state": "Mississippi",
+      "position": "Private Citizen",
+      "es": "170.0",
+      "co": "0.00%",
+      "nr": "3.46%",
+      "cash": "$16,371,685",
+      "rolesNeeded": [],
+      "region": "south",
+      "updatedAt": "2025-10-16T17:29:38.722Z"
+    },
+    "1251": {
+      "id": 1251,
+      "name": "James123456789",
+      "discord": "smapiaverageninja",
+      "party": "Republican Party",
+      "state": "Kansas",
+      "position": "U.S. Representative from Kansas",
+      "es": "203.0",
+      "co": "0.00%",
+      "nr": "3.14%",
+      "cash": "$3,921,569",
+      "rolesNeeded": [],
+      "region": null,
+      "updatedAt": "2025-10-16T17:29:40.066Z"
+    },
+    "1252": {
+      "id": 1252,
+      "name": "Doug Dagel",
+      "discord": "dageldunk",
+      "party": "Democratic Party",
+      "state": "Florida",
+      "position": "Private Citizen",
+      "es": "202.0",
+      "co": "0.00%",
+      "nr": "0.00%",
+      "cash": "$5,805,651",
+      "rolesNeeded": [],
+      "region": "south",
+      "updatedAt": "2025-10-16T17:29:41.689Z"
+    },
+    "1253": {
+      "id": 1253,
+      "name": "Oompa Loompa",
+      "discord": "loompah00",
+      "party": "Democratic Party",
+      "state": "Florida",
+      "position": "Private Citizen",
+      "es": "201.0",
+      "co": "0.00%",
+      "nr": "0.00%",
+      "cash": "$6,172,887",
+      "rolesNeeded": [],
+      "region": "south",
+      "updatedAt": "2025-10-16T17:29:43.806Z"
+    },
+    "1254": {
+      "id": 1254,
+      "name": "Ben Dover",
+      "discord": "azeral.",
+      "party": "Democratic Party",
+      "state": "Rhode Island",
+      "position": "U.S. Senator from Rhode Island",
+      "es": "176.0",
+      "co": "0.00%",
+      "nr": "0.00%",
+      "cash": "$2,792,484",
+      "rolesNeeded": [
+        "sen"
+      ],
+      "region": "northeast",
+      "updatedAt": "2025-10-16T17:29:45.408Z"
+    },
+    "1255": {
+      "id": 1255,
+      "name": "Joe Doe",
+      "discord": "thestartome",
+      "party": "Republican Party",
+      "state": "Utah",
+      "position": "Private Citizen",
+      "es": "201.0",
+      "co": "0.00%",
+      "nr": "0.00%",
+      "cash": "$1,205,195",
+      "rolesNeeded": [],
+      "region": "west",
+      "updatedAt": "2025-10-16T17:29:46.737Z"
+    },
+    "1256": {
+      "id": 1256,
+      "name": "Gregory House",
+      "discord": "mistermac193",
+      "party": "Democratic Party",
+      "state": "Washington",
+      "position": "Private Citizen",
+      "es": "202.0",
+      "co": "0.00%",
+      "nr": "0.00%",
+      "cash": "$785,128",
+      "rolesNeeded": [],
+      "region": "west",
+      "updatedAt": "2025-10-16T17:29:48.401Z"
+    },
+    "1257": {
+      "id": 1257,
+      "name": "Remy Danton",
+      "discord": "remydanton7",
+      "party": "Democratic Party",
+      "state": "Washington",
+      "position": "Private Citizen",
+      "es": "203.0",
+      "co": "0.00%",
+      "nr": "0.00%",
+      "cash": "$1,474,158",
+      "rolesNeeded": [],
+      "region": "west",
+      "updatedAt": "2025-10-16T17:29:49.989Z"
+    },
+    "1258": {
+      "id": 1258,
+      "name": "??",
+      "discord": "the.bassist.",
+      "party": "Democratic Party",
+      "state": "Mississippi",
+      "position": "Private Citizen",
+      "es": "153.0",
+      "co": "0.00%",
+      "nr": "3.18%",
+      "cash": "$18,784,960",
+      "rolesNeeded": [],
+      "region": "south",
+      "updatedAt": "2025-10-16T17:29:51.591Z"
+    },
+    "1259": {
+      "id": 1259,
+      "name": "Tiki",
+      "discord": "tahytahy",
+      "party": "Democratic Party",
+      "state": "Maine",
+      "position": "Private Citizen",
+      "es": "201.0",
+      "co": "0.00%",
+      "nr": "0.00%",
+      "cash": "$686,121",
+      "rolesNeeded": [],
+      "region": "northeast",
+      "updatedAt": "2025-10-16T17:29:53.163Z"
+    },
+    "1260": {
+      "id": 1260,
+      "name": "Garfield",
+      "discord": "garfield.the.cat",
+      "party": "Democratic Party",
+      "state": "Ohio",
+      "position": "Private Citizen",
+      "es": "176.0",
+      "co": "0.00%",
+      "nr": "0.00%",
+      "cash": "$936,670",
+      "rolesNeeded": [],
+      "region": "rust_belt",
+      "updatedAt": "2025-10-16T17:29:54.905Z"
+    },
+    "1261": {
+      "id": 1261,
+      "name": "Steve Forsing",
+      "discord": "kilka666",
+      "party": "Republican Party",
+      "state": "South Dakota",
+      "position": "U.S. Senator from South Dakota",
+      "es": "290.0",
+      "co": "47.60%",
+      "nr": "14.97%",
+      "cash": "$2,410,737",
+      "rolesNeeded": [],
+      "region": null,
+      "updatedAt": "2025-10-16T17:29:56.533Z"
+    },
+    "1262": {
+      "id": 1262,
+      "name": "Thomas Payne",
+      "discord": "kilka666",
+      "party": "Republican Party",
+      "state": "South Dakota",
+      "position": "Governor of South Dakota",
+      "es": "253.0",
+      "co": "32.10%",
+      "nr": "42.76%",
+      "cash": "$2,359,147",
+      "rolesNeeded": [],
+      "region": null,
+      "updatedAt": "2025-10-16T17:29:58.186Z"
+    },
+    "1263": {
+      "id": 1263,
+      "name": "Patrick Hudson",
+      "discord": "mexjumper",
+      "party": "Democratic Party",
+      "state": "Alabama",
+      "position": "U.S. Representative from Alabama",
+      "es": "140.0",
+      "co": "65.71%",
+      "nr": "67.16%",
+      "cash": "$62,265",
+      "rolesNeeded": [
+        "rep"
+      ],
+      "region": "south",
+      "updatedAt": "2025-10-16T17:29:59.823Z"
+    },
+    "1264": {
+      "id": 1264,
+      "name": "Eduard Shevchenko",
+      "discord": "grant_huellssein",
+      "party": "Democratic Party",
+      "state": "Hawaii",
+      "position": "U.S. Representative from Hawaii",
+      "es": "202.0",
+      "co": "0.00%",
+      "nr": "0.00%",
+      "cash": "$2,732,113",
+      "rolesNeeded": [
+        "rep"
+      ],
+      "region": "west",
+      "updatedAt": "2025-10-16T17:30:01.462Z"
+    },
+    "1265": {
+      "id": 1265,
+      "name": "Ken Yager",
+      "discord": "personthatplaysgames",
+      "party": "Democratic Party",
+      "state": "Alaska",
+      "position": "Private Citizen",
+      "es": "206.0",
+      "co": "25.64%",
+      "nr": "49.64%",
+      "cash": "$608,750",
+      "rolesNeeded": [],
+      "region": "west",
+      "updatedAt": "2025-10-16T17:30:03.103Z"
+    },
+    "1266": {
+      "id": 1266,
+      "name": "Sebastian Croft",
+      "discord": "bd79",
+      "party": "Democratic Party",
+      "state": "New York",
+      "position": "U.S. Senator from New York",
+      "es": "300.0",
+      "co": "0.00%",
+      "nr": "48.27%",
+      "cash": "$4,512,949",
+      "rolesNeeded": [
+        "sen"
+      ],
+      "region": "northeast",
+      "updatedAt": "2025-10-16T17:30:04.732Z"
+    },
+    "1267": {
+      "id": 1267,
+      "name": "Constance",
+      "discord": "cossy7",
+      "party": "Republican Party",
+      "state": "Alaska",
+      "position": "Governor of Alaska",
+      "es": "258.0",
+      "co": "22.52%",
+      "nr": "50.38%",
+      "cash": "$343,660",
+      "rolesNeeded": [],
+      "region": "west",
+      "updatedAt": "2025-10-16T17:30:07.005Z"
+    },
+    "1268": {
+      "id": 1268,
+      "name": "Geoff Duncan",
+      "discord": "davidpavon07",
+      "party": "Democratic Party",
+      "state": "Vermont",
+      "position": "U.S. Senator from Vermont",
+      "es": "252.0",
+      "co": "0.00%",
+      "nr": "46.87%",
+      "cash": "$1,450,486",
+      "rolesNeeded": [
+        "sen"
+      ],
+      "region": "northeast",
+      "updatedAt": "2025-10-16T17:30:08.756Z"
+    },
+    "1269": {
+      "id": 1269,
+      "name": "Mary Landrieu",
+      "discord": "davidpavon07",
+      "party": "Democratic Party",
+      "state": "Colorado",
+      "position": "U.S. Senator from Colorado",
+      "es": "252.0",
+      "co": "0.00%",
+      "nr": "48.62%",
+      "cash": "$2,033,253",
+      "rolesNeeded": [
+        "sen"
+      ],
+      "region": "west",
+      "updatedAt": "2025-10-16T17:30:10.378Z"
+    },
+    "1270": {
+      "id": 1270,
+      "name": "justin wright",
+      "discord": "justarandomnpc123",
+      "party": "Democratic Party",
+      "state": "California",
+      "position": "Private Citizen",
+      "es": "202.0",
+      "co": "0.00%",
+      "nr": "0.00%",
+      "cash": "$192,048",
+      "rolesNeeded": [],
+      "region": "west",
+      "updatedAt": "2025-10-16T17:30:12.005Z"
+    },
+    "1271": {
+      "id": 1271,
+      "name": "Annabeth Chase",
+      "discord": "jws29095dolormortis",
+      "party": "Democratic Party",
+      "state": "Georgia",
+      "position": "Private Citizen",
+      "es": "184.0",
+      "co": "15.70%",
+      "nr": "34.43%",
+      "cash": "$2,289,601",
+      "rolesNeeded": [],
+      "region": "south",
+      "updatedAt": "2025-10-16T17:30:14.090Z"
+    },
+    "1272": {
+      "id": 1272,
+      "name": "Dæmon 2",
+      "discord": "daemon2dc",
+      "party": "Democratic Party",
+      "state": "Washington",
+      "position": "U.S. Representative from Washington",
+      "es": "228.0",
+      "co": "0.00%",
+      "nr": "0.00%",
+      "cash": "$1,607,155",
+      "rolesNeeded": [
+        "rep"
+      ],
+      "region": "west",
+      "updatedAt": "2025-10-16T17:30:15.722Z"
+    },
+    "1273": {
+      "id": 1273,
+      "name": "jacob ojiezele",
+      "discord": "jacobojiezele",
+      "party": "Republican Party",
+      "state": "Alaska",
+      "position": "Private Citizen",
+      "es": "195.0",
+      "co": "0.98%",
+      "nr": "22.03%",
+      "cash": "$188,091",
+      "rolesNeeded": [],
+      "region": "west",
+      "updatedAt": "2025-10-16T17:30:18.013Z"
+    },
+    "1274": {
+      "id": 1274,
+      "name": "Chad Ulator",
+      "discord": "darthzorple",
+      "party": "Democratic Party",
+      "state": "New Jersey",
+      "position": "Governor of New Jersey",
+      "es": "274.0",
+      "co": "39.67%",
+      "nr": "57.79%",
+      "cash": "$2,540,575",
+      "rolesNeeded": [
+        "gov"
+      ],
+      "region": "northeast",
+      "updatedAt": "2025-10-16T17:30:19.613Z"
+    },
+    "1275": {
+      "id": 1275,
+      "name": "Doc Jones",
+      "discord": "jonesd18",
+      "party": "Republican Party",
+      "state": "Ohio",
+      "position": "Private Citizen",
+      "es": "202.0",
+      "co": "0.00%",
+      "nr": "0.00%",
+      "cash": "$614,525",
+      "rolesNeeded": [],
+      "region": "rust_belt",
+      "updatedAt": "2025-10-16T17:30:21.105Z"
+    },
+    "1276": {
+      "id": 1276,
+      "name": "Tigger",
+      "discord": "tigger4prez",
+      "party": "Democratic Party",
+      "state": "New Jersey",
+      "position": "U.S. Senator from New Jersey",
+      "es": "195.0",
+      "co": "53.45%",
+      "nr": "61.38%",
+      "cash": "$590,109",
+      "rolesNeeded": [
+        "sen"
+      ],
+      "region": "northeast",
+      "updatedAt": "2025-10-16T17:30:22.712Z"
+    },
+    "1277": {
+      "id": 1277,
+      "name": "Mike?¿??",
+      "discord": "schrodingers_hat",
+      "party": "Democratic Party",
+      "state": "Colorado",
+      "position": "U.S. Senator from Colorado",
+      "es": "300.0",
+      "co": "73.70%",
+      "nr": "82.65%",
+      "cash": "$18,683,944",
+      "rolesNeeded": [
+        "sen"
+      ],
+      "region": "west",
+      "updatedAt": "2025-10-16T17:30:25.817Z"
+    },
+    "1278": {
+      "id": 1278,
+      "name": "Paul George",
+      "discord": "aliteralwho.",
+      "party": "Democratic Party",
+      "state": "New Mexico",
+      "position": "Governor of New Mexico",
+      "es": "300.0",
+      "co": "33.16%",
+      "nr": "48.91%",
+      "cash": "$430,657",
+      "rolesNeeded": [
+        "gov"
+      ],
+      "region": "west",
+      "updatedAt": "2025-10-16T17:30:28.146Z"
+    },
+    "1279": {
+      "id": 1279,
+      "name": "Cylke",
+      "discord": "cylke",
+      "party": "Democratic Party",
+      "state": "Minnesota",
+      "position": "U.S. Representative from Minnesota",
+      "es": "267.0",
+      "co": "22.16%",
+      "nr": "35.84%",
+      "cash": "$736,093",
+      "rolesNeeded": [
+        "rep"
+      ],
+      "region": "rust_belt",
+      "updatedAt": "2025-10-16T17:30:29.777Z"
+    },
+    "1280": {
+      "id": 1280,
+      "name": "Eli Kaplan",
+      "discord": "ed792",
+      "party": "Democratic Party",
+      "state": "Massachusetts",
+      "position": "Private Citizen",
+      "es": "152.0",
+      "co": "0.00%",
+      "nr": "0.00%",
+      "cash": "$364,450",
+      "rolesNeeded": [],
+      "region": "northeast",
+      "updatedAt": "2025-10-16T17:30:32.449Z"
+    },
+    "1281": {
+      "id": 1281,
+      "name": "Antonio Vincelli",
+      "discord": "kaisarv",
+      "party": "Republican Party",
+      "state": "Virginia",
+      "position": "Private Citizen",
+      "es": "202.0",
+      "co": "0.00%",
+      "nr": "29.58%",
+      "cash": "$1,404,275",
+      "rolesNeeded": [],
+      "region": "south",
+      "updatedAt": "2025-10-16T17:30:34.080Z"
+    },
+    "1282": {
+      "id": 1282,
+      "name": "The Broiler",
+      "discord": "berrystrong",
+      "party": "Democratic Party",
+      "state": "Rhode Island",
+      "position": "Governor of Rhode Island",
+      "es": "229.0",
+      "co": "0.00%",
+      "nr": "3.80%",
+      "cash": "$1,174,033",
+      "rolesNeeded": [
+        "gov"
+      ],
+      "region": "northeast",
+      "updatedAt": "2025-10-16T17:30:35.682Z"
+    },
+    "1283": {
+      "id": 1283,
+      "name": "Rob Wittman",
+      "discord": "kaisarv",
+      "party": "Republican Party",
+      "state": "Virginia",
+      "position": "Private Citizen",
+      "es": "226.0",
+      "co": "0.00%",
+      "nr": "31.07%",
+      "cash": "$1,633,891",
+      "rolesNeeded": [],
+      "region": "south",
+      "updatedAt": "2025-10-16T17:30:37.264Z"
+    },
+    "1284": {
+      "id": 1284,
+      "name": "Danica Roem",
+      "discord": "nova_licious",
+      "party": "Democratic Party",
+      "state": "Hawaii",
+      "position": "Governor of Hawaii",
+      "es": "240.0",
+      "co": "50.96%",
+      "nr": "66.97%",
+      "cash": "$257,698",
+      "rolesNeeded": [
+        "gov"
+      ],
+      "region": "west",
+      "updatedAt": "2025-10-16T17:30:39.237Z"
+    },
+    "1285": {
+      "id": 1285,
+      "name": "Aaron Triff",
+      "discord": ".akrav",
+      "party": "Democratic Party",
+      "state": "New Jersey",
+      "position": "U.S. Senator from New Jersey",
+      "es": "280.0",
+      "co": "30.71%",
+      "nr": "0.00%",
+      "cash": "$304,895",
+      "rolesNeeded": [
+        "sen"
+      ],
+      "region": "northeast",
+      "updatedAt": "2025-10-16T17:30:41.237Z"
+    },
+    "1286": {
+      "id": 1286,
+      "name": "Frank Underwood",
+      "discord": "_jailbird_",
+      "party": "Republican Party",
+      "state": "Mississippi",
+      "position": "Governor of Mississippi",
+      "es": "204.0",
+      "co": "20.47%",
+      "nr": "26.91%",
+      "cash": "$1,763,308",
+      "rolesNeeded": [],
+      "region": "south",
+      "updatedAt": "2025-10-16T17:30:43.194Z"
+    },
+    "1287": {
+      "id": 1287,
+      "name": "Brandon Presley",
+      "discord": "_jailbird_",
+      "party": "Republican Party",
+      "state": "Mississippi",
+      "position": "U.S. Senator from Mississippi",
+      "es": "300.0",
+      "co": "7.66%",
+      "nr": "26.54%",
+      "cash": "$8,823,585",
+      "rolesNeeded": [],
+      "region": "south",
+      "updatedAt": "2025-10-16T17:30:44.824Z"
+    },
+    "1288": {
+      "id": 1288,
+      "name": "Jon Tester",
+      "discord": "_jailbird_",
+      "party": "Republican Party",
+      "state": "Montana",
+      "position": "U.S. Senator from Montana",
+      "es": "273.0",
+      "co": "62.81%",
+      "nr": "66.41%",
+      "cash": "$901,510",
+      "rolesNeeded": [],
+      "region": "west",
+      "updatedAt": "2025-10-16T17:30:46.948Z"
+    },
+    "1289": {
+      "id": 1289,
+      "name": "John Arbuckle",
+      "discord": "garfield.the.cat",
+      "party": "Democratic Party",
+      "state": "Maryland",
+      "position": "Private Citizen",
+      "es": "151.0",
+      "co": "0.00%",
+      "nr": "0.00%",
+      "cash": "$364,450",
+      "rolesNeeded": [],
+      "region": "northeast",
+      "updatedAt": "2025-10-16T17:30:48.580Z"
+    },
+    "1290": {
+      "id": 1290,
+      "name": "Mark Bacchus",
+      "discord": "markbacchus04",
+      "party": "Democratic Party",
+      "state": "Wisconsin",
+      "position": "U.S. Representative from Wisconsin",
+      "es": "229.0",
+      "co": "0.00%",
+      "nr": "20.19%",
+      "cash": "$622,375",
+      "rolesNeeded": [
+        "rep"
+      ],
+      "region": "rust_belt",
+      "updatedAt": "2025-10-16T17:30:50.575Z"
+    },
+    "1291": {
+      "id": 1291,
+      "name": "Ben Wikler",
+      "discord": "markbacchus04",
+      "party": "Democratic Party",
+      "state": "Pennsylvania",
+      "position": "U.S. Representative from Pennsylvania",
+      "es": "247.0",
+      "co": "9.79%",
+      "nr": "34.78%",
+      "cash": "$1,325,933",
+      "rolesNeeded": [
+        "rep"
+      ],
+      "region": "northeast",
+      "updatedAt": "2025-10-16T17:30:52.469Z"
+    },
+    "1292": {
+      "id": 1292,
+      "name": "Antony Blinken",
+      "discord": "markbacchus04",
+      "party": "Democratic Party",
+      "state": "Michigan",
+      "position": "Private Citizen",
+      "es": "238.0",
+      "co": "60.69%",
+      "nr": "85.78%",
+      "cash": "$750,893",
+      "rolesNeeded": [],
+      "region": "rust_belt",
+      "updatedAt": "2025-10-16T17:30:54.077Z"
+    },
+    "1293": {
+      "id": 1293,
+      "name": "Papa Sweetshare",
+      "discord": "papa_sweetshare",
+      "party": "Republican Party",
+      "state": "Wisconsin",
+      "position": "U.S. Senator from Wisconsin",
+      "es": "248.0",
+      "co": "36.67%",
+      "nr": "53.20%",
+      "cash": "$328,827",
+      "rolesNeeded": [],
+      "region": "rust_belt",
+      "updatedAt": "2025-10-16T17:30:57.083Z"
+    },
+    "1294": {
+      "id": 1294,
+      "name": "Frank Feathers",
+      "discord": "the_spicy_flamingo",
+      "party": "Republican Party",
+      "state": "Louisiana",
+      "position": "Private Citizen",
+      "es": "228.0",
+      "co": "0.00%",
+      "nr": "0.00%",
+      "cash": "$502,334",
+      "rolesNeeded": [],
+      "region": "south",
+      "updatedAt": "2025-10-16T17:30:59.696Z"
+    },
+    "1295": {
+      "id": 1295,
+      "name": "Jeremy Hunt",
+      "discord": "bubblegum1203",
+      "party": "Republican Party",
+      "state": "Kentucky",
+      "position": "Private Citizen",
+      "es": "152.0",
+      "co": "0.00%",
+      "nr": "0.00%",
+      "cash": "$579,034",
+      "rolesNeeded": [],
+      "region": "south",
+      "updatedAt": "2025-10-16T17:31:02.241Z"
+    },
+    "1296": {
+      "id": 1296,
+      "name": "Austin Barrett",
+      "discord": "oopify06",
+      "party": "Republican Party",
+      "state": "Kentucky",
+      "position": "Private Citizen",
+      "es": "152.0",
+      "co": "0.00%",
+      "nr": "0.00%",
+      "cash": "$310,910",
+      "rolesNeeded": [],
+      "region": "south",
+      "updatedAt": "2025-10-16T17:31:03.837Z"
+    },
+    "1297": {
+      "id": 1297,
+      "name": "Zayba",
+      "discord": "_zayba_",
+      "party": "Republican Party",
+      "state": "North Carolina",
+      "position": "Private Citizen",
+      "es": "151.0",
+      "co": "0.00%",
+      "nr": "0.00%",
+      "cash": "$610,910",
+      "rolesNeeded": [],
+      "region": "south",
+      "updatedAt": "2025-10-16T17:31:05.339Z"
+    },
+    "1298": {
+      "id": 1298,
+      "name": "Sherm Hermaderm",
+      "discord": "tigger4prez",
+      "party": "Democratic Party",
+      "state": "Mississippi",
+      "position": "U.S. Representative from Mississippi",
+      "es": "209.0",
+      "co": "4.63%",
+      "nr": "43.88%",
+      "cash": "$539,517",
+      "rolesNeeded": [
+        "rep"
+      ],
+      "region": "south",
+      "updatedAt": "2025-10-16T17:31:07.055Z"
+    },
+    "1299": {
+      "id": 1299,
+      "name": "Jimmy Kennedy",
+      "discord": "jimmy3252",
+      "party": "Democratic Party",
+      "state": "West Virginia",
+      "position": "U.S. Representative from West Virginia",
+      "es": "206.0",
+      "co": "0.09%",
+      "nr": "6.59%",
+      "cash": "$1,013,734",
+      "rolesNeeded": [
+        "rep"
+      ],
+      "region": "south",
+      "updatedAt": "2025-10-16T17:31:09.006Z"
+    },
+    "1300": {
+      "id": 1300,
+      "name": "Zell Miller",
+      "discord": "d.burgess",
+      "party": "Democratic Party",
+      "state": "Missouri",
+      "position": "U.S. Representative from Missouri",
+      "es": "194.0",
+      "co": "56.38%",
+      "nr": "54.94%",
+      "cash": "$334,985",
+      "rolesNeeded": [
+        "rep"
+      ],
+      "region": "rust_belt",
+      "updatedAt": "2025-10-16T17:31:11.396Z"
+    },
+    "1301": {
+      "id": 1301,
+      "name": "Tulsi Gabbard",
+      "discord": "kyrieween",
+      "party": "Republican Party",
+      "state": "Arkansas",
+      "position": "Private Citizen",
+      "es": "212.0",
+      "co": "0.00%",
+      "nr": "0.00%",
+      "cash": "$81,901",
+      "rolesNeeded": [],
+      "region": "south",
+      "updatedAt": "2025-10-16T17:31:13.087Z"
+    },
+    "1302": {
+      "id": 1302,
+      "name": "LordMonroe",
+      "discord": "lordkira2009",
+      "party": "Republican Party",
+      "state": "Minnesota",
+      "position": "Private Citizen",
+      "es": "182.0",
+      "co": "57.52%",
+      "nr": "57.29%",
+      "cash": "$144,784",
+      "rolesNeeded": [],
+      "region": "rust_belt",
+      "updatedAt": "2025-10-16T17:31:14.712Z"
+    },
+    "1303": {
+      "id": 1303,
+      "name": "Ar Gole",
+      "discord": "inquisitorhatesxenos",
+      "party": "Democratic Party",
+      "state": "Massachusetts",
+      "position": "Private Citizen",
+      "es": "148.0",
+      "co": "0.00%",
+      "nr": "64.84%",
+      "cash": "$55,829",
+      "rolesNeeded": [],
+      "region": "northeast",
+      "updatedAt": "2025-10-16T17:31:17.638Z"
+    },
+    "1304": {
+      "id": 1304,
+      "name": "Rafael Cortes Herrera",
+      "discord": "ensalada7118",
+      "party": "Republican Party",
+      "state": "Arizona",
+      "position": "Private Citizen",
+      "es": "177.0",
+      "co": "25.74%",
+      "nr": "40.16%",
+      "cash": "$387,869",
+      "rolesNeeded": [],
+      "region": "west",
+      "updatedAt": "2025-10-16T17:31:20.344Z"
+    },
+    "1305": {
+      "id": 1305,
+      "name": "The Rock",
+      "discord": "adi.g26",
+      "party": "Republican Party",
+      "state": "California",
+      "position": "Private Citizen",
+      "es": "212.0",
+      "co": "33.95%",
+      "nr": "44.57%",
+      "cash": "$230,719",
+      "rolesNeeded": [],
+      "region": "west",
+      "updatedAt": "2025-10-16T17:31:21.850Z"
+    },
+    "1306": {
+      "id": 1306,
+      "name": "John Miller",
+      "discord": "himmel_king",
+      "party": "Republican Party",
+      "state": "Arkansas",
+      "position": "U.S. Senator from Arkansas",
+      "es": "194.0",
+      "co": "67.73%",
+      "nr": "67.67%",
+      "cash": "$13,338",
+      "rolesNeeded": [],
+      "region": "south",
+      "updatedAt": "2025-10-16T17:31:23.436Z"
+    },
+    "1307": {
+      "id": 1307,
+      "name": "George Santos",
+      "discord": "littledipperbigdipper",
+      "party": "Democratic Party",
+      "state": "Florida",
+      "position": "U.S. Representative from Florida",
+      "es": "292.0",
+      "co": "73.83%",
+      "nr": "66.36%",
+      "cash": "$346,984",
+      "rolesNeeded": [
+        "rep"
+      ],
+      "region": "south",
+      "updatedAt": "2025-10-16T17:31:25.071Z"
+    },
+    "1308": {
+      "id": 1308,
+      "name": "Robert L. B. Corbyn",
+      "discord": "thedosgui",
+      "party": "Republican Party",
+      "state": "Ohio",
+      "position": "Private Citizen",
+      "es": "152.0",
+      "co": "0.00%",
+      "nr": "0.00%",
+      "cash": "$290,328",
+      "rolesNeeded": [],
+      "region": "rust_belt",
+      "updatedAt": "2025-10-16T17:31:27.433Z"
+    },
+    "1309": {
+      "id": 1309,
+      "name": "Clint Underwood",
+      "discord": "tragikus",
+      "party": "Republican Party",
+      "state": "Virginia",
+      "position": "Private Citizen",
+      "es": "152.0",
+      "co": "0.00%",
+      "nr": "0.00%",
+      "cash": "$288,505",
+      "rolesNeeded": [],
+      "region": "south",
+      "updatedAt": "2025-10-16T17:31:29.067Z"
+    },
+    "1310": {
+      "id": 1310,
+      "name": "miko",
+      "discord": "bushism04",
+      "party": "Republican Party",
+      "state": "Florida",
+      "position": "Private Citizen",
+      "es": "152.0",
+      "co": "0.00%",
+      "nr": "0.00%",
+      "cash": "$286,551",
+      "rolesNeeded": [],
+      "region": "south",
+      "updatedAt": "2025-10-16T17:31:30.711Z"
+    },
+    "1311": {
+      "id": 1311,
+      "name": "Erick Morale",
+      "discord": "papicholowasabsent",
+      "party": "Republican Party",
+      "state": "North Dakota",
+      "position": "Governor of North Dakota",
+      "es": "252.0",
+      "co": "18.08%",
+      "nr": "40.79%",
+      "cash": "$331,652",
+      "rolesNeeded": [],
+      "region": null,
+      "updatedAt": "2025-10-16T17:31:32.339Z"
+    },
+    "1312": {
+      "id": 1312,
+      "name": "Narita Canadian",
+      "discord": "realcanadianhero",
+      "party": "Republican Party",
+      "state": "Georgia",
+      "position": "U.S. Representative from Georgia",
+      "es": "148.0",
+      "co": "77.02%",
+      "nr": "80.11%",
+      "cash": "$32,440",
+      "rolesNeeded": [],
+      "region": "south",
+      "updatedAt": "2025-10-16T17:31:35.576Z"
+    },
+    "1313": {
+      "id": 1313,
+      "name": "Tom cotton",
+      "discord": "randompoliticalpredictions",
+      "party": "Republican Party",
+      "state": "Arkansas",
+      "position": "Private Citizen",
+      "es": "184.0",
+      "co": "0.00%",
+      "nr": "25.09%",
+      "cash": "$338,135",
+      "rolesNeeded": [],
+      "region": "south",
+      "updatedAt": "2025-10-16T17:31:37.708Z"
+    },
+    "1314": {
+      "id": 1314,
+      "name": "Bilbo Thurmond Sr.",
+      "discord": "papa_sweetshare",
+      "party": "Republican Party",
+      "state": "Mississippi",
+      "position": "U.S. Senator from Mississippi",
+      "es": "255.0",
+      "co": "0.00%",
+      "nr": "15.49%",
+      "cash": "$36,302",
+      "rolesNeeded": [],
+      "region": "south",
+      "updatedAt": "2025-10-16T17:31:39.301Z"
+    },
+    "1315": {
+      "id": 1315,
+      "name": "Bilbo Thurmond Jr.",
+      "discord": "papa_sweetshare",
+      "party": "Republican Party",
+      "state": "North Dakota",
+      "position": "U.S. Senator from North Dakota",
+      "es": "251.0",
+      "co": "0.00%",
+      "nr": "0.00%",
+      "cash": "$28,193",
+      "rolesNeeded": [],
+      "region": null,
+      "updatedAt": "2025-10-16T17:31:41.082Z"
+    },
+    "1316": {
+      "id": 1316,
+      "name": "Wenceslas Kraj",
+      "discord": "blocker_the_third",
+      "party": "Republican Party",
+      "state": "Texas",
+      "position": "Private Citizen",
+      "es": "152.0",
+      "co": "0.00%",
+      "nr": "0.00%",
+      "cash": "$257,745",
+      "rolesNeeded": [],
+      "region": "south",
+      "updatedAt": "2025-10-16T17:31:42.684Z"
+    },
+    "1317": {
+      "id": 1317,
+      "name": "Theo Bennett",
+      "discord": "theofficialking0829",
+      "party": "Republican Party",
+      "state": "Arkansas",
+      "position": "Private Citizen",
+      "es": "198.0",
+      "co": "31.65%",
+      "nr": "50.52%",
+      "cash": "$110,706",
+      "rolesNeeded": [],
+      "region": "south",
+      "updatedAt": "2025-10-16T17:31:44.093Z"
+    },
+    "1318": {
+      "id": 1318,
+      "name": "Preston Manning",
+      "discord": "alred_gallagher",
+      "party": "Republican Party",
+      "state": "Mississippi",
+      "position": "Private Citizen",
+      "es": "176.0",
+      "co": "0.00%",
+      "nr": "0.00%",
+      "cash": "$253,812",
+      "rolesNeeded": [],
+      "region": "south",
+      "updatedAt": "2025-10-16T17:31:45.678Z"
+    },
+    "1319": {
+      "id": 1319,
+      "name": "Kim Yo Jong",
+      "discord": "nova_licious",
+      "party": "Democratic Party",
+      "state": "Hawaii",
+      "position": "Private Citizen",
+      "es": "211.0",
+      "co": "41.38%",
+      "nr": "67.68%",
+      "cash": "$199,726",
+      "rolesNeeded": [],
+      "region": "west",
+      "updatedAt": "2025-10-16T17:31:47.539Z"
+    },
+    "1320": {
+      "id": 1320,
+      "name": "Seong Gi-Hun",
+      "discord": "why8492",
+      "party": "Democratic Party",
+      "state": "Colorado",
+      "position": "Governor of Colorado",
+      "es": "254.0",
+      "co": "32.05%",
+      "nr": "45.21%",
+      "cash": "$1,023,935",
+      "rolesNeeded": [
+        "gov"
+      ],
+      "region": "west",
+      "updatedAt": "2025-10-16T17:31:49.132Z"
+    },
+    "1321": {
+      "id": 1321,
+      "name": "Sebastian Jefferson",
+      "discord": "kurukurukuru0007",
+      "party": "Republican Party",
+      "state": "South Carolina",
+      "position": "U.S. Representative from South Carolina",
+      "es": "251.0",
+      "co": "0.00%",
+      "nr": "23.03%",
+      "cash": "$103,702",
+      "rolesNeeded": [],
+      "region": "south",
+      "updatedAt": "2025-10-16T17:31:50.994Z"
+    },
+    "1322": {
+      "id": 1322,
+      "name": "Paulo",
+      "discord": "538431_",
+      "party": "Republican Party",
+      "state": "New Hampshire",
+      "position": "Private Citizen",
+      "es": "152.0",
+      "co": "0.00%",
+      "nr": "0.00%",
+      "cash": "$250,000",
+      "rolesNeeded": [],
+      "region": "northeast",
+      "updatedAt": "2025-10-16T17:31:52.601Z"
+    },
+    "1323": {
+      "id": 1323,
+      "name": "Farfour",
+      "discord": "thegrabbler",
+      "party": "Democratic Party",
+      "state": "Oregon",
+      "position": "Governor of Oregon",
+      "es": "259.0",
+      "co": "42.54%",
+      "nr": "37.76%",
+      "cash": "$2,328,008",
+      "rolesNeeded": [
+        "gov"
+      ],
+      "region": "west",
+      "updatedAt": "2025-10-16T17:31:54.202Z"
+    },
+    "1324": {
+      "id": 1324,
+      "name": "Robert Kirkpatrick",
+      "discord": "eirealexander_48153",
+      "party": "Republican Party",
+      "state": "Nevada",
+      "position": "Private Citizen",
+      "es": "206.0",
+      "co": "38.92%",
+      "nr": "54.91%",
+      "cash": "$136,336",
+      "rolesNeeded": [],
+      "region": "west",
+      "updatedAt": "2025-10-16T17:31:55.783Z"
+    },
+    "1325": {
+      "id": 1325,
+      "name": "Mike Ross",
+      "discord": "littledipperbigdipper",
+      "party": "Democratic Party",
+      "state": "Arizona",
+      "position": "Private Citizen",
+      "es": "136.0",
+      "co": "79.64%",
+      "nr": "85.90%",
+      "cash": "$94,286",
+      "rolesNeeded": [],
+      "region": "west",
+      "updatedAt": "2025-10-16T17:31:57.934Z"
+    },
+    "1326": {
+      "id": 1326,
+      "name": "Clark Rockefeller",
+      "discord": "littledipperbigdipper",
+      "party": "Democratic Party",
+      "state": "Arizona",
+      "position": "Private Citizen",
+      "es": "172.0",
+      "co": "63.10%",
+      "nr": "66.47%",
+      "cash": "$101,252",
+      "rolesNeeded": [],
+      "region": "west",
+      "updatedAt": "2025-10-16T17:31:59.518Z"
+    },
+    "1327": {
+      "id": 1327,
+      "name": "Dennis Bohannan",
+      "discord": "spbman1234",
+      "party": "Democratic Party",
+      "state": "New York",
+      "position": "Private Citizen",
+      "es": "182.0",
+      "co": "0.00%",
+      "nr": "30.71%",
+      "cash": "$135,704",
+      "rolesNeeded": [],
+      "region": "northeast",
+      "updatedAt": "2025-10-16T17:32:01.100Z"
+    },
+    "1328": {
+      "id": 1328,
+      "name": "Alex Alhashmi",
+      "discord": "hamoodian",
+      "party": "Republican Party",
+      "state": "Illinois",
+      "position": "Private Citizen",
+      "es": "110.0",
+      "co": "0.00%",
+      "nr": "7.37%",
+      "cash": "$5,068,335",
+      "rolesNeeded": [],
+      "region": "rust_belt",
+      "updatedAt": "2025-10-16T17:32:02.925Z"
+    },
+    "1329": {
+      "id": 1329,
+      "name": "Wyatt Carter",
+      "discord": "saladnotfound",
+      "party": "Republican Party",
+      "state": "Florida",
+      "position": "Private Citizen",
+      "es": "151.0",
+      "co": "0.00%",
+      "nr": "0.00%",
+      "cash": "$250,000",
+      "rolesNeeded": [],
+      "region": "south",
+      "updatedAt": "2025-10-16T17:32:05.380Z"
+    },
+    "1330": {
+      "id": 1330,
+      "name": "Frank Hassle",
+      "discord": "darthzorple",
+      "party": "Democratic Party",
+      "state": "New Jersey",
+      "position": "Private Citizen",
+      "es": "177.0",
+      "co": "0.00%",
+      "nr": "44.49%",
+      "cash": "$220,581",
+      "rolesNeeded": [],
+      "region": "northeast",
+      "updatedAt": "2025-10-16T17:32:06.968Z"
+    },
+    "1331": {
+      "id": 1331,
+      "name": "Sam Hyde",
+      "discord": "darthzorple",
+      "party": "Democratic Party",
+      "state": "Rhode Island",
+      "position": "U.S. Senator from Rhode Island",
+      "es": "252.0",
+      "co": "0.00%",
+      "nr": "0.00%",
+      "cash": "$334,733",
+      "rolesNeeded": [
+        "sen"
+      ],
+      "region": "northeast",
+      "updatedAt": "2025-10-16T17:32:08.428Z"
+    },
+    "1332": {
+      "id": 1332,
+      "name": "Matthew Lawrence",
+      "discord": "radzz1",
+      "party": "Republican Party",
+      "state": "California",
+      "position": "Private Citizen",
+      "es": "152.0",
+      "co": "0.00%",
+      "nr": "18.57%",
+      "cash": "$177,152",
+      "rolesNeeded": [],
+      "region": "west",
+      "updatedAt": "2025-10-16T17:32:10.031Z"
+    },
+    "1333": {
+      "id": 1333,
+      "name": "Kim Reynolds",
+      "discord": "worst_nightmare_of_j.d._scholten",
+      "party": "Republican Party",
+      "state": "Iowa",
+      "position": "Private Citizen",
+      "es": "162.0",
+      "co": "32.86%",
+      "nr": "35.94%",
+      "cash": "$103,135",
+      "rolesNeeded": [],
+      "region": "rust_belt",
+      "updatedAt": "2025-10-16T17:32:11.857Z"
+    },
+    "1334": {
+      "id": 1334,
+      "name": "Emerald",
+      "discord": "emeraldlite_",
+      "party": "Democratic Party",
+      "state": "Alabama",
+      "position": "Private Citizen",
+      "es": "141.0",
+      "co": "0.00%",
+      "nr": "0.00%",
+      "cash": "$200,000",
+      "rolesNeeded": [],
+      "region": "south",
+      "updatedAt": "2025-10-16T17:32:13.903Z"
+    },
+    "1335": {
+      "id": 1335,
+      "name": "Peter Parker",
+      "discord": "gogigantic_xiuxing",
+      "party": "Republican Party",
+      "state": "Kentucky",
+      "position": "Private Citizen",
+      "es": "113.0",
+      "co": "0.00%",
+      "nr": "0.00%",
+      "cash": "$250,000",
+      "rolesNeeded": [],
+      "region": "south",
+      "updatedAt": "2025-10-16T17:32:15.472Z"
+    }
+  },
+  "byDiscord": {
+    "doctorsus": [
+      1000,
+      1001,
+      1002
+    ],
+    "rhinosarous": [
+      1003,
+      1004,
+      1005
+    ],
+    "rhino__sigma": [
+      1006
+    ],
+    "eternally_sleeping.": [
+      1007,
+      1048,
+      1069
+    ],
+    "presidentgaryjohnson": [
+      1008,
+      1225
+    ],
+    "vonaleph": [
+      1009,
+      1062,
+      1080
+    ],
+    "jewdyscoming": [
+      1010
+    ],
+    "trustfundfinance": [
+      1011,
+      1245,
+      1246
+    ],
+    "mercedes.mone": [
+      1012,
+      1038,
+      1040
+    ],
+    "cmdr_ricky": [
+      1013,
+      1045,
+      1047
+    ],
+    "geneva919": [
+      1014,
+      1102,
+      1104
+    ],
+    "kawiorek.": [
+      1015,
+      1035,
+      1043
+    ],
+    "davidpavon07": [
+      1016,
+      1268,
+      1269
+    ],
+    "scorchg_": [
+      1017,
+      1052,
+      1067
+    ],
+    "berlinsucks": [
+      1018,
+      1181,
+      1182
+    ],
+    "arvandrr": [
+      1019,
+      1076,
+      1079
+    ],
+    "therealmakaveli": [
+      1020,
+      1049,
+      1058
+    ],
+    "flounderingfool": [
+      1021
+    ],
+    "gion915": [
+      1022,
+      1054
+    ],
+    "povryan": [
+      1023,
+      1031,
+      1032
+    ],
+    "defaultyboii911": [
+      1024,
+      1071,
+      1073
+    ],
+    "beerkeg0": [
+      1025
+    ],
+    "verified": [
+      1026,
+      1057,
+      1059,
+      1060,
+      1063,
+      1065,
+      1070,
+      1072,
+      1081,
+      1134,
+      1154,
+      1171,
+      1172,
+      1187,
+      1188,
+      1201,
+      1207,
+      1208
+    ],
+    "febreezejedi": [
+      1027,
+      1053,
+      1056
+    ],
+    "kym47": [
+      1028
+    ],
+    "aussiecrackhead": [
+      1030
+    ],
+    "weston411": [
+      1033
+    ],
+    "hawaji88": [
+      1034,
+      1061,
+      1064
+    ],
+    "zenthiusescalus": [
+      1036,
+      1087,
+      1088
+    ],
+    "theparkranger_": [
+      1037
+    ],
+    "fullnameunknown": [
+      1039,
+      1046,
+      1051
+    ],
+    "karmablaster": [
+      1041
+    ],
+    "grupp": [
+      1042
+    ],
+    "beast4208": [
+      1044,
+      1066
+    ],
+    "sherman5851": [
+      1050
+    ],
+    "gladius_z": [
+      1055,
+      1203,
+      1204
+    ],
+    "galaxydoge420": [
+      1068
+    ],
+    "empressofyiti": [
+      1074
+    ],
+    "buttch33ks": [
+      1075
+    ],
+    "bowtiewashere": [
+      1077
+    ],
+    "lilbuddyspd11": [
+      1078
+    ],
+    "kilka666": [
+      1082,
+      1261,
+      1262
+    ],
+    "yaera.": [
+      1083
+    ],
+    "muttznz": [
+      1084
+    ],
+    "cecedawn": [
+      1085
+    ],
+    "dazbog07": [
+      1086
+    ],
+    "homophobiclesbian": [
+      1089,
+      1096
+    ],
+    "etherbound": [
+      1090
+    ],
+    "surtibong": [
+      1091
+    ],
+    "insane686": [
+      1093
+    ],
+    "tsarlita": [
+      1095
+    ],
+    "hawkhorn": [
+      1097
+    ],
+    "yagabababa": [
+      1098
+    ],
+    "mafolobrown": [
+      1099
+    ],
+    "hmdps3": [
+      1100
+    ],
+    "_deviloftherhine": [
+      1101,
+      1152,
+      1153
+    ],
+    "_sabina.": [
+      1103
+    ],
+    "johanpats": [
+      1105
+    ],
+    "alikhan.55": [
+      1106
+    ],
+    "sophiet.union": [
+      1107
+    ],
+    "berrystrong": [
+      1108,
+      1282
+    ],
+    "fimconte": [
+      1109,
+      1166,
+      1167
+    ],
+    "brutusthegreat123": [
+      1110
+    ],
+    "obama_care44": [
+      1111
+    ],
+    "anthony.11dt": [
+      1112
+    ],
+    "realpalpatine": [
+      1113
+    ],
+    "jiricepelka.scrt": [
+      1114
+    ],
+    "adbellum": [
+      1115,
+      1160
+    ],
+    "urrsss": [
+      1116
+    ],
+    "justzim": [
+      1117
+    ],
+    "mateo9811": [
+      1118,
+      1164
+    ],
+    "kduggan91": [
+      1119,
+      1132
+    ],
+    "bd79": [
+      1120,
+      1242,
+      1266
+    ],
+    "goodvibejay": [
+      1121
+    ],
+    "phoenixflamesong": [
+      1122,
+      1135,
+      1149
+    ],
+    "lordelmelloiii": [
+      1123,
+      1191,
+      1197
+    ],
+    "poketron6000": [
+      1124
+    ],
+    "mdmrn": [
+      1125
+    ],
+    "mr.ase": [
+      1126
+    ],
+    "kyrieween": [
+      1127,
+      1301
+    ],
+    "dickcheney2001": [
+      1128
+    ],
+    "jordanmilly": [
+      1129
+    ],
+    "maria045781": [
+      1130
+    ],
+    "mcappled": [
+      1131,
+      1136,
+      1140
+    ],
+    "giorgakiss_3963": [
+      1133,
+      1138,
+      1139
+    ],
+    "chungoboingoby": [
+      1137
+    ],
+    "jxckuk": [
+      1141,
+      1142,
+      1143
+    ],
+    "scionofwinter": [
+      1144
+    ],
+    ".beersheva.": [
+      1145,
+      1189,
+      1190
+    ],
+    ".crazycreeperdoctor": [
+      1146,
+      1147,
+      1148
+    ],
+    "aeroplane_": [
+      1150
+    ],
+    "thisaintover2028": [
+      1151,
+      1221,
+      1222
+    ],
+    "james.4550.": [
+      1155
+    ],
+    "tdwall26": [
+      1156,
+      1158,
+      1159
+    ],
+    "egg3901": [
+      1157,
+      1240,
+      1241
+    ],
+    "generalcannibal": [
+      1161,
+      1162,
+      1163
+    ],
+    "stoichia": [
+      1165
+    ],
+    "rgold12": [
+      1168
+    ],
+    "fdr9434": [
+      1169,
+      1232,
+      1233
+    ],
+    "asemuasuno": [
+      1170,
+      1195
+    ],
+    "x.spaceman": [
+      1173
+    ],
+    "magadonaldtrumpjr": [
+      1174
+    ],
+    "reineselmelloiarchistorte": [
+      1175,
+      1192,
+      1194
+    ],
+    "dsgerrinwright": [
+      1176,
+      1177,
+      1178
+    ],
+    "lillyhattrick": [
+      1179
+    ],
+    "hircinegarden": [
+      1180
+    ],
+    "dehkari": [
+      1183
+    ],
+    "fw.swisher": [
+      1184
+    ],
+    "markdayton204": [
+      1185
+    ],
+    "johnshake47": [
+      1186
+    ],
+    "johnphilips088": [
+      1193,
+      1198,
+      1199
+    ],
+    "la_stalino": [
+      1196,
+      1200,
+      1206
+    ],
+    ".vgk": [
+      1202
+    ],
+    "sakurasawa5249": [
+      1205
+    ],
+    "supermax2409": [
+      1209
+    ],
+    "presidentxi_": [
+      1210
+    ],
+    "thewarriorsproductionsyt": [
+      1211
+    ],
+    "deprince": [
+      1212
+    ],
+    "saucecomplex": [
+      1213
+    ],
+    "agnastthrower": [
+      1214
+    ],
+    "deannofficial": [
+      1215
+    ],
+    "musedo.": [
+      1216,
+      1218,
+      1219
+    ],
+    "adamokke04": [
+      1217
+    ],
+    "otdo": [
+      1220,
+      1238,
+      1239
+    ],
+    "sababa": [
+      1223
+    ],
+    "yoitzdan": [
+      1224
+    ],
+    "radbut_sad": [
+      1226
+    ],
+    "grape1": [
+      1227,
+      1235,
+      1236
+    ],
+    "alrich": [
+      1228,
+      1230,
+      1231
+    ],
+    "ryan0075847": [
+      1229
+    ],
+    ".windoek": [
+      1234
+    ],
+    "crispycole3": [
+      1237
+    ],
+    "josephrandolph": [
+      1243
+    ],
+    "the.bassist.": [
+      1244,
+      1250,
+      1258
+    ],
+    "taydeo": [
+      1247,
+      1249
+    ],
+    "kagforever": [
+      1248
+    ],
+    "smapiaverageninja": [
+      1251
+    ],
+    "dageldunk": [
+      1252
+    ],
+    "loompah00": [
+      1253
+    ],
+    "azeral.": [
+      1254
+    ],
+    "thestartome": [
+      1255
+    ],
+    "mistermac193": [
+      1256
+    ],
+    "remydanton7": [
+      1257
+    ],
+    "tahytahy": [
+      1259
+    ],
+    "garfield.the.cat": [
+      1260,
+      1289
+    ],
+    "mexjumper": [
+      1263
+    ],
+    "grant_huellssein": [
+      1264
+    ],
+    "personthatplaysgames": [
+      1265
+    ],
+    "cossy7": [
+      1267
+    ],
+    "justarandomnpc123": [
+      1270
+    ],
+    "jws29095dolormortis": [
+      1271
+    ],
+    "daemon2dc": [
+      1272
+    ],
+    "jacobojiezele": [
+      1273
+    ],
+    "darthzorple": [
+      1274,
+      1330,
+      1331
+    ],
+    "jonesd18": [
+      1275
+    ],
+    "tigger4prez": [
+      1276,
+      1298
+    ],
+    "schrodingers_hat": [
+      1277
+    ],
+    "aliteralwho.": [
+      1278
+    ],
+    "cylke": [
+      1279
+    ],
+    "ed792": [
+      1280
+    ],
+    "kaisarv": [
+      1281,
+      1283
+    ],
+    "nova_licious": [
+      1284,
+      1319
+    ],
+    ".akrav": [
+      1285
+    ],
+    "_jailbird_": [
+      1286,
+      1287,
+      1288
+    ],
+    "markbacchus04": [
+      1290,
+      1291,
+      1292
+    ],
+    "papa_sweetshare": [
+      1293,
+      1314,
+      1315
+    ],
+    "the_spicy_flamingo": [
+      1294
+    ],
+    "bubblegum1203": [
+      1295
+    ],
+    "oopify06": [
+      1296
+    ],
+    "_zayba_": [
+      1297
+    ],
+    "jimmy3252": [
+      1299
+    ],
+    "d.burgess": [
+      1300
+    ],
+    "lordkira2009": [
+      1302
+    ],
+    "inquisitorhatesxenos": [
+      1303
+    ],
+    "ensalada7118": [
+      1304
+    ],
+    "adi.g26": [
+      1305
+    ],
+    "himmel_king": [
+      1306
+    ],
+    "littledipperbigdipper": [
+      1307,
+      1325,
+      1326
+    ],
+    "thedosgui": [
+      1308
+    ],
+    "tragikus": [
+      1309
+    ],
+    "bushism04": [
+      1310
+    ],
+    "papicholowasabsent": [
+      1311
+    ],
+    "realcanadianhero": [
+      1312
+    ],
+    "randompoliticalpredictions": [
+      1313
+    ],
+    "blocker_the_third": [
+      1316
+    ],
+    "theofficialking0829": [
+      1317
+    ],
+    "alred_gallagher": [
+      1318
+    ],
+    "why8492": [
+      1320
+    ],
+    "kurukurukuru0007": [
+      1321
+    ],
+    "538431_": [
+      1322
+    ],
+    "thegrabbler": [
+      1323
+    ],
+    "eirealexander_48153": [
+      1324
+    ],
+    "spbman1234": [
+      1327
+    ],
+    "hamoodian": [
+      1328
+    ],
+    "saladnotfound": [
+      1329
+    ],
+    "radzz1": [
+      1332
+    ],
+    "worst_nightmare_of_j.d._scholten": [
+      1333
+    ],
+    "emeraldlite_": [
+      1334
+    ],
+    "gogigantic_xiuxing": [
+      1335
+    ]
+  }
+}

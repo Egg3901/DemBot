@@ -45,4 +45,4 @@ temp/
 *.download
 
 # App data snapshots (keep canonical profiles.json)
-data/profiles.*.json
+data/profiles.*.jsonstatus.json
