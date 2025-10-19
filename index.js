@@ -39,6 +39,8 @@ const REGISTER_GLOBAL = String(process.env.REGISTER_GLOBAL).toLowerCase() === 't
 const ALLOWED_DM_USER = process.env.ALLOWED_DM_USER || '333052320252297216';
 const DASHBOARD_PORT = Number(process.env.STATUS_PORT || process.env.DASHBOARD_PORT || 3000);
 const DASHBOARD_HOST = process.env.STATUS_HOST || process.env.DASHBOARD_HOST || '0.0.0.0';
+// Welcome channel: prefer .env WELCOME_CHANNEL_ID, fallback to provided channel id
+const WELCOME_CHANNEL_ID = process.env.WELCOME_CHANNEL_ID || '1257518076123939017';
 
 if (!DISCORD_TOKEN) {
   console.error('❌ Missing DISCORD_TOKEN in .env');
@@ -145,6 +147,44 @@ client.once(Events.ClientReady, async (c) => {
   }
 });
 
+// ---- Welcome new members ----
+client.on(Events.GuildMemberAdd, async (member) => {
+  try {
+    // Skip bots
+    if (member.user?.bot) return;
+
+    // Try the configured welcome channel first
+    let channel = null;
+    if (WELCOME_CHANNEL_ID) {
+      try {
+        channel = await member.client.channels.fetch(WELCOME_CHANNEL_ID);
+      } catch (e) {
+        console.warn(`⚠️ Could not fetch WELCOME_CHANNEL_ID=${WELCOME_CHANNEL_ID}:`, e?.message ?? e);
+      }
+    }
+
+    // Fallback to system channel if configured one not available
+    if (!channel || !channel.isTextBased?.()) {
+      channel = member.guild?.systemChannel ?? null;
+    }
+
+    if (!channel || !channel.isTextBased?.()) {
+      console.warn('⚠️ No suitable welcome channel found (check permissions & WELCOME_CHANNEL_ID).');
+      return;
+    }
+
+    const msg =
+      `👋 Welcome <@${member.id}> to the **Democratic Party** server!\n\n` +
+      `To access the server channels, please run **\`!verifyparty\`** in this channel.\n` +
+      `If you need help, ping chair/deputy chair or a member of the national committee. `;
+
+    await channel.send({ content: msg });
+    console.log(`✅ Sent welcome for ${member.user?.tag ?? member.id}`);
+  } catch (err) {
+    console.error('❌ Failed to send welcome message:', err);
+  }
+});
+
 // ---- Interaction routing ----
 client.on(Events.InteractionCreate, async (interaction) => {
   if (!interaction.isChatInputCommand()) return;
@@ -198,8 +238,9 @@ client.login(DISCORD_TOKEN).catch((err) => {
  * Purpose: Bot bootstrap, command loading/registration, and interaction routing
  * Author: egg3901
  * Created: 2025-10-16
- * Last Updated: 2025-10-16
+ * Last Updated: 2025-10-18
  * Notes:
  *   - Reads slash-command modules from ./commands and registers them (guild/global).
  *   - Uses environment variables from .env (see README or .env for details).
+ *   - Welcomes new members in WELCOME_CHANNEL_ID (or system channel) with !verifyparty instructions.
  */
