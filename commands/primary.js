@@ -103,59 +103,43 @@ module.exports = {
     let results = [];
     try {
       // 1) Login and load the states index to resolve state id
-      const statesUrl = `${BASE}/states`;
-      const sess = await loginAndGet(statesUrl);
-      browser = sess.browser;
-      page = sess.page;
-      let statesHtml = sess.html;
-      addLog(`Fetched /states (length=${statesHtml?.length || 0})`);
-      stage = 'resolve_state_id';
+const statesUrl = `${BASE}/states`;
+const sess = await loginAndGet(statesUrl);
+browser = sess.browser;
+page = sess.page;
+let statesHtml = sess.html;
+addLog(`Fetched /states (length=${statesHtml?.length || 0})`);
+stage = 'resolve_state_id';
 
-      // If the /states page is not the listing we expect, try a fallback fetch of /states again
-      if (!looksLikeStatesList(statesHtml)) {
-        addLog('Initial /states page did not match list heuristic; retrying with live navigation.');
-        await page.goto(statesUrl, { waitUntil: 'networkidle2' });
-        statesHtml = await page.content();
-        addLog(`Fetched /states via direct goto (length=${statesHtml?.length || 0})`);
-      }
+// --- Helper: verify we’re actually on the states list ---
+async function assertOnStatesListOrThrow(page) {
+  const url = page.url() || '';
+  const html = await page.content();
+  if (/\/login\b/i.test(url) || (/name=["']?csrf(_token)?/i.test(html) && !/href=["']\/states\//i.test(html))) {
+    throw new Error('Not authenticated for /states (redirected or served login). Check credentials/session.');
+  }
+  const linkCount = (await page.evaluate(() => document.querySelectorAll('a[href^="/states/"]').length)) || 0;
+  if (linkCount < 3) {
+    throw new Error(`States listing not detected (found only ${linkCount} links).`);
+  }
+}
+await assertOnStatesListOrThrow(page);
 
-      stateId = extractStateIdFromStatesHtml(statesHtml, stateName);
-      if (stateId) addLog(`Resolved state ID ${stateId} from initial HTML match.`);
+// --- Try normal extraction first ---
+function looksLikeStatesList(html) {
+  const $ = cheerio.load(html || '');
+  const title = ($('title').first().text() || '').toLowerCase();
+  if (/\bamerican\s+states\b/.test(title)) return true;
+  if (/\bstates\b/.test(title) && $('a[href^="/states/"]').length >= 5) return true;
+  return $('a[href^="/states/"]').length >= 10;
+}
 
-      // Try a live DOM extraction (after scripts run) if not found
-      if (!stateId) {
-        try {
-          const target = normalizeStateName(stateName);
-          const idLive = await page.evaluate((targetName) => {
-            const norm = (txt) => String(txt || '')
-              .replace(/\u00A0/g, ' ')
-              .normalize('NFKD')
-              .trim().toLowerCase()
-              .replace(/\s+/g, ' ')
-              .replace(/^(state|commonwealth|territory)\s+of\s+/i, '')
-              .replace(/\s*\(.*?\)\s*$/, '')
-              .trim();
-            const anchors = Array.from(document.querySelectorAll('a[href^="/states/"]'));
-            for (const a of anchors) {
-              const href = a.getAttribute('href') || '';
-              const text = (a.textContent || '').trim();
-              if (!/^\/states\/\d+/.test(href)) continue;
-              if (!text) continue;
-              if (norm(text) === norm(targetName)) {
-                const m = href.match(/\/states\/(\d+)/);
-                if (m) return Number(m[1]);
-              }
-            }
-            return null;
-          }, stateName);
-          if (idLive) {
-            stateId = idLive;
-            addLog(`Resolved state ID ${stateId} via live DOM evaluation.`);
-          }
-        } catch (_) {}
-      }
+stateId = extractStateIdFromStatesHtml(statesHtml, stateName);
+if (stateId) addLog(`Resolved state ID ${stateId} from initial HTML match.`);
 
-      // Fallback to local HTML (try any saved States listing in repo root) if not found
+// --- Try live DOM if not found ---
+async function resolveStateIdLive(page, targetName) {
+
       if (!stateId) {
         const candidates = [
           'American States _ Power Play USA.html',
