@@ -78,7 +78,7 @@ function extractNextRaceTime(html) {
   $('*').each((_, el) => {
     const t = ($(el).text() || '').replace(/\s+/g, ' ').trim();
     if (/next\s*race|election\s*day|starts\s*in|next\s*round|polls\s*open|polls\s*close/i.test(t)) {
-      candidates.push(t.replace(/(AM|PM)(Week)/, '$1 — $2'));
+      candidates.push(t.replace(/(AM|PM)(Week)/, '$1 - $2'));
     }
   });
   candidates.sort((a, b) => b.length - a.length);
@@ -104,13 +104,13 @@ function findRaceInfoFromStateElections(html, raceLabel) {
     rows.each((__, tr) => {
       const row = $(tr);
       const cells = row.find('td');
-      const dateText = (cells.eq(0).text() || '').replace(/\s+/g, ' ').trim().replace(/(AM|PM)(Week)/, '$1 — $2');
-      const statusText = (cells.eq(1).text() || '').replace(/\s+/g, ' ').trim().replace(/(AM|PM)(Week)/, '$1 — $2');
+      const dateText = (cells.eq(0).text() || '').replace(/\s+/g, ' ').trim().replace(/(AM|PM)(Week)/, '$1 - $2');
+      const statusText = (cells.eq(1).text() || '').replace(/\s+/g, ' ').trim().replace(/(AM|PM)(Week)/, '$1 - $2');
       const anchor = row.find('a[href]').first();
       if (!nextRaceText && dateText) {
         const isEnded = /ended|finished|complete/i.test(statusText);
         if (!isEnded) {
-          nextRaceText = statusText ? `${dateText} — ${statusText}` : dateText;
+          nextRaceText = statusText ? `${dateText} - ${statusText}` : dateText;
         }
       }
       if (!raceUrl && anchor.length) {
@@ -125,10 +125,10 @@ function findRaceInfoFromStateElections(html, raceLabel) {
     if (!nextRaceText && rows.length) {
       const firstRow = rows.first();
       const cells = firstRow.find('td');
-      const dateText = (cells.eq(0).text() || '').replace(/\s+/g, ' ').trim().replace(/(AM|PM)(Week)/, '$1 — $2');
-      const statusText = (cells.eq(1).text() || '').replace(/\s+/g, ' ').trim().replace(/(AM|PM)(Week)/, '$1 — $2');
+      const dateText = (cells.eq(0).text() || '').replace(/\s+/g, ' ').trim().replace(/(AM|PM)(Week)/, '$1 - $2');
+      const statusText = (cells.eq(1).text() || '').replace(/\s+/g, ' ').trim().replace(/(AM|PM)(Week)/, '$1 - $2');
       if (dateText || statusText) {
-        nextRaceText = statusText ? `${dateText} — ${statusText}`.trim() : dateText;
+        nextRaceText = statusText ? `${dateText} - ${statusText}`.trim() : dateText;
       }
     }
 
@@ -311,7 +311,7 @@ module.exports = {
       if (finalCandidates.length >= 2) {
         const formatted = finalCandidates.slice(0, 2).map((cand) => {
           const lines = [];
-          lines.push(`**${cand.name}**${cand.percent != null ? ` — ${cand.percent}%` : ''}${cand.votes ? ` (${cand.votes} votes)` : ''}`);
+          lines.push(`**${cand.name}**${cand.percent != null ? ` - ${cand.percent}%` : ''}${cand.votes ? ` (${cand.votes} votes)` : ''}`);
           if (cand.stats) lines.push(cand.stats);
           if (cand.party) lines.push(cand.party);
           return lines.join('\n');
@@ -322,8 +322,8 @@ module.exports = {
         fields.push({
           name: latest.title || 'Latest Finished Round',
           value: [
-            `**${a.name}**${a.percent != null ? ` — ${a.percent}%` : ''}`,
-            `**${b.name}**${b.percent != null ? ` — ${b.percent}%` : ''}`,
+            `**${a.name}**${a.percent != null ? ` - ${a.percent}%` : ''}`,
+            `**${b.name}**${b.percent != null ? ` - ${b.percent}%` : ''}`,
           ].join('\n'),
           inline: false,
         });
