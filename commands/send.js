@@ -1,5 +1,5 @@
 // commands/send.js
-const { SlashCommandBuilder } = require('discord.js');
+const { SlashCommandBuilder, PermissionFlagsBits } = require('discord.js');
 const { authenticateAndNavigate, PPUSAAuthError } = require('../lib/ppusa-auth');
 const { config, getEnv, toAbsoluteUrl } = require('../lib/ppusa-config');
 
@@ -7,6 +7,9 @@ const NAV_TIMEOUT = config.navTimeout;
 const DEFAULT_DEBUG = config.debug;
 const DEMS_TREASURY_URL = toAbsoluteUrl(getEnv('DEMS_TREASURY_URL', '/parties/1/treasury'));
 const SEND_USE_AUTOSUGGEST = String(getEnv('SEND_USE_AUTOSUGGEST', 'false')).toLowerCase() === 'true';
+
+// ✅ Only this role can run /send
+const ROLE_ALLOWED = '1406063223475535994';
 
 const formatAuthErrorMessage = (err, commandLabel) => {
   if (!(err instanceof PPUSAAuthError)) return err.message;
@@ -48,28 +51,25 @@ const formatAuthErrorMessage = (err, commandLabel) => {
   return lines.join('\n');
 };
 
-// Committee roles (reused from funds.js)
-const ROLE_NATIONAL = '1257715735090954270';
-const ROLE_SECOND = '1408832907707027547';
-const ROLE_THIRD = '1257715382287073393';
-
-// Default amount: 2,000,000 USD
+// Default amount only used if caller omits it (but amount is now REQUIRED by the command)
 const DEFAULT_AMOUNT = 2_000_000;
 
 module.exports = {
   data: new SlashCommandBuilder()
     .setName('send')
     .setDescription('Send funds to a specified name and auto-approve')
+    // Required fields: name + amount
     .addStringOption(opt =>
       opt
         .setName('name')
         .setDescription('Recipient name (can be multiple words)')
         .setRequired(true)
     )
+    // Optional field: type (defaults to player)
     .addStringOption(opt =>
       opt
         .setName('type')
-        .setDescription('Recipient type')
+        .setDescription('Recipient type (defaults to Player)')
         .addChoices(
           { name: 'Player', value: 'player' },
           { name: 'Caucus', value: 'caucus' },
@@ -77,29 +77,44 @@ module.exports = {
         )
         .setRequired(false)
     )
+    // Required field: amount
     .addNumberOption(opt =>
       opt
         .setName('amount')
-        .setDescription('Dollar amount to send (defaults to 2,000,000)')
-        .setRequired(false)
+        .setDescription('Dollar amount to send')
+        .setRequired(true)
         .setMinValue(0.01)
     )
+    // Optional: debug
     .addBooleanOption(opt =>
       opt
         .setName('debug')
         .setDescription('Include diagnostics in the response')
         .setRequired(false)
-    ),
+    )
+    // command metadata (does NOT enforce role—runtime check below)
+    .setDMPermission(false),
 
   /** @param {import('discord.js').ChatInputCommandInteraction} interaction */
-  /**
-   * Execute the /send command (posts Discord status and performs a live web send).
-   * @param {import('discord.js').ChatInputCommandInteraction} interaction
-   */
   async execute(interaction) {
+    // ✅ Hard role gate (only members with ROLE_ALLOWED can use this)
+    const member = interaction.member; // GuildMember
+    const hasRole =
+      member &&
+      member.roles &&
+      member.roles.cache &&
+      member.roles.cache.has(ROLE_ALLOWED);
+
+    if (!hasRole) {
+      return interaction.reply({
+        content: 'You do not have permission to use this command.',
+        ephemeral: true,
+      });
+    }
+
     const name = interaction.options.getString('name', true);
-    const type = interaction.options.getString('type') ?? 'player';
-    const amount = interaction.options.getNumber('amount') ?? DEFAULT_AMOUNT;
+    const type = interaction.options.getString('type') ?? 'player'; // ✅ default to player
+    const amount = interaction.options.getNumber('amount', true);   // ✅ amount required
     const debug = interaction.options.getBoolean('debug') ?? false;
 
     const formattedAmount = new Intl.NumberFormat('en-US', {
@@ -107,12 +122,12 @@ module.exports = {
       currency: 'USD',
       minimumFractionDigits: 2,
       maximumFractionDigits: 2,
-    }).format(amount);
+    }).format(amount ?? DEFAULT_AMOUNT);
 
     // Initial message
     const requestMsg =
       `SEND FUNDS REQUEST\n\n` +
-      `Type: ${type}\n` +
+      `Type: ${type}\n` +                // type is optional, but we still display the resolved default
       `Recipient: ${name}\n` +
       `Amount: ${formattedAmount}\n\n` +
       `Processing...`;
@@ -174,6 +189,7 @@ module.exports = {
   },
 };
 
+// === unchanged below (but includes form.requestSubmit()/submit() submission) ===
 async function performWebSend({ type, name, amount, debug }) {
   const actions = [];
   const note = (step, detail, extra = {}) => {
@@ -195,7 +211,6 @@ async function performWebSend({ type, name, amount, debug }) {
     for (const action of authActions) actions.push({ phase: 'auth', ...action });
     note('login-success', 'Authenticated and ready on treasury page.', { finalUrl });
 
-    // Snapshot outgoing transactions before submitting
     const preTransactions = await scrapeOutgoingTransactions(page);
     const preData = await captureOutgoingData(page);
     note('snapshot', 'Captured pre-submit outgoing transactions.', {
@@ -203,7 +218,6 @@ async function performWebSend({ type, name, amount, debug }) {
       countData: preData.length,
     });
 
-    // Set recipient type if selector exists
     const selectSel = '#partyTransactions select#target, #target';
     if (await page.$(selectSel)) {
       await page.select(selectSel, type);
@@ -212,7 +226,6 @@ async function performWebSend({ type, name, amount, debug }) {
       note('form', 'Recipient type selector missing.', { selectSel });
     }
 
-    // Name input
     const nameSel = '#partyTransactions #target_id, #target_id';
     if (!(await page.$(nameSel))) {
       note('form', 'Name field missing.', { nameSel });
@@ -220,14 +233,12 @@ async function performWebSend({ type, name, amount, debug }) {
     }
     await page.$eval(nameSel, el => (el.value = ''));
     await page.type(nameSel, name, { delay: 10 });
-    // Ensure site receives input/change events
     await page.$eval(nameSel, el => {
       el.dispatchEvent(new Event('input', { bubbles: true }));
       el.dispatchEvent(new Event('change', { bubbles: true }));
     });
     note('form', 'Recipient name filled.', { value: name });
 
-    // Try to select from autosuggest (some pages require committing a suggestion)
     try {
       if (!SEND_USE_AUTOSUGGEST) throw new Error('autosuggest disabled');
       const SUGGESTION_SELECTORS = [
@@ -238,18 +249,13 @@ async function performWebSend({ type, name, amount, debug }) {
         'ul[role="listbox"] li',
         '.list-group .list-group-item',
       ];
-
-      if (typeof page.waitForTimeout === 'function') {
-        await page.waitForTimeout(300);
-      } else {
-        await new Promise(r => setTimeout(r, 300));
-      }
+      if (typeof page.waitForTimeout === 'function') await page.waitForTimeout(300);
+      else await new Promise(r => setTimeout(r, 300));
 
       let picked = null;
       for (const sel of SUGGESTION_SELECTORS) {
         const exists = await page.$(sel);
         if (!exists) continue;
-
         const candidate = await page.evaluateHandle((s, want) => {
           const wantLower = (want || '').toLowerCase();
           const items = Array.from(document.querySelectorAll(s));
@@ -261,7 +267,6 @@ async function performWebSend({ type, name, amount, debug }) {
           }
           return null;
         }, sel, name);
-
         const el = candidate && candidate.asElement && candidate.asElement();
         if (el) {
           await page.click('[data-suggest-picked="1"]');
@@ -269,21 +274,16 @@ async function performWebSend({ type, name, amount, debug }) {
           break;
         }
       }
-
       if (!picked) {
-        // Fallback: press Enter to commit the current text if suggestions not found
         await page.focus(nameSel);
         await page.keyboard.press('Enter');
       }
-
-      // Log the value after commit
       const committed = await page.$eval(nameSel, el => el.value);
       note('form', 'Recipient commit attempt finished.', { pickedSelector: picked, committedValue: committed });
     } catch (e) {
       note('form', 'Autosuggest selection step failed (continuing).', { error: e?.message || String(e) });
     }
 
-    // Amount input (type="money" used by site)
     const amountSel = '#partyTransactions #money, #money, #partyTransactions input[type="money"]';
     if (!(await page.$(amountSel))) {
       note('form', 'Amount field missing.', { amountSel });
@@ -298,14 +298,12 @@ async function performWebSend({ type, name, amount, debug }) {
     });
     note('form', 'Amount filled.', { amountDigits: plain });
 
-    // ======== SUBMISSION REWORK: use form.requestSubmit()/submit() instead of clicking button ========
     const formSel = '#partyTransactions form, form#partyTransactions';
     if (!(await page.$(formSel))) {
       note('form', 'Form element not found for submission.', { formSel });
       return { ok: false, step: 'locate-form', reason: 'Form not found', actions };
     }
 
-    // Capture the expected POST target (best-effort)
     const postTarget = await page.$eval(formSel, (form) => {
       const action = (form.getAttribute('action') || '').trim();
       try {
@@ -327,20 +325,12 @@ async function performWebSend({ type, name, amount, debug }) {
       )
       .catch(() => null);
 
-    // Use requestSubmit if available to trigger validation/submit handlers; fall back to submit()
-    await page.$eval(
-      formSel,
-      (form) => {
-        const f = /** @type {HTMLFormElement} */ (form);
-        if (typeof f.requestSubmit === 'function') {
-          f.requestSubmit(); // preserves constraints & onsubmit listeners
-        } else {
-          f.submit(); // native submission without validation
-        }
-      }
-    );
+    await page.$eval(formSel, (form) => {
+      const f = /** @type {HTMLFormElement} */ (form);
+      if (typeof f.requestSubmit === 'function') f.requestSubmit();
+      else f.submit();
+    });
 
-    // Many apps redirect or reload after POST
     const navPromise = page.waitForNavigation({ waitUntil: 'networkidle2', timeout: NAV_TIMEOUT }).catch(() => null);
     const [postResp] = await Promise.all([postRespPromise, navPromise]);
 
@@ -350,28 +340,23 @@ async function performWebSend({ type, name, amount, debug }) {
       note('post-response', 'No POST response captured (may still have submitted).');
     }
 
-    // Quick verification pass; if nothing obvious, try one safe re-submit ONLY if requestSubmit wasn’t available
     let afterHtml = await page.content();
     let amountRounded = Math.round(Number(amount));
     let amountDigits = String(amountRounded);
     let amountFmt = new Intl.NumberFormat('en-US').format(amountRounded);
     let verifiedSubmit = afterHtml.includes(name) || afterHtml.includes(amountFmt);
 
-    // If neither POST nor heuristic confirmation, and requestSubmit wasn't supported, try a single retry via submit()
     if (!postResp && !verifiedSubmit) {
-      const retried = await page.$eval(
-        formSel,
-        (form) => {
-          try {
-            const f = /** @type {HTMLFormElement} */ (form);
-            if (typeof f.requestSubmit !== 'function') {
-              f.submit();
-              return 'submit()';
-            }
-          } catch {}
-          return 'skipped';
-        }
-      ).catch(() => 'error');
+      const retried = await page.$eval(formSel, (form) => {
+        try {
+          const f = /** @type {HTMLFormElement} */ (form);
+          if (typeof f.requestSubmit !== 'function') {
+            f.submit();
+            return 'submit()';
+          }
+        } catch {}
+        return 'skipped';
+      }).catch(() => 'error');
 
       note('retry', 'Retrying native submission once.', { mode: retried });
       await page.waitForNavigation({ waitUntil: 'networkidle2', timeout: NAV_TIMEOUT }).catch(() => null);
@@ -383,15 +368,10 @@ async function performWebSend({ type, name, amount, debug }) {
 
     note('form', 'Submission sequence finished.', { currentUrl: page.url() });
 
-    // Heuristic: check page contains recipient or amount post-submit
-    if (typeof page.waitForTimeout === 'function') {
-      await page.waitForTimeout(1000);
-    } else {
-      await new Promise(resolve => setTimeout(resolve, 1000));
-    }
+    if (typeof page.waitForTimeout === 'function') await page.waitForTimeout(1000);
+    else await new Promise(resolve => setTimeout(resolve, 1000));
     note('post-submit', 'Waited after submit for UI updates.');
 
-    // Recompute after possible retry
     afterHtml = await page.content();
     verifiedSubmit = afterHtml.includes(name) || afterHtml.includes(amountFmt);
     note('post-submit', 'Verified submission heuristics.', {
@@ -400,22 +380,15 @@ async function performWebSend({ type, name, amount, debug }) {
       matchAmount: afterHtml.includes(amountFmt),
     });
 
-    // Scan for any inline error messages around the form
     const formIssues = await scanFormIssues(page);
     if (formIssues && (formIssues.invalids.length || formIssues.alerts.length)) {
       note('form-issues', 'Detected form errors after submit.', formIssues);
       const firstAlert = formIssues.alerts[0]?.text || formIssues.invalids[0]?.text;
       if (firstAlert) {
-        return {
-          ok: false,
-          step: 'submit',
-          reason: firstAlert,
-          actions
-        };
+        return { ok: false, step: 'submit', reason: firstAlert, actions };
       }
     }
 
-    // Refresh to pick up pending approvals
     await page.reload({ waitUntil: 'networkidle2' });
     note('reload', 'Page reloaded to capture pending approvals.');
 
@@ -434,22 +407,16 @@ async function performWebSend({ type, name, amount, debug }) {
 
     let approved = false;
     let needsApproval = false;
-    let approvalSelector = null;
 
     if (matched.hasApproveButton && matched.approveSelector) {
-      approvalSelector = matched.approveSelector;
       await Promise.all([
         page.waitForNavigation({ waitUntil: 'networkidle2', timeout: NAV_TIMEOUT }).catch(() => null),
-        page.click(approvalSelector)
+        page.click(matched.approveSelector)
       ]);
-      note('approval', 'Clicked approval button.', { approvalSelector });
+      note('approval', 'Clicked approval button.', { approveSelector: matched.approveSelector });
 
-      // Give the page a moment and reload to confirm approval status
-      if (typeof page.waitForTimeout === 'function') {
-        await page.waitForTimeout(800);
-      } else {
-        await new Promise(resolve => setTimeout(resolve, 800));
-      }
+      if (typeof page.waitForTimeout === 'function') await page.waitForTimeout(800);
+      else await new Promise(resolve => setTimeout(resolve, 800));
       await page.reload({ waitUntil: 'networkidle2' });
       note('approval', 'Reloaded after approval click to confirm.');
 
@@ -461,11 +428,9 @@ async function performWebSend({ type, name, amount, debug }) {
       }
     } else {
       if (matched.hasApproveButton) {
-        // Should not happen, but guard.
         needsApproval = true;
         note('approval', 'Approve button expected but selector missing.', matched);
       } else {
-        // No approval needed (already auto-approved).
         approved = /approved/i.test(matched.approvalText || '');
         note('approval', 'No approval button present; assuming auto approval.', { approved });
       }
@@ -564,7 +529,7 @@ async function captureOutgoingData(page) {
           id: item.id ?? `data-${Date.now()}-${idx}`,
           recipientText: name,
           recipientLower: lower,
-          amountText,
+          amountText: amountPretty,
           amountDigits,
           approvalText,
           hasApproveButton: /decision/.test(approvalText || ''),
@@ -573,7 +538,7 @@ async function captureOutgoingData(page) {
         };
       });
     });
-  } catch (err) {
+  } catch {
     return [];
   }
 }
@@ -599,9 +564,7 @@ async function waitForTransactionEntry(page, recipientLower, amountDigits, timeo
           const approvalCell = cells[4];
           const approvalText = approvalCell?.innerText?.trim() ?? '';
 
-          if (requireApproved && !/approved/i.test(approvalText)) {
-            continue;
-          }
+          if (requireApproved && !/approved/i.test(approvalText)) continue;
 
           const approveButton = approvalCell?.querySelector('form button[name="decision"][value="1"]');
           let approveSelector = null;
@@ -655,7 +618,6 @@ async function waitForTransactionEntry(page, recipientLower, amountDigits, timeo
           if (requireApproved && !/approved/i.test(entry.approvalText || '')) continue;
           return entry;
         }
-
         return null;
       },
       { timeout: timeoutMs },
@@ -694,7 +656,7 @@ async function scanFormIssues(page) {
         .filter(x => x.text);
       return { invalids, alerts };
     });
-  } catch (_) {
+  } catch {
     return { invalids: [], alerts: [] };
   }
 }
@@ -706,7 +668,7 @@ async function scanFormIssues(page) {
  * Created: 2025-10-16
  * Last Updated: 2025-10-18
  * Notes:
- *   - Now submits using form.requestSubmit()/form.submit() (no button click).
- *   - Defaults to simple type+amount+submit flow (autosuggest disabled). Enable autosuggest with SEND_USE_AUTOSUGGEST=true.
- *   - Returns detailed diagnostics on failure; attaches send_debug.json when large.
+ *   - Restricted to role 1406063223475535994 at runtime.
+ *   - Required options: name, amount. Optional: type (defaults to "player"), debug.
+ *   - Uses form.requestSubmit()/submit() for reliable submission.
  */
