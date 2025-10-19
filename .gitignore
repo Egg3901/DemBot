@@ -46,3 +46,4 @@ temp/
 
 # App data snapshots (keep canonical profiles.json)
 data/profiles.*.jsonstatus.json
+data/
