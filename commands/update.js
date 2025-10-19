@@ -7,7 +7,7 @@ const { canManageBot } = require('../lib/permissions');
 
 // Inactive (offline) role and threshold (days)
 const INACTIVE_ROLE_ID = '1427250767290564629';
-const OFFLINE_THRESHOLD_DAYS = 3;
+const OFFLINE_THRESHOLD_DAYS = 4;
 
 // Region mapping for US states -> one of: 'west', 'south', 'northeast', 'rust_belt'
 // Based on provided region/state combos image (DemBot project convention)
@@ -284,7 +284,7 @@ module.exports = {
         if (inactiveRoleId) {
           const hasInactive = member.roles.cache.has(inactiveRoleId);
           const hasActivityData = typeof g.lastOnlineDays === 'number';
-          const shouldBeInactive = hasActivityData && g.lastOnlineDays >= OFFLINE_THRESHOLD_DAYS;
+          const shouldBeInactive = g.anyDem && hasActivityData && g.lastOnlineDays > OFFLINE_THRESHOLD_DAYS;
 
           if (shouldBeInactive && !hasInactive) {
             const reason = g.lastOnlineText

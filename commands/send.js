@@ -2,14 +2,13 @@
 const { SlashCommandBuilder, EmbedBuilder } = require('discord.js');
 const { authenticateAndNavigate, PPUSAAuthError } = require('../lib/ppusa-auth');
 const { config, getEnv, toAbsoluteUrl } = require('../lib/ppusa-config');
+const { getSendLimit, ROLE_FINANCE, ROLE_TREASURY_ADMIN, UNLIMITED, formatLimit } = require('../lib/send-access');
 
 const NAV_TIMEOUT = config.navTimeout;
 const DEFAULT_DEBUG = config.debug;
 const DEMS_TREASURY_URL = toAbsoluteUrl(getEnv('DEMS_TREASURY_URL', '/parties/1/treasury'));
 const SEND_USE_AUTOSUGGEST = String(getEnv('SEND_USE_AUTOSUGGEST', 'false')).toLowerCase() === 'true';
 
-// ✅ Only this role can run /send
-const ROLE_ALLOWED = '1406063223475535994';
 
 // Default amount constant is unused because amount is required, but we keep it to format nicely if needed
 const DEFAULT_AMOUNT = 2_000_000;
@@ -20,7 +19,7 @@ const fmtUsd = (n) =>
     n ?? DEFAULT_AMOUNT
   );
 
-function buildRequestEmbeds({ invokerTag, name, type, amount }) {
+function buildRequestEmbeds({ invokerTag, name, type, amount, limitLabel }) {
   // Embed 1: Request summary
   const summary = new EmbedBuilder()
     .setTitle('SEND FUNDS — Request')
@@ -33,6 +32,10 @@ function buildRequestEmbeds({ invokerTag, name, type, amount }) {
     .setFooter({ text: `Requested by ${invokerTag}` })
     .setTimestamp();
 
+  if (limitLabel) {
+    summary.addFields({ name: 'Per-Transaction Limit', value: limitLabel, inline: true });
+  }
+
   // Embed 2: Status (pending)
   const status = new EmbedBuilder()
     .setTitle('Status')
@@ -42,7 +45,7 @@ function buildRequestEmbeds({ invokerTag, name, type, amount }) {
   return [summary, status];
 }
 
-function buildCompletedEmbeds({ invokerTag, name, type, amount, webResult, extraNotes, debugInline }) {
+function buildCompletedEmbeds({ invokerTag, name, type, amount, webResult, extraNotes, debugInline, limitLabel }) {
   const ok = !!webResult?.ok;
 
   // Embed 1: Final summary (unchanged)
@@ -56,6 +59,10 @@ function buildCompletedEmbeds({ invokerTag, name, type, amount, webResult, extra
     )
     .setFooter({ text: `Requested by ${invokerTag}` })
     .setTimestamp();
+
+  if (limitLabel) {
+    summary.addFields({ name: 'Per-Transaction Limit', value: limitLabel, inline: true });
+  }
 
   // Determine nice status line
   let statusLine;
@@ -159,15 +166,21 @@ module.exports = {
 
   /** @param {import('discord.js').ChatInputCommandInteraction} interaction */
   async execute(interaction) {
-    // ✅ Role gate
-    const member = interaction.member; // GuildMember
-    const hasRole = member?.roles?.cache?.has(ROLE_ALLOWED);
-    if (!hasRole) {
+    // Role gate
+    const member =
+      interaction.member ||
+      (interaction.guild ? await interaction.guild.members.fetch(interaction.user.id).catch(() => null) : null);
+    const hasFinanceRole = member?.roles?.cache?.has(ROLE_FINANCE) || false;
+    const hasAdminRole = member?.roles?.cache?.has(ROLE_TREASURY_ADMIN) || false;
+    if (!hasFinanceRole && !hasAdminRole) {
       return interaction.reply({
         content: 'You do not have permission to use this command.',
         ephemeral: true,
       });
     }
+
+    const limit = getSendLimit(member);
+    const limitLabel = formatLimit(limit);
 
     // Inputs
     const name = interaction.options.getString('name', true);
@@ -176,12 +189,18 @@ module.exports = {
     const debug = interaction.options.getBoolean('debug') ?? false;
     const invokerTag = interaction.user?.tag ?? interaction.user?.id ?? 'unknown';
 
-    // 🟡 Initial two-embed message
+    if (limit !== UNLIMITED && amount > limit) {
+      return interaction.reply({
+        content: `Amount exceeds your per-transaction limit of ${formatLimit(limit)}.`,
+        ephemeral: true,
+      });
+    }
+
+    // Initial two-embed message
     await interaction.reply({
-      embeds: buildRequestEmbeds({ invokerTag, name, type, amount }),
+      embeds: buildRequestEmbeds({ invokerTag, name, type, amount, limitLabel }),
       allowedMentions: { parse: [] },
     });
-
     // Perform web send
     let webResult = null;
     try {
@@ -223,6 +242,7 @@ module.exports = {
         webResult,
         extraNotes,
         debugInline,
+        limitLabel,
       }),
       allowedMentions: { parse: [] },
       files,
@@ -731,3 +751,4 @@ async function scanFormIssues(page) {
  *   - Clean message flow using TWO embeds: request summary + status.
  *   - Uses form.requestSubmit()/submit() for reliable submission.
  */
+

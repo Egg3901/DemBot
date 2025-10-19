@@ -4,6 +4,8 @@ const {
   MessageFlags,
   Collection,
 } = require('discord.js');
+const { fetchMember, canManageBot } = require('../lib/permissions');
+const { getSendLimit, formatLimit, ROLE_TREASURY_ADMIN, BASE_LIMIT, UNLIMITED } = require('../lib/send-access');
 
 const BRAND_COLOR = 0x5865f2;
 
@@ -35,6 +37,42 @@ const OPTION_TYPE_LABEL = {
   9: 'mentionable',
   10: 'number',
   11: 'attachment',
+};
+
+const ACCESS_GENERAL = 'General access';
+const ACCESS_MANAGER = 'Manager role';
+const ACCESS_FINANCE = 'Finance role';
+
+const COMMAND_REQUIREMENTS = {
+  restart: {
+    defaultLabel: ACCESS_MANAGER,
+    groupKey: ACCESS_MANAGER,
+    check: async (_interaction, context) => context.isManager,
+  },
+  update: {
+    defaultLabel: ACCESS_MANAGER,
+    groupKey: ACCESS_MANAGER,
+    check: async (_interaction, context) => context.isManager,
+  },
+  send: {
+    defaultLabel: ACCESS_FINANCE,
+    groupKey: ACCESS_FINANCE,
+    check: async (interaction, context) => {
+      if (!interaction.inGuild?.()) {
+        return { allowed: false, label: `${ACCESS_FINANCE} (guild only)`, groupKey: ACCESS_FINANCE };
+      }
+      const member = context.member;
+      const limit = getSendLimit(member);
+      if (limit > 0) {
+        const isAdmin = member?.roles?.cache?.has(ROLE_TREASURY_ADMIN) || false;
+        const label = isAdmin
+          ? `Treasury Admin (limit: ${formatLimit(UNLIMITED)})`
+          : `Finance role (limit: ${formatLimit(limit)})`;
+        return { allowed: true, label, groupKey: ACCESS_FINANCE };
+      }
+      return { allowed: false, label: `Finance role (limit: ${formatLimit(BASE_LIMIT)})`, groupKey: ACCESS_FINANCE };
+    },
+  },
 };
 
 /**
@@ -90,9 +128,9 @@ function formatOptions(options = [], depth = 0) {
 
 /**
  * Create an embed listing all commands at a glance.
- * @param {Collection<string, any>} commandCollection
+ * @param {Array<{ name: string, description: string, signature: string, requirementLabel: string }>} commandInfos
  */
-function buildOverviewEmbed(commandCollection) {
+function buildOverviewEmbed(commandInfos) {
   const embed = new EmbedBuilder()
     .setTitle('DemBot Command Reference')
     .setDescription(
@@ -104,21 +142,42 @@ function buildOverviewEmbed(commandCollection) {
     .setColor(BRAND_COLOR)
     .setTimestamp(new Date());
 
-  const commands = [...commandCollection.values()]
-    .map((cmd) => ({
-      name: cmd.data.name,
-      description: cmd.data.description,
-      signature: buildSignature(cmd.data),
-    }))
-    .sort((a, b) => a.name.localeCompare(b.name));
+  const grouped = new Map();
+  for (const info of commandInfos) {
+    const key = info.groupKey || info.requirementLabel || ACCESS_GENERAL;
+    if (!grouped.has(key)) grouped.set(key, []);
+    grouped.get(key).push(info);
+  }
 
-  const chunkSize = 6;
-  for (let i = 0; i < commands.length; i += chunkSize) {
-    const chunk = commands.slice(i, i + chunkSize);
+  const order = [ACCESS_GENERAL, ACCESS_MANAGER, ACCESS_FINANCE];
+  for (const key of order) {
+    if (!grouped.has(key)) continue;
+    const list = grouped.get(key).sort((a, b) => a.name.localeCompare(b.name));
     embed.addFields({
-      name: `Commands ${Math.floor(i / chunkSize) + 1}`,
-      value: chunk
-        .map((cmd) => `**${cmd.signature}**\n${INDENT}${cmd.description || '_No description provided_'}`)
+      name: key,
+      value: list
+        .map(
+          (cmd) =>
+            `**${cmd.signature}**\n${INDENT}${cmd.description || '_No description provided_'}\n${INDENT}Requires: ${
+              cmd.requirementLabel || key
+            }`,
+        )
+        .join('\n\n'),
+    });
+    grouped.delete(key);
+  }
+
+  for (const [key, list] of grouped.entries()) {
+    const sorted = list.sort((a, b) => a.name.localeCompare(b.name));
+    embed.addFields({
+      name: key,
+      value: sorted
+        .map(
+          (cmd) =>
+            `**${cmd.signature}**\n${INDENT}${cmd.description || '_No description provided_'}\n${INDENT}Requires: ${
+              cmd.requirementLabel || key
+            }`,
+        )
         .join('\n\n'),
     });
   }
@@ -129,19 +188,45 @@ function buildOverviewEmbed(commandCollection) {
 /**
  * Detailed embed for a single command.
  * @param {*} commandModule
+ * @param {string} requirementLabel
  */
-function buildDetailEmbed(commandModule) {
+function buildDetailEmbed(commandModule, requirementLabel = ACCESS_GENERAL) {
   const json = commandModule.data.toJSON();
+  const fields = [
+    { name: 'Signature', value: `\`${buildSignature(commandModule.data)}\`` },
+    { name: 'Requires', value: requirementLabel },
+    { name: 'Options', value: formatOptions(json.options) },
+  ];
   return new EmbedBuilder()
     .setTitle(`/${json.name}`)
     .setDescription(json.description || 'No description set.')
-    .addFields(
-      { name: 'Signature', value: `\`${buildSignature(commandModule.data)}\`` },
-      { name: 'Options', value: formatOptions(json.options) },
-    )
+    .addFields(fields)
     .setColor(BRAND_COLOR)
     .setFooter({ text: 'Need another command? Try /help without arguments.' })
     .setTimestamp(new Date());
+}
+
+async function evaluateAccess(interaction, commandName, context) {
+  const requirement = COMMAND_REQUIREMENTS[commandName];
+  if (!requirement) {
+    return { allowed: true, label: ACCESS_GENERAL };
+  }
+  const fallbackLabel =
+    (typeof requirement.defaultLabel === 'function'
+      ? requirement.defaultLabel(context)
+      : requirement.defaultLabel) || ACCESS_GENERAL;
+  try {
+    const result = await requirement.check(interaction, context);
+    if (typeof result === 'object' && result !== null) {
+      return {
+        allowed: Boolean(result.allowed),
+        label: result.label || fallbackLabel,
+      };
+    }
+    return { allowed: Boolean(result), label: fallbackLabel, groupKey: fallbackGroup };
+  } catch (_) {
+    return { allowed: false, label: fallbackLabel, groupKey: fallbackGroup };
+  }
 }
 
 module.exports = {
@@ -168,6 +253,11 @@ module.exports = {
     const makePublic = interaction.options.getBoolean('public') ?? false;
     const commands = interaction.client.commands ?? new Collection();
 
+    const context = {
+      member: interaction.inGuild?.() ? await fetchMember(interaction) : null,
+      isManager: await canManageBot(interaction),
+    };
+
     const withVisibility = (payload) => {
       if (makePublic) return payload;
       return { ...payload, flags: MessageFlags.Ephemeral };
@@ -182,11 +272,41 @@ module.exports = {
           }),
         );
       }
-      const embed = buildDetailEmbed(entry);
+      const access = await evaluateAccess(interaction, targetName, context);
+      if (!access.allowed) {
+        return interaction.reply(
+          withVisibility({
+            content: `You do not have access to \`/${targetName}\`. Requires: ${access.label}.`,
+          }),
+        );
+      }
+      const embed = buildDetailEmbed(entry, access.label);
       return interaction.reply(withVisibility({ embeds: [embed] }));
     }
 
-    const embed = buildOverviewEmbed(commands);
+    const visible = [];
+    for (const cmd of commands.values()) {
+      const access = await evaluateAccess(interaction, cmd.data.name, context);
+      if (!access.allowed) continue;
+      visible.push({
+        name: cmd.data.name,
+        description: cmd.data.description,
+        signature: buildSignature(cmd.data),
+        requirementLabel: access.label,
+        groupKey: access.groupKey,
+      });
+    }
+
+    if (visible.length === 0) {
+      return interaction.reply(
+        withVisibility({
+          content: 'You do not have access to any commands.',
+        }),
+      );
+    }
+
+    const embed = buildOverviewEmbed(visible);
     return interaction.reply(withVisibility({ embeds: [embed] }));
   },
 };
+
