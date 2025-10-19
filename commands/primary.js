@@ -109,6 +109,39 @@ module.exports = {
 
       let stateId = extractStateIdFromStatesHtml(statesHtml, stateName);
 
+      // Try a live DOM extraction (after scripts run) if not found
+      if (!stateId) {
+        try {
+          const target = normalizeStateName(stateName);
+          const idLive = await page.evaluate((targetName) => {
+            const norm = (txt) => String(txt || '')
+              .replace(/\u00A0/g, ' ')
+              .normalize('NFKD')
+              .trim().toLowerCase()
+              .replace(/\s+/g, ' ')
+              .replace(/^(state|commonwealth|territory)\s+of\s+/i, '')
+              .replace(/\s*\(.*?\)\s*$/, '')
+              .trim();
+            const anchors = Array.from(document.querySelectorAll('a[href^="/states/"]'));
+            for (const a of anchors) {
+              const href = a.getAttribute('href') || '';
+              const text = (a.textContent || '').trim();
+              if (!/^\/states\/\d+/.test(href)) continue;
+              if (!text) continue;
+              if (norm(text) === norm(targetName)) {
+                const m = href.match(/\/states\/(\d+)/);
+                if (m) return Number(m[1]);
+              }
+            }
+            return null;
+          }, stateName);
+          if (idLive) {
+            stateId = idLive;
+            finalLogs.push('Resolved state ID via live DOM.');
+          }
+        } catch (_) {}
+      }
+
       // Fallback to local HTML (American States) if not found
       if (!stateId) {
         const local = readLocalHtml('American States _ Power Play USA.html');
@@ -122,7 +155,14 @@ module.exports = {
         return await interaction.editReply(`Could not find a state matching "${stateName}" on the states listing.`);
       }
 
-      // 2) Go to state primaries page
+      // 2) Go to state page first, then primaries page
+      const stateUrl = `${BASE}/states/${stateId}`;
+      try {
+        await page.goto(stateUrl, { waitUntil: 'networkidle2' });
+        finalLogs.push(`Visited state page: ${stateUrl}`);
+      } catch (e) {
+        finalLogs.push(`State page visit error: ${e?.message || e}`);
+      }
       const primariesUrl = `${BASE}/states/${stateId}/primaries`;
       await page.goto(primariesUrl, { waitUntil: 'networkidle2' });
       const primariesHtml = await page.content();
