@@ -68,7 +68,11 @@ const commandsPath = path.join(__dirname, 'commands');
 if (!fs.existsSync(commandsPath)) {
   console.warn(`⚠️ Commands folder not found: ${commandsPath}`);
 } else {
-  const files = fs.readdirSync(commandsPath).filter((f) => f.endsWith('.js'));
+  const files = fs
+    .readdirSync(commandsPath)
+    .filter((f) => f.endsWith('.js'))
+    // Ignore temp/backup fragments like treasury.head.js or *.backup.js
+    .filter((f) => !/\.head\.js$/i.test(f) && !/\.backup\.js$/i.test(f));
   console.log(`📦 Found ${files.length} command file(s)`);
   for (const file of files) {
     const filePath = path.join(commandsPath, file);
