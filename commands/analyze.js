@@ -280,9 +280,34 @@ function analyzePlayerDistribution(profiles, party = 'dem', statesData = null) {
         hasActivePlayers: (stateCounts[state] || 0) > 0,
         opportunities: opportunities || null,
         stateData: data,
+        controlScore: data.controlScore || 0,
       };
     })
-    .sort((a, b) => b.electoral - a.electoral); // Prioritize by electoral votes
+    .sort((a, b) => {
+      // Heavy weighting: Actual party control >> Historical lean >> Electoral votes
+      // 1. Prioritize states with strong actual control (score >= 3)
+      const aStrongControl = a.controlScore >= 3 ? 1000 : 0;
+      const bStrongControl = b.controlScore >= 3 ? 1000 : 0;
+      if (aStrongControl !== bStrongControl) return bStrongControl - aStrongControl;
+      
+      // 2. Then moderate control (score == 2)
+      const aModControl = a.controlScore === 2 ? 500 : 0;
+      const bModControl = b.controlScore === 2 ? 500 : 0;
+      if (aModControl !== bModControl) return bModControl - aModControl;
+      
+      // 3. Then 'actual' lean (discovered from state data)
+      const aActual = a.lean === 'actual' ? 200 : 0;
+      const bActual = b.lean === 'actual' ? 200 : 0;
+      if (aActual !== bActual) return bActual - aActual;
+      
+      // 4. Then strong historical lean
+      const aStrong = a.lean === 'strong' ? 100 : 0;
+      const bStrong = b.lean === 'strong' ? 100 : 0;
+      if (aStrong !== bStrong) return bStrong - aStrong;
+      
+      // 5. Finally by electoral votes
+      return b.electoral - a.electoral;
+    }); // Heavily prioritize actual control over historical lean
   
   return {
     party,
@@ -309,16 +334,21 @@ async function generateRecommendations(analysis) {
     .map(s => `${s.state}(${s.count} total, ${s.movablePlayers} without positions)`)
     .join(', ');
   
-  const prompt = `Power Play USA: Political game where players run for Gov/Sen/House. Analyze ${partyName} distribution:
-- Overcrowded: ${overcrowdedSummary}
-- Targets: ${analysis.underutilizedStates.slice(0, 5).map(s => `${s.state}(${s.electoral}ev)`).join(', ')}
+  const prompt = `This is a FICTIONAL GAME called "Power Play USA" - a political simulation video game where players create characters and compete for fictional elected offices.
 
-Give 2-3 brief strategic reasons (25 words each) why moving Private Citizens from overcrowded to target states benefits ${partyName} party control.`;
+GAME CONTEXT: Players can move their game characters between fictional states to run for in-game Governor, Senator, or Representative positions. This is entertainment, not real politics.
+
+CURRENT GAME STATE:
+- Overcrowded game states: ${overcrowdedSummary}
+- Target game states: ${analysis.underutilizedStates.slice(0, 5).map(s => `${s.state}(${s.electoral}ev)`).join(', ')}
+
+Task: Write 2-3 brief in-game strategy tips (20 words each) for why game players should move their fictional characters from overcrowded to target states for better ${partyName} team gameplay.`;
 
   try {
     const response = await anthropic.messages.create({
       model: "claude-3-haiku-20240307",
       max_tokens: 200,
+      system: "You are a gaming strategy advisor for Power Play USA, a fictional political simulation video game. All advice relates to in-game strategy, not real-world politics.",
       messages: [{
         role: "user",
         content: prompt
@@ -327,8 +357,9 @@ Give 2-3 brief strategic reasons (25 words each) why moving Private Citizens fro
     
     return response.content[0].text;
   } catch (error) {
-    console.error('Error calling Anthropic API:', error);
-    return "AI recommendations unavailable.";
+    console.error('Error calling Anthropic API:', error.message || error);
+    // If AI refuses, just skip recommendations gracefully
+    return null;
   }
 }
 
@@ -441,8 +472,8 @@ function buildAnalysisEmbed(analysis, recommendations) {
     }
   }
 
-  // AI Recommendations - concise (if provided)
-  if (recommendations && recommendations !== "AI recommendations unavailable." && !recommendations.includes('⚠️')) {
+  // AI Recommendations - concise (if provided and valid)
+  if (recommendations && typeof recommendations === 'string' && recommendations.length > 20) {
     embed.addFields({
       name: '💡 Strategy',
       value: recommendations.slice(0, 500),
@@ -536,11 +567,13 @@ module.exports = {
         
         // Generate AI recommendations if requested
         let recommendations = null;
-        if (includeAI) {
-          if (!process.env.ANTHROPIC_API_KEY) {
-            recommendations = "⚠️ AI recommendations unavailable: ANTHROPIC_API_KEY not configured.";
-          } else {
+        if (includeAI && process.env.ANTHROPIC_API_KEY) {
+          try {
             recommendations = await generateRecommendations(analysis);
+          } catch (err) {
+            console.warn('AI recommendations failed:', err.message);
+            // Gracefully skip AI section if it fails
+            recommendations = null;
           }
         }
 
