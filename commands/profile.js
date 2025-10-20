@@ -129,9 +129,11 @@ module.exports = {
 
       for (const id of ids.slice(0, 10)) { // up to 10 embeds
         try {
-          if (page.url() !== `${BASE}/users/${id}`) {
+          // Always navigate to ensure we're on the right page (auth might redirect)
+          const targetUrl = `${BASE}/users/${id}`;
+          if (page.url() !== targetUrl) {
             // Use faster loading strategy with timeout
-            await page.goto(`${BASE}/users/${id}`, { 
+            await page.goto(targetUrl, { 
               waitUntil: 'domcontentloaded', 
               timeout: 15000 
             });
