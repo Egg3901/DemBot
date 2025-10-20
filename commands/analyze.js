@@ -577,7 +577,109 @@ module.exports = {
         // and comparing with party distribution
         await interaction.editReply('🏛️ Race analysis coming soon! This will analyze competitive races and recommend strategic candidate placements.\n\n💡 Tip: Run `/update type:states` to cache state-level data for enhanced race analysis.');
       } else if (analysisType === 'primaries') {
-        await interaction.editReply('🗳️ Primary analysis coming soon! This will analyze primary races and recommend candidate strategies.');
+        // Load primaries data saved by /update type:primaries
+        const primariesPath = path.join(process.cwd(), 'data', 'primaries.json');
+        if (!fs.existsSync(primariesPath)) {
+          return interaction.editReply('❌ primaries.json not found. Run `/update type:primaries` to scrape primaries.');
+        }
+
+        let primariesDb = null;
+        try {
+          primariesDb = JSON.parse(fs.readFileSync(primariesPath, 'utf8'));
+        } catch (e) {
+          return interaction.editReply('❌ Failed to read primaries.json.');
+        }
+
+        const ourParty = party; // 'dem' or 'gop'
+        const oppParty = party === 'dem' ? 'gop' : 'dem';
+        const primaries = Array.isArray(primariesDb.primaries) ? primariesDb.primaries : [];
+
+        // Normalize state name to match lean maps
+        const norm = (s) => String(s || '').trim().toLowerCase();
+        const stateLean = (stateName) => {
+          const s = norm(stateName);
+          if (DEMOCRATIC_STATES[s]) return 'lean_dem';
+          if (REPUBLICAN_STATES[s]) return 'lean_gop';
+          return 'swing';
+        };
+
+        // Build active list with average metric comparisons
+        const activeRows = [];
+        const upcomingRows = [];
+
+        for (const entry of primaries) {
+          const pOur = entry.parties?.[ourParty] || null;
+          const pOpp = entry.parties?.[oppParty] || null;
+          if (!pOur && !pOpp) continue;
+
+          const bucket = stateLean(entry.stateName);
+          const label = `${entry.stateName} – ${entry.race.toUpperCase()}`;
+
+          const makeAvgLine = (avg) => {
+            if (!avg) return '—';
+            const parts = [];
+            if (avg.ES != null) parts.push(`ES ${avg.ES}`);
+            if (avg.CO != null) parts.push(`CO ${avg.CO}`);
+            if (avg.NR != null) parts.push(`NR ${avg.NR}`);
+            if (avg.AR != null) parts.push(`AR ${avg.AR}`);
+            if (avg.CR != null) parts.push(`CR ${avg.CR}`);
+            return parts.join(', ');
+          };
+
+        
+          if (pOur?.status === 'active' || pOpp?.status === 'active') {
+            // Active: show our vs theirs averages
+            const ourLine = makeAvgLine(pOur?.avgMetrics);
+            const oppLine = makeAvgLine(pOpp?.avgMetrics);
+            activeRows.push({
+              bucket,
+              text: `• ${label}\n${ourParty === 'dem' ? '🔵' : '🔴'} us: ${ourLine}\n${ourParty === 'dem' ? '🔴' : '🔵'} them: ${oppLine}`
+            });
+          } else {
+            // Upcoming: show entry status
+            const entered = (pOur?.candidates?.length || 0) > 0;
+            const enterable = true; // assume open until site closes; deadline present
+            const statusText = entered ? 'entered' : (enterable ? 'open' : '—');
+            upcomingRows.push({
+              bucket,
+              race: entry.race,
+              text: `• ${label} – ${statusText}`
+            });
+          }
+        }
+
+        // Split by buckets
+        const groupBy = (rows) => rows.reduce((acc, r) => { (acc[r.bucket] ||= []).push(r.text); return acc; }, {});
+        const activeBy = groupBy(activeRows);
+        const upcomingBy = groupBy(upcomingRows);
+
+        const embed = new EmbedBuilder()
+          .setTitle(`🗳️ Primary Analysis (${ourParty === 'dem' ? 'Democratic' : 'Republican'})`)
+          .setColor(ourParty === 'dem' ? 0x1e40af : 0xdc2626)
+          .setTimestamp(new Date())
+          .setFooter({ text: 'Active first • Source: primaries.json' });
+
+        const pushFieldIfAny = (name, list) => {
+          if (Array.isArray(list) && list.length) {
+            embed.addFields({ name, value: list.slice(0, 10).join('\n') });
+          }
+        };
+
+        // Active first
+        pushFieldIfAny('Active – Lean Dem', activeBy.lean_dem);
+        pushFieldIfAny('Active – Swing', activeBy.swing);
+        pushFieldIfAny('Active – Lean GOP', activeBy.lean_gop);
+
+        // Upcoming entry status
+        pushFieldIfAny('Upcoming – Lean Dem', upcomingBy.lean_dem);
+        pushFieldIfAny('Upcoming – Swing', upcomingBy.swing);
+        pushFieldIfAny('Upcoming – Lean GOP', upcomingBy.lean_gop);
+
+        if (embed.data.fields?.length) {
+          await interaction.editReply({ embeds: [embed] });
+        } else {
+          await interaction.editReply('No primaries found. Run `/update type:primaries` to refresh.');
+        }
       } else {
         await interaction.editReply('❌ Unknown analysis type. Please select a valid option.');
       }

@@ -3,6 +3,7 @@ const { SlashCommandBuilder, PermissionsBitField } = require('discord.js');
 const fs = require('node:fs');
 const path = require('node:path');
 const { loginAndGet, parseProfile, BASE } = require('../lib/ppusa');
+const cheerio = require('cheerio');
 const { canManageBot } = require('../lib/permissions');
 const { ensureDbShape, mergeProfileRecord } = require('../lib/profile-cache');
 const { resolveStateIdFromIndex } = require('../lib/state-utils');
@@ -13,13 +14,14 @@ const INACTIVE_ROLE_ID = '1427236595345522708';
 const OFFLINE_THRESHOLD_DAYS = 4;
 const WARNING_THRESHOLD_DAYS = 3;
 
-const TYPE_CHOICES = new Set(['all', 'dems', 'gop', 'new', 'states']);
+const TYPE_CHOICES = new Set(['all', 'dems', 'gop', 'new', 'states', 'primaries']);
 const TYPE_LABELS = {
   all: 'All Profiles',
   dems: 'Democratic Profiles',
   gop: 'Republican Profiles',
   new: 'New Accounts',
   states: 'State Data',
+  primaries: 'Primaries',
 };
 
 const isDemocratic = (party = '') => /democratic/i.test(String(party));
@@ -41,6 +43,22 @@ async function performRoleSync({ interaction, guild, db, clearRoles = false, use
     cabinet: '1429342639907668048',
   };
   const ROLE_NAMES = { gov: 'Governor', sen: 'Senator', rep: 'Representative', cabinet: 'Cabinet' };
+
+  // Primary election role IDs (provided)
+  const PRIMARY_ROLE_IDS = {
+    class1: '1429342413893271674',
+    class2: '1429342467303542907',
+    class3: '1429342498848768112',
+    repelect: '1429342520222941287',
+    govelect: '1429342557053255690',
+  };
+  const PRIMARY_ROLE_NAMES = {
+    class1: 'Senate Class 1 (Election)',
+    class2: 'Senate Class 2 (Election)',
+    class3: 'Senate Class 3 (Election)',
+    repelect: 'House (Election)',
+    govelect: 'Governor (Election)'
+  };
 
   const REGION_ROLE_IDS = {
     west: '1408854788472573952',
@@ -236,6 +254,57 @@ async function performRoleSync({ interaction, guild, db, clearRoles = false, use
           } catch (_) {}
         }
       }
+
+      // Sync primary election roles based on data/primaries.json (Dem primaries only)
+      try {
+        const fs = require('node:fs');
+        const path = require('node:path');
+        const primariesPath = path.join(process.cwd(), 'data', 'primaries.json');
+        let userPrimaryKeys = new Set();
+        if (fs.existsSync(primariesPath)) {
+          const primariesDb = JSON.parse(fs.readFileSync(primariesPath, 'utf8'));
+          const idx = primariesDb?.candidatesIndex || {};
+          // For each PPUSA profile id tied to this Discord handle, gather desired primary roles
+          for (const pid of g.ids) {
+            const entries = idx[String(pid)] || [];
+            for (const ent of entries) {
+              // Only assign for Democratic primaries
+              if (ent.party !== 'dem') continue;
+              if (ent.race === 's1') userPrimaryKeys.add('class1');
+              if (ent.race === 's2') userPrimaryKeys.add('class2');
+              if (ent.race === 's3') userPrimaryKeys.add('class3');
+              if (ent.race === 'rep') userPrimaryKeys.add('repelect');
+              if (ent.race === 'gov') userPrimaryKeys.add('govelect');
+            }
+          }
+        }
+
+        // Add missing primary roles
+        for (const key of userPrimaryKeys) {
+          const rid = PRIMARY_ROLE_IDS[key];
+          if (!rid) continue;
+          if (!member.roles.cache.has(rid)) {
+            try {
+              await member.roles.add(rid, 'Auto-assign primary election role via /update roles');
+              applied++;
+              changeLogs.push(`+ ${PRIMARY_ROLE_NAMES[key]} -> ${member.user?.tag || member.displayName} (profiles ${g.ids.join(',')}) [reason: active/in-progress primary]`);
+            } catch (_) {}
+          }
+        }
+
+        // Remove primary roles not desired
+        for (const [key, rid] of Object.entries(PRIMARY_ROLE_IDS)) {
+          if (member.roles.cache.has(rid) && !userPrimaryKeys.has(key)) {
+            try {
+              await member.roles.remove(rid, 'Auto-remove primary election role via /update roles (not in primary)');
+              removed++;
+              changeLogs.push(`- ${PRIMARY_ROLE_NAMES[key]} -> ${member.user?.tag || member.displayName} (profiles ${g.ids.join(',')}) [reason: not in current primary]`);
+            } catch (_) {}
+          }
+        }
+      } catch (_) {
+        // ignore primary role sync errors
+      }
     }
 
     // Remove activity warnings from role update output; only manage the inactive role silently
@@ -315,6 +384,7 @@ module.exports = {
           { name: 'Republicans', value: 'gop' },
           { name: 'New accounts only', value: 'new' },
           { name: 'State data (EV, positions)', value: 'states' },
+          { name: 'Primaries (all states)', value: 'primaries' },
         )
     )
     .addBooleanOption(opt =>
@@ -500,6 +570,220 @@ module.exports = {
       } catch (err) {
         console.error('Error during state scraping:', err);
         await interaction.editReply(`❌ Error during state scraping: ${err?.message || String(err)}`);
+      } finally {
+        try { await browser?.close(); } catch {}
+      }
+      return;
+    }
+
+    // Primaries mode: scrape all state primaries and persist to data/primaries.json
+    if (updateType === 'primaries') {
+      const dataDirPrim = path.join(process.cwd(), 'data');
+      const primariesJsonPath = path.join(dataDirPrim, 'primaries.json');
+
+      let browser, page;
+      try {
+        const statesList = getAllStatesList();
+        const sess = await loginAndGet(`${BASE}/national/states`);
+        browser = sess.browser;
+        page = sess.page;
+
+        const statesIndexHtml = await page.content();
+
+        await interaction.editReply(`Scraping primaries for ${statesList.length} states...`);
+
+        // Helper: locate race rows and party links/meta
+        const extractRacePrimariesFromStatePage = (html, raceLabel) => {
+          const $ = cheerio.load(html || '');
+          const raceName = String(raceLabel || '').trim().toLowerCase();
+          let header = null;
+          $('h4').each((_, el) => {
+            const t = ($(el).text() || '').trim().toLowerCase();
+            if (t === raceName) { header = $(el); return false; }
+          });
+          if (!header) return null;
+          const container = header.closest('.container, .container-fluid, .bg-white').length
+            ? header.closest('.container, .container-fluid, .bg-white')
+            : header.parent();
+          const table = container.find('table').first();
+          if (!table.length) return null;
+          const result = { dem: null, gop: null };
+          table.find('tbody tr').each((_, tr) => {
+            const row = $(tr);
+            const a = row.find('a[href*="/primaries/"]').first();
+            if (!a.length) return;
+            const href = a.attr('href') || '';
+            const url = href.startsWith('http') ? href : new URL(href, BASE).toString();
+            const tds = row.find('td');
+            const partyText = (a.text() || '').toLowerCase();
+            const deadlineText = (tds.eq(1).text() || '').replace(/\s+/g, ' ').trim() || null;
+            const countText = (tds.eq(2).text() || '').trim();
+            const count = countText && /\d+/.test(countText) ? Number((countText.match(/\d+/) || [])[0]) : null;
+            const obj = { url, deadline: deadlineText, count };
+            if (partyText.includes('democrat')) result.dem = obj;
+            if (partyText.includes('republican')) result.gop = obj;
+          });
+          if (!result.dem && !result.gop) return null;
+          return result;
+        };
+
+        // Helper: parse candidates from primary page (capture userId + metrics)
+        const extractPrimaryCandidates = (html) => {
+          const $ = cheerio.load(html || '');
+          const items = [];
+          const pickMetrics = (txt) => {
+            const out = {};
+            const re = /\b(ES|CO|NR|AR|CR)\s*[:\-]\s*([0-9]+(?:\.[0-9]+)?)\b/gi;
+            let m;
+            while ((m = re.exec(String(txt || '')))) {
+              out[m[1].toUpperCase()] = Number(m[2]);
+            }
+            return out;
+          };
+
+          let scope = $('#electionresult');
+          if (!scope.length) scope = $('body');
+          scope.find('.progress-wrapper').each((_, pw) => {
+            const wrap = $(pw);
+            const label = wrap.find('.progress-label a, .progress-label').first();
+            const nameFull = (label.text() || '').replace(/\s+/g, ' ').trim();
+            if (!nameFull) return;
+            const link = wrap.find('a[href^="/users/"]').first();
+            const href = link.attr('href') || '';
+            const idMatch = href.match(/\/users\/(\d+)/);
+            let name = nameFull;
+            let metrics = pickMetrics(nameFull);
+            const paren = nameFull.match(/^(.+?)\s*\(([^)]+)\)\s*$/);
+            if (paren) {
+              name = paren[1].trim();
+              metrics = { ...metrics, ...pickMetrics(paren[2]) };
+            }
+            let percent = null;
+            const pctText = (wrap.find('.progress-percentage .text-primary').first().text() || '').trim();
+            const mp = pctText.match(/([0-9]+(?:\.[0-9]+)?)/);
+            if (mp) percent = Number(mp[1]);
+            if (percent == null) {
+              const w = wrap.find('.progress-bar').attr('style') || '';
+              const mw = w.match(/width:\s*([0-9.]+)%/i);
+              if (mw) percent = Number(mw[1]);
+            }
+            items.push({ userId: idMatch ? Number(idMatch[1]) : null, name, metrics, percent });
+          });
+
+          if (items.length) return { items, active: true };
+
+          const regHeader = $('h3').filter((_, el) => /primary\s+registration/i.test($(el).text())).first();
+          const regBlock = regHeader.length
+            ? regHeader.closest('.container-fluid, .bg-white, .rounded, .ppusa_background, .row, .col-sm-6')
+            : $();
+          const regTable = regBlock.find('table tbody');
+          if (regTable.length) {
+            regTable.find('tr').each((_, tr) => {
+              const row = $(tr);
+              const link = row.find('a[href^="/users/"]').first();
+              const href = link.attr('href') || '';
+              const idMatch = href.match(/\/users\/(\d+)/);
+              const name = row.find('a[href^="/users/"] h5').first().text().trim() || link.text().trim();
+              if (!name) return;
+              const rowText = row.text().replace(/\s+/g, ' ');
+              const metrics = pickMetrics(rowText);
+              items.push({ userId: idMatch ? Number(idMatch[1]) : null, name, metrics, percent: null });
+            });
+            return { items, active: false };
+          }
+
+          return { items, active: false };
+        };
+
+        const races = [
+          { key: 's1', label: 'senate class 1' },
+          { key: 's2', label: 'senate class 2' },
+          { key: 's3', label: 'senate class 3' },
+          { key: 'gov', label: 'governor' },
+          { key: 'rep', label: 'house of representatives' },
+        ];
+
+        const primariesDb = { updatedAt: null, primaries: [], candidatesIndex: {} };
+        let scrapedStates = 0;
+        let racePages = 0;
+
+        for (const state of statesList) {
+          try {
+            const stateId = resolveStateIdFromIndex(statesIndexHtml, state.name);
+            if (!stateId) continue;
+            await page.goto(`${BASE}/states/${stateId}/primaries`, { waitUntil: 'domcontentloaded', timeout: 15000 }).catch(() => {});
+            const primHtml = await page.content();
+
+            for (const race of races) {
+              const meta = extractRacePrimariesFromStatePage(primHtml, race.label);
+              if (!meta) continue;
+              const entry = {
+                stateId: Number(stateId),
+                stateName: state.name,
+                race: race.key,
+                raceLabel: race.label,
+                parties: { dem: null, gop: null }
+              };
+
+              for (const p of ['dem', 'gop']) {
+                const m = meta[p];
+                if (!m || !m.url) { entry.parties[p] = null; continue; }
+                await page.goto(m.url, { waitUntil: 'domcontentloaded', timeout: 15000 }).catch(() => {});
+                const partyHtml = await page.content();
+                const parsed = extractPrimaryCandidates(partyHtml);
+                racePages++;
+                const candidates = parsed.items || [];
+
+                // compute averages for active primaries
+                const avg = (key) => {
+                  const vals = candidates.map(c => c.metrics?.[key]).filter(v => typeof v === 'number');
+                  if (!vals.length) return null;
+                  return Math.round((vals.reduce((a, b) => a + b, 0) / vals.length) * 10) / 10;
+                };
+
+                entry.parties[p] = {
+                  url: m.url,
+                  deadline: m.deadline || null,
+                  count: typeof m.count === 'number' ? m.count : (candidates?.length || null),
+                  status: parsed.active ? 'active' : 'upcoming',
+                  candidates,
+                  avgMetrics: parsed.active ? {
+                    ES: avg('ES'), CO: avg('CO'), NR: avg('NR'), AR: avg('AR'), CR: avg('CR')
+                  } : null,
+                };
+
+                // index candidates for role syncing
+                for (const cand of candidates) {
+                  if (typeof cand.userId !== 'number' || !cand.userId) continue;
+                  const key = String(cand.userId);
+                  if (!primariesDb.candidatesIndex[key]) primariesDb.candidatesIndex[key] = [];
+                  primariesDb.candidatesIndex[key].push({ stateId: Number(stateId), race: race.key, party: p, status: entry.parties[p].status });
+                }
+              }
+
+              primariesDb.primaries.push(entry);
+            }
+
+            scrapedStates++;
+            if (scrapedStates % 10 === 0 || scrapedStates === 1) {
+              await interaction.editReply(`Scraping primaries... ${scrapedStates}/${statesList.length} states (races fetched: ${racePages})`);
+            }
+          } catch (_) {
+            // continue
+          }
+        }
+
+        primariesDb.updatedAt = new Date().toISOString();
+        fs.writeFileSync(primariesJsonPath, JSON.stringify(primariesDb, null, 2));
+        try {
+          const stamp = new Date().toISOString().replace(/[:.]/g, '-');
+          fs.writeFileSync(path.join(dataDirPrim, `primaries.${stamp}.json`), JSON.stringify(primariesDb, null, 2));
+        } catch (_) {}
+
+        await interaction.editReply(`✅ Primaries update complete. States: ${scrapedStates}/${statesList.length}. Race pages fetched: ${racePages}. Saved to: data/primaries.json`);
+      } catch (err) {
+        console.error('Error during primaries scraping:', err);
+        await interaction.editReply(`❌ Error during primaries scraping: ${err?.message || String(err)}`);
       } finally {
         try { await browser?.close(); } catch {}
       }
