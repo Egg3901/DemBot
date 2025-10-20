@@ -1,0 +1,7 @@
+---
+alwaysApply: true
+doNotGenerate: [ "summary.md" ]
+beConcise: true
+
+
+---
