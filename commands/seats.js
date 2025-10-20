@@ -103,7 +103,7 @@ const selectDiagramHandle = async (page, selectors = DIAGRAM_SELECTORS) => {
 
 const fetchChamber = async (page, id) => {
   const url = `${BASE}/chambers/${id}`;
-  const response = await page.goto(url, { waitUntil: 'networkidle2' }).catch(() => null);
+  const response = await page.goto(url, { waitUntil: 'domcontentloaded', timeout: 15000 }).catch(() => null);
   const status = response?.status?.() ?? 200;
   if (status >= 400) throw new Error(`Failed to load chamber page (${status})`);
   const selectorList = DIAGRAM_SELECTORS.join(', ');
@@ -146,7 +146,7 @@ const fetchChamber = async (page, id) => {
 // NEW: Fetch Governors page and parse partyDisplay + screenshot #governor-diagram
 const fetchGovs = async (page) => {
   const url = `${BASE}/maps/governors`;
-  const response = await page.goto(url, { waitUntil: 'networkidle2' }).catch(() => null);
+  const response = await page.goto(url, { waitUntil: 'domcontentloaded', timeout: 15000 }).catch(() => null);
   const status = response?.status?.() ?? 200;
   if (status >= 400) throw new Error(`Failed to load governors page (${status})`);
   await page.waitForSelector(GOVS_DIAGRAM_SELECTORS.join(', '), { timeout: 5000 }).catch(() => null);

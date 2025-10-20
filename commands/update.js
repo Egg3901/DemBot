@@ -1143,7 +1143,7 @@ module.exports = {
         checked++;
         let resp = null;
         try {
-          resp = await page.goto(`${BASE}/users/${id}`, { waitUntil: 'networkidle2' });
+          resp = await page.goto(`${BASE}/users/${id}`, { waitUntil: 'domcontentloaded', timeout: 15000 });
         } catch (_) {}
         const status = resp?.status?.() ?? 200;
         const finalUrl = page.url();

@@ -130,7 +130,13 @@ module.exports = {
       for (const id of ids.slice(0, 10)) { // up to 10 embeds
         try {
           if (page.url() !== `${BASE}/users/${id}`) {
-            await page.goto(`${BASE}/users/${id}`, { waitUntil: 'networkidle2' });
+            // Use faster loading strategy with timeout
+            await page.goto(`${BASE}/users/${id}`, { 
+              waitUntil: 'domcontentloaded', 
+              timeout: 15000 
+            });
+            // Small delay to ensure content is loaded
+            await new Promise(resolve => setTimeout(resolve, 500));
           }
           const html = await page.content();
           const info = parseProfile(html);
@@ -155,6 +161,7 @@ module.exports = {
             timestamp: new Date().toISOString(),
           });
         } catch (e) {
+          console.log(`Failed to fetch profile ${id}, using cache:`, e?.message || e);
           const cached = db.profiles?.[id];
           if (cached) {
             const fields = [];
@@ -175,6 +182,15 @@ module.exports = {
               footer: { text: new URL(BASE).hostname },
               timestamp: new Date().toISOString(),
             });
+          } else {
+            // Add a placeholder embed for failed profiles
+            embeds.push({
+              title: `Profile ${id} (Failed to load)`,
+              url: `${BASE}/users/${id}`,
+              fields: [{ name: 'Error', value: 'Profile not found or failed to load', inline: false }],
+              footer: { text: new URL(BASE).hostname },
+              timestamp: new Date().toISOString(),
+            });
           }
         }
       }
@@ -184,12 +200,19 @@ module.exports = {
         try { writeProfileDb(db); } catch (_) {}
       }
     } catch (err) {
+      console.error('Profile command error:', err);
       await interaction.editReply(`Error fetching profile(s): ${err?.message || String(err)}`);
       if (dbDirty) {
         try { writeProfileDb(db); } catch (_) {}
       }
     } finally {
-      try { await browser?.close(); } catch {}
+      try { 
+        if (browser) {
+          await browser.close(); 
+        }
+      } catch (closeErr) {
+        console.warn('Failed to close browser:', closeErr.message);
+      }
     }
   },
 };

@@ -397,7 +397,7 @@ async function performWebSend({ type, name, amount, debug }) {
       else f.submit();
     });
 
-    const navPromise = page.waitForNavigation({ waitUntil: 'networkidle2', timeout: NAV_TIMEOUT }).catch(() => null);
+    const navPromise = page.waitForNavigation({ waitUntil: 'domcontentloaded', timeout: NAV_TIMEOUT }).catch(() => null);
     const [postResp] = await Promise.all([postRespPromise, navPromise]);
 
     if (postResp) {
@@ -428,7 +428,7 @@ async function performWebSend({ type, name, amount, debug }) {
         .catch(() => 'error');
 
       note('retry', 'Retrying native submission once.', { mode: retried });
-      await page.waitForNavigation({ waitUntil: 'networkidle2', timeout: NAV_TIMEOUT }).catch(() => null);
+      await page.waitForNavigation({ waitUntil: 'domcontentloaded', timeout: NAV_TIMEOUT }).catch(() => null);
       if (typeof page.waitForTimeout === 'function') await page.waitForTimeout(500);
       afterHtml = await page.content();
       verifiedSubmit = afterHtml.includes(name) || afterHtml.includes(amountFmt);
@@ -464,7 +464,7 @@ async function performWebSend({ type, name, amount, debug }) {
     }
 
     // Refresh and locate the new transaction
-    await page.reload({ waitUntil: 'networkidle2' });
+    await page.reload({ waitUntil: 'domcontentloaded' });
     note('reload', 'Page reloaded to capture pending approvals.');
 
     const recipientLower = name.toLowerCase();
@@ -485,14 +485,14 @@ async function performWebSend({ type, name, amount, debug }) {
     let needsApproval = false;
     if (matched.hasApproveButton && matched.approveSelector) {
       await Promise.all([
-        page.waitForNavigation({ waitUntil: 'networkidle2', timeout: NAV_TIMEOUT }).catch(() => null),
+        page.waitForNavigation({ waitUntil: 'domcontentloaded', timeout: NAV_TIMEOUT }).catch(() => null),
         page.click(matched.approveSelector),
       ]);
       note('approval', 'Clicked approval button.', { approveSelector: matched.approveSelector });
 
       if (typeof page.waitForTimeout === 'function') await page.waitForTimeout(800);
       else await new Promise((resolve) => setTimeout(resolve, 800));
-      await page.reload({ waitUntil: 'networkidle2' });
+      await page.reload({ waitUntil: 'domcontentloaded' });
       note('approval', 'Reloaded after approval click to confirm.');
 
       const approvedRow = await waitForTransactionEntry(page, recipientLower, amountDigits, 8000, note, true);
