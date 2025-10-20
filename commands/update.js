@@ -235,31 +235,12 @@ async function performRoleSync({ interaction, guild, db, clearRoles = false, use
       }
     }
 
+    // Remove activity warnings from role update output; only manage the inactive role silently
     const offlineDetails = g.offlineDetails;
     const totalWithData = offlineDetails.length;
     const over4Raw = offlineDetails.filter((d) => d.lastOnlineDays > OFFLINE_THRESHOLD_DAYS);
     const hasActivityData = totalWithData > 0;
     const allOver4 = totalWithData > 0 && over4Raw.length === totalWithData;
-    const warnableDetails = offlineDetails.filter((d) => {
-      const rounded = d.lastOnlineDaysRounded;
-      return rounded !== null && rounded <= 10;
-    });
-    const warnOver4 = warnableDetails.filter((d) => d.lastOnlineDaysRounded > OFFLINE_THRESHOLD_DAYS);
-    const someOver4 = warnOver4.length > 0 && warnOver4.length < warnableDetails.length;
-    const over3 = warnableDetails.filter((d) => d.lastOnlineDaysRounded >= WARNING_THRESHOLD_DAYS);
-    over3.forEach((d) => {
-      const entry = profileOfflineMap.get(d.id);
-      if (entry) offlineProfilesOver3.push(entry);
-    });
-
-    if (someOver4) {
-      partialOfflineWarnings.push({
-        member: member.user?.tag || member.displayName,
-        ids: warnOver4.map((d) => d.id),
-        total: warnableDetails.length,
-        count: warnOver4.length,
-      });
-    }
 
     if (INACTIVE_ROLE_ID) {
       const hasInactive = member.roles.cache.has(INACTIVE_ROLE_ID);
@@ -309,46 +290,7 @@ async function performRoleSync({ interaction, guild, db, clearRoles = false, use
     }
   }
 
-  const warningLines = [];
-  if (partialOfflineWarnings.length) {
-    partialOfflineWarnings.slice(0, 30).forEach((w) => {
-      warningLines.push(`Partial inactivity: ${w.member} has ${w.count}/${w.total} linked profiles offline >${OFFLINE_THRESHOLD_DAYS} days (IDs: ${w.ids.join(', ')})`);
-    });
-    if (partialOfflineWarnings.length > 30) {
-      warningLines.push(`...and ${partialOfflineWarnings.length - 30} more partial inactivity warnings.`);
-    }
-  }
-  if (offlineProfilesOver3.length) {
-    const uniqueOver3 = new Map();
-    offlineProfilesOver3.forEach((entry) => {
-      if (!uniqueOver3.has(entry.id)) uniqueOver3.set(entry.id, entry);
-    });
-    Array.from(uniqueOver3.values()).slice(0, 40).forEach((entry) => {
-      warningLines.push(`Profile offline >${WARNING_THRESHOLD_DAYS} days: ${entry.name || `ID ${entry.id}`} (ID ${entry.id}) - ${entry.text || `${entry.days} days ago`}`);
-    });
-    if (uniqueOver3.size > 40) {
-      warningLines.push(`...and ${uniqueOver3.size - 40} more offline profile warnings.`);
-    }
-  }
-  if (warningLines.length) {
-    const chunked = [];
-    let bucket = [];
-    let len = 0;
-    for (const line of warningLines) {
-      const addition = line.length + 1;
-      if (len + addition > 1800) {
-        chunked.push(bucket.join('\n'));
-        bucket = [];
-        len = 0;
-      }
-      bucket.push(line);
-      len += addition;
-    }
-    if (bucket.length) chunked.push(bucket.join('\n'));
-    for (const chunk of chunked) {
-      await interaction.followUp(`Warnings:\n${chunk}`);
-    }
-  }
+  // Removed activity warning follow-ups; dashboard provides these insights now
 }
 
 const MAX_CONSECUTIVE_MISSES = 20;
@@ -470,7 +412,6 @@ module.exports = {
     let found = 0;
     let checked = 0;
     let lastProgressAt = Date.now();
-    const scrapeOfflineWarnings = [];
 
 
     // Roles-only mode: do not scrape, only apply roles from existing JSON
@@ -529,15 +470,6 @@ module.exports = {
         if (isMiss) return { ok: false };
 
         mergeProfileRecord(db, id, info);
-        const los = typeof info.lastOnlineDays === 'number' ? info.lastOnlineDays : null;
-        if (los !== null && los > WARNING_THRESHOLD_DAYS) {
-          scrapeOfflineWarnings.push({
-            id,
-            name: info.name || null,
-            days: los,
-            text: info.lastOnlineText || null,
-          });
-        }
         found++;
         await maybeReportProgress(id, info);
         return { ok: true, info };
@@ -573,32 +505,7 @@ module.exports = {
       const secs = Math.round((Date.now() - start) / 1000);
       await interaction.editReply(`Updated profiles.json (${typeSummaryLabel}). Checked ${checked}, found ${found}. Time: ${secs}s.`);
 
-      if (scrapeOfflineWarnings.length) {
-        const lines = [];
-        scrapeOfflineWarnings.slice(0, 50).forEach((entry) => {
-          lines.push(`Profile offline >${WARNING_THRESHOLD_DAYS} days: ${entry.name || `ID ${entry.id}`} (ID ${entry.id}) - ${entry.text || `${entry.days} days ago`}`);
-        });
-        if (scrapeOfflineWarnings.length > 50) {
-          lines.push(`...and ${scrapeOfflineWarnings.length - 50} more offline profile warnings.`);
-        }
-        const chunked = [];
-        let bucket = [];
-        let len = 0;
-        for (const line of lines) {
-          const addition = line.length + 1;
-          if (len + addition > 1800) {
-            chunked.push(bucket.join("\n"));
-            bucket = [];
-            len = 0;
-          }
-          bucket.push(line);
-          len += addition;
-        }
-        if (bucket.length) chunked.push(bucket.join("\n"));
-        for (const chunk of chunked) {
-          await interaction.followUp(`Warnings:\n${chunk}`);
-        }
-      }
+      // Activity warnings removed - dashboard provides these insights now
 
       if (applyRoles) {
         const guild = interaction.guild;
