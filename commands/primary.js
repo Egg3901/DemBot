@@ -215,11 +215,24 @@ function formatAuthErrorMessage(err, cmdLabel) {
     lines.push(`  • Cloudflare is blocking automated login.`);
     lines.push(`  • **Solution:** Sign in manually and set PPUSA_COOKIE with your session cookie.`);
     lines.push(`  • **Command:** Run \`/primary debug:true\` for troubleshooting steps.`);
+  } else if (d.debugInfo?.errorType === 'site_unreachable') {
+    lines.push(`**🌐 Site Connectivity Issue**`);
+    lines.push(`  • Cannot reach the PPUSA website at all.`);
+    lines.push(`  • **Possible causes:**`);
+    lines.push(`    - Site is down or experiencing issues`);
+    lines.push(`    - Network connectivity problems`);
+    lines.push(`    - Firewall or proxy blocking access`);
+    lines.push(`    - DNS resolution issues`);
+    lines.push(`  • **Check:** Try accessing https://powerplayusa.net manually`);
+    lines.push(`  • **Environment:** Verify PPUSA_BASE_URL setting`);
+  } else if (d.debugInfo?.errorType === 'connectivity_failed') {
+    lines.push(`**🔗 Base Connectivity Failed**`);
+    lines.push(`  • Cannot establish connection to PPUSA base site.`);
+    lines.push(`  • Check network connectivity and firewall settings.`);
   } else if (d.debugInfo?.errorType === 'navigation_failed') {
-    lines.push(`**🔍 Navigation Issue**`);
-    lines.push(`  • Could not reach the login page.`);
-    lines.push(`  • Check if the PPUSA_BASE_URL is correct.`);
-    lines.push(`  • Verify network connectivity and firewall settings.`);
+    lines.push(`**🔍 Login Page Navigation Issue**`);
+    lines.push(`  • Can reach base site but cannot access login page.`);
+    lines.push(`  • Login page may have moved or require different permissions.`);
   } else if (d.debugInfo?.errorType === 'form_submission_failed') {
     lines.push(`**📝 Form Submission Issue**`);
     lines.push(`  • Could not submit the login form.`);
