@@ -334,28 +334,23 @@ async function generateRecommendations(analysis) {
     .map(s => `${s.state}(${s.count} total, ${s.movablePlayers} without positions)`)
     .join(', ');
   
-  const prompt = `This is a FICTIONAL GAME called "Power Play USA" - a political simulation video game where players create characters and compete for fictional elected offices.
-
-GAME CONTEXT: Players can move their game characters between fictional states to run for in-game Governor, Senator, or Representative positions. This is entertainment, not real politics.
-
-CURRENT GAME STATE:
-- Overcrowded game states: ${overcrowdedSummary}
-- Target game states: ${analysis.underutilizedStates.slice(0, 5).map(s => `${s.state}(${s.electoral}ev)`).join(', ')}
-
-Task: Write 2-3 brief in-game strategy tips (20 words each) for why game players should move their fictional characters from overcrowded to target states for better ${partyName} team gameplay.`;
+  const topTargets = analysis.underutilizedStates.slice(0, 3).map(s => `${s.state}(${s.electoral}ev${s.opportunities ? ',vacant' : ''})`).join(', ');
+  const topSource = analysis.overcrowdedStates[0];
+  
+  const prompt = `Power Play USA game: ${analysis.totalPartyMembers} ${partyName} players. ${topSource?.movablePlayers || 0} movable in ${topSource?.state || 'overcrowded states'}. Top targets: ${topTargets}. Write 1 concise sentence (15 words max) summarizing the strategic opportunity.`;
 
   try {
     const response = await anthropic.messages.create({
       model: "claude-3-haiku-20240307",
-      max_tokens: 200,
-      system: "You are a gaming strategy advisor for Power Play USA, a fictional political simulation video game. All advice relates to in-game strategy, not real-world politics.",
+      max_tokens: 50,
+      system: "You are a gaming strategy advisor for Power Play USA, a fictional video game. Respond with 1 short sentence only.",
       messages: [{
         role: "user",
         content: prompt
       }]
     });
     
-    return response.content[0].text;
+    return response.content[0].text.trim();
   } catch (error) {
     console.error('Error calling Anthropic API:', error.message || error);
     // If AI refuses, just skip recommendations gracefully
@@ -363,7 +358,7 @@ Task: Write 2-3 brief in-game strategy tips (20 words each) for why game players
   }
 }
 
-function buildAnalysisEmbed(analysis, recommendations) {
+function buildAnalysisEmbed(analysis, aiSummary) {
   const partyName = analysis.party === 'dem' ? 'Democratic' : 'Republican';
   const partyColor = analysis.party === 'dem' ? 0x1e40af : 0xdc2626;
   const partyEmoji = analysis.party === 'dem' ? '🔵' : '🔴';
@@ -379,9 +374,15 @@ function buildAnalysisEmbed(analysis, recommendations) {
     .setTimestamp(new Date())
     .setFooter({ text: footerText });
 
-  // Concise summary
+  // Concise summary with optional AI insight
   const partyShare = ((analysis.totalPartyMembers / analysis.totalActive) * 100).toFixed(1);
-  embed.setDescription(`**${analysis.totalPartyMembers}** active ${partyName}s (${partyShare}% of ${analysis.totalActive} total)`);
+  let descriptionText = `**${analysis.totalPartyMembers}** active ${partyName}s (${partyShare}% of ${analysis.totalActive} total)`;
+  
+  if (aiSummary && typeof aiSummary === 'string' && aiSummary.length > 10) {
+    descriptionText += `\n_${aiSummary}_`;
+  }
+  
+  embed.setDescription(descriptionText);
 
   // Overcrowded states - show top 3 with movable player counts
   if (analysis.overcrowdedStates.length > 0) {
@@ -472,15 +473,6 @@ function buildAnalysisEmbed(analysis, recommendations) {
     }
   }
 
-  // AI Recommendations - concise (if provided and valid)
-  if (recommendations && typeof recommendations === 'string' && recommendations.length > 20) {
-    embed.addFields({
-      name: '💡 Strategy',
-      value: recommendations.slice(0, 500),
-      inline: false
-    });
-  }
-
   return embed;
 }
 
@@ -565,20 +557,20 @@ module.exports = {
         // Analyze distribution with state data integration
         const analysis = analyzePlayerDistribution(profiles, party, statesData);
         
-        // Generate AI recommendations if requested
-        let recommendations = null;
+        // Generate AI summary if requested (concise 1-2 sentence overview)
+        let aiSummary = null;
         if (includeAI && process.env.ANTHROPIC_API_KEY) {
           try {
-            recommendations = await generateRecommendations(analysis);
+            aiSummary = await generateRecommendations(analysis);
           } catch (err) {
-            console.warn('AI recommendations failed:', err.message);
-            // Gracefully skip AI section if it fails
-            recommendations = null;
+            console.warn('AI summary failed:', err.message);
+            // Gracefully skip AI summary if it fails
+            aiSummary = null;
           }
         }
 
         // Build and send embed
-        const embed = buildAnalysisEmbed(analysis, recommendations);
+        const embed = buildAnalysisEmbed(analysis, aiSummary);
         await interaction.editReply({ embeds: [embed] });
       } else if (analysisType === 'races') {
         // Future: Use statesData to analyze competitive races by examining current officeholders
