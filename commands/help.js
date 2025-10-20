@@ -266,7 +266,7 @@ module.exports = {
 
     const withVisibility = (payload) => {
       if (makePublic) return payload;
-      return { ...payload, flags: MessageFlags.Ephemeral };
+      return { ...payload, ephemeral: true };
     };
 
     if (targetName) {
