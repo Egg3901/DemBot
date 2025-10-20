@@ -105,18 +105,35 @@ function isActive(profile) {
   return typeof profile.lastOnlineDays === 'number' && profile.lastOnlineDays < 5;
 }
 
-function analyzePlayerDistribution(profiles, party = 'dem') {
+function hasPosition(profile) {
+  // Check if player holds any office (not a Private Citizen)
+  const position = (profile.position || '').toLowerCase();
+  return position && !position.includes('private citizen') && !position.includes('vacant');
+}
+
+function analyzePlayerDistribution(profiles, party = 'dem', statesData = null) {
   const activeProfiles = profiles.filter(isActive);
   const partyProfiles = activeProfiles.filter(p => partyBucket(p.party) === party);
   
   const stateCounts = {};
   const regionCounts = { west: 0, south: 0, northeast: 0, rust_belt: 0 };
+  const statePlayersMap = {}; // Track individual players by state
   
-  // Count party members by state
+  // Count party members by state and track individual players
   partyProfiles.forEach(profile => {
     const state = normalizeStateName(profile.state);
     if (state) {
       stateCounts[state] = (stateCounts[state] || 0) + 1;
+      
+      // Track individual players
+      if (!statePlayersMap[state]) statePlayersMap[state] = [];
+      statePlayersMap[state].push({
+        id: profile.id,
+        name: profile.name,
+        position: profile.position || 'Private Citizen',
+        hasPosition: hasPosition(profile),
+        discord: profile.discord,
+      });
     }
     
     // Count by region
@@ -125,28 +142,79 @@ function analyzePlayerDistribution(profiles, party = 'dem') {
     }
   });
   
-  // Get party-leaning states
+  // Get party-leaning states with updated EV data if available
   const partyStates = party === 'dem' ? DEMOCRATIC_STATES : REPUBLICAN_STATES;
   
+  // Enhance state data with live EV counts and position holders from states.json
+  const enhancedStateData = {};
+  if (statesData?.states) {
+    Object.values(statesData.states).forEach(stateInfo => {
+      const stateName = normalizeStateName(stateInfo.name);
+      if (stateName && partyStates[stateName]) {
+        enhancedStateData[stateName] = {
+          ...partyStates[stateName],
+          electoral: stateInfo.electoralVotes || partyStates[stateName].electoral,
+          houseSeats: stateInfo.houseSeats || 0,
+          governor: stateInfo.governor,
+          senators: stateInfo.senators || [],
+          representatives: stateInfo.representatives || [],
+          legislatureSeats: stateInfo.legislatureSeats || { democratic: 0, republican: 0 },
+        };
+      }
+    });
+  }
+  
+  // Use enhanced data if available, fallback to hardcoded
+  const finalStateData = Object.keys(enhancedStateData).length > 0 ? enhancedStateData : partyStates;
+  
   // Find overcrowded states (more than 4 party members - governor + 2 senators + 1 house rep)
+  // Include list of movable players (those without positions)
   const overcrowdedStates = Object.entries(stateCounts)
     .filter(([state, count]) => count > 4)
-    .sort((a, b) => b[1] - a[1]);
+    .map(([state, count]) => {
+      const players = statePlayersMap[state] || [];
+      const movablePlayers = players.filter(p => !p.hasPosition);
+      const stateInfo = finalStateData[state] || null;
+      return {
+        state,
+        count,
+        totalPlayers: players.length,
+        movablePlayers: movablePlayers.length,
+        movablePlayersList: movablePlayers,
+        electoralVotes: stateInfo?.electoral || null,
+        stateData: stateInfo,
+      };
+    })
+    .sort((a, b) => b.count - a.count);
   
   // Find underutilized party-leaning states (fewer than 2 party members)
-  const underutilizedStates = Object.entries(partyStates)
+  const underutilizedStates = Object.entries(finalStateData)
     .filter(([state, data]) => {
       const currentCount = stateCounts[state] || 0;
       return currentCount < 2;
     })
-    .map(([state, data]) => ({
-      state,
-      currentCount: stateCounts[state] || 0,
-      lean: data.lean,
-      electoral: data.electoral,
-      population: data.population,
-      hasActivePlayers: (stateCounts[state] || 0) > 0
-    }))
+    .map(([state, data]) => {
+      // Check for vacant positions or opposing party control
+      const hasVacancies = statesData?.states 
+        ? Object.values(statesData.states).find(s => normalizeStateName(s.name) === state)
+        : null;
+      
+      const vacantGov = hasVacancies?.governor?.vacant || false;
+      const vacantSenators = (hasVacancies?.senators || []).filter(s => s.vacant).length;
+      const opportunities = vacantGov ? 'Gov vacant' : 
+        vacantSenators > 0 ? `${vacantSenators} Senate seat(s) vacant` : '';
+      
+      return {
+        state,
+        currentCount: stateCounts[state] || 0,
+        lean: data.lean,
+        electoral: data.electoral,
+        population: data.population,
+        hasActivePlayers: (stateCounts[state] || 0) > 0,
+        opportunities: opportunities || null,
+        stateData: data,
+      };
+    })
     .sort((a, b) => b.electoral - a.electoral); // Prioritize by electoral votes
   
   return {
@@ -156,7 +224,9 @@ function analyzePlayerDistribution(profiles, party = 'dem') {
     stateCounts,
     regionCounts,
     overcrowdedStates,
-    underutilizedStates
+    underutilizedStates,
+    statePlayersMap,
+    usingLiveStateData: Object.keys(enhancedStateData).length > 0,
   };
 }
 
@@ -167,19 +237,24 @@ async function generateRecommendations(analysis) {
   
   const partyName = analysis.party === 'dem' ? 'Democratic' : 'Republican';
   
+  // Build overcrowded states summary with movable player counts
+  const overcrowdedSummary = analysis.overcrowdedStates
+    .map(s => `${s.state}(${s.count} total, ${s.movablePlayers} without positions)`)
+    .join(', ');
+  
   const prompt = `You are analyzing Power Play USA, a political simulation game where players compete for elected offices (Governor, Senator, House Rep). Players can move between states to run for different positions.
 
 Current ${partyName} player distribution:
 - Active ${partyName}s: ${analysis.totalPartyMembers}
-- Overcrowded states (>4 ${partyName}s): ${analysis.overcrowdedStates.map(([state, count]) => `${state}(${count})`).join(', ')}
+- Overcrowded states (>4 ${partyName}s): ${overcrowdedSummary}
 - Available target states (<2 ${partyName}s): ${analysis.underutilizedStates.slice(0, 5).map(s => `${s.state}(${s.currentCount},${s.electoral}ev)`).join(', ')}
 
-Provide 3-4 concise strategic recommendations for MOVING existing ${partyName} players from overcrowded states to underutilized ${partyName}-leaning states. This is about redistributing current players, not adding new ones. Focus on high electoral impact states with minimal ${partyName} presence. Keep each recommendation under 50 words.`;
+Provide 2-3 concise strategic recommendations for MOVING existing ${partyName} players who DON'T currently hold office (Private Citizens) from overcrowded states to underutilized ${partyName}-leaning states. Focus on high electoral value targets. Keep each recommendation under 40 words and focus on the strategic value of the move.`;
 
   try {
     const response = await anthropic.messages.create({
       model: "claude-3-haiku-20240307",
-      max_tokens: 300,
+      max_tokens: 250,
       messages: [{
         role: "user",
         content: prompt
@@ -197,22 +272,30 @@ function buildAnalysisEmbed(analysis, recommendations) {
   const partyName = analysis.party === 'dem' ? 'Democratic' : 'Republican';
   const partyColor = analysis.party === 'dem' ? 0x1e40af : 0xdc2626;
   const partyEmoji = analysis.party === 'dem' ? '🔵' : '🔴';
+  const BASE_URL = 'https://www.powerplayusa.net';
+  
+  const footerText = analysis.usingLiveStateData 
+    ? 'Power Play USA • Using live state data (EVs, positions)'
+    : 'Power Play USA • Run /update type:states for live data';
   
   const embed = new EmbedBuilder()
     .setTitle(`${partyEmoji} ${partyName} Player Movement Analysis`)
     .setColor(partyColor)
     .setTimestamp(new Date())
-    .setFooter({ text: 'Power Play USA' });
+    .setFooter({ text: footerText });
 
   // Concise summary
   const partyShare = ((analysis.totalPartyMembers / analysis.totalActive) * 100).toFixed(1);
   embed.setDescription(`**${analysis.totalPartyMembers}** active ${partyName}s (${partyShare}% of ${analysis.totalActive} total)`);
 
-  // Overcrowded states - only show top 3
+  // Overcrowded states - show top 3 with movable player counts
   if (analysis.overcrowdedStates.length > 0) {
     const overcrowdedText = analysis.overcrowdedStates
       .slice(0, 3)
-      .map(([state, count]) => `• **${state}**: ${count} ${partyName}s`)
+      .map(s => {
+        const movableNote = s.movablePlayers > 0 ? ` (${s.movablePlayers} movable)` : '';
+        return `• **${s.state}**: ${s.count} ${partyName}s${movableNote}`;
+      })
       .join('\n');
     
     embed.addFields({
@@ -222,24 +305,96 @@ function buildAnalysisEmbed(analysis, recommendations) {
     });
   }
 
-  // Top underutilized states - only show top 5
+  // Top underutilized states - only show top 5, with opportunities if available
   if (analysis.underutilizedStates.length > 0) {
     const underutilizedText = analysis.underutilizedStates
       .slice(0, 5)
-      .map(s => `• **${s.state}**: ${s.currentCount} (${s.electoral}ev) ${s.hasActivePlayers ? '⚠️' : '✅'}`)
+      .map(s => {
+        const marker = s.hasActivePlayers ? '⚠️' : '✅';
+        const opportunityNote = s.opportunities ? ` 🏛️` : '';
+        return `• **${s.state}**: ${s.currentCount} (${s.electoral}ev) ${marker}${opportunityNote}`;
+      })
       .join('\n');
+    
+    const legend = analysis.usingLiveStateData 
+      ? '✅ = No active players\n⚠️ = Has active players\n🏛️ = Vacant positions'
+      : '✅ = No active players\n⚠️ = Has active players';
     
     embed.addFields({
       name: `🎯 Move TO (<2 ${partyName}s)`,
-      value: underutilizedText + '\n✅ = No active players\n⚠️ = Has active players',
+      value: underutilizedText + '\n' + legend,
       inline: true
     });
   }
 
-  // AI Recommendations - concise
-  if (recommendations && recommendations !== "AI recommendations unavailable.") {
+  // Build specific movement recommendations with player links
+  if (analysis.overcrowdedStates.length > 0 && analysis.underutilizedStates.length > 0) {
+    const movementRecs = [];
+    
+    // Prioritize states with vacant positions, then by electoral votes
+    const targetStates = [...analysis.underutilizedStates.slice(0, 8)].sort((a, b) => {
+      if (a.opportunities && !b.opportunities) return -1;
+      if (!a.opportunities && b.opportunities) return 1;
+      return b.electoral - a.electoral;
+    });
+    
+    let targetIdx = 0;
+    
+    // Collect all movable players from overcrowded states
+    const allMovablePlayers = [];
+    for (const overcrowded of analysis.overcrowdedStates) {
+      const movablePlayers = overcrowded.movablePlayersList || [];
+      movablePlayers.forEach(player => {
+        allMovablePlayers.push({
+          ...player,
+          fromState: overcrowded.state,
+        });
+      });
+    }
+    
+    // Match players to target states (round-robin for better distribution)
+    const maxRecommendations = Math.min(allMovablePlayers.length, targetStates.length, 10);
+    
+    for (let i = 0; i < maxRecommendations; i++) {
+      const player = allMovablePlayers[i];
+      const target = targetStates[targetIdx % targetStates.length];
+      
+      const playerLink = `[${player.name}](${BASE_URL}/users/${player.id})`;
+      const discordNote = player.discord ? ` (@${player.discord})` : '';
+      const opportunityNote = target.opportunities ? ` - ${target.opportunities}` : '';
+      
+      movementRecs.push(
+        `📍 **${player.fromState} → ${target.state}** (${target.electoral}ev)${opportunityNote}\n` +
+        `   ${playerLink}${discordNote}`
+      );
+      
+      targetIdx++;
+    }
+    
+    if (movementRecs.length > 0) {
+      const header = movementRecs.length === 1 
+        ? '🎯 Suggested Player Movement (Private Citizens)'
+        : `🎯 Suggested Player Movements (${movementRecs.length} Private Citizens)`;
+      
+      embed.addFields({
+        name: header,
+        value: movementRecs.join('\n\n'),
+        inline: false
+      });
+    } else if (allMovablePlayers.length === 0 && analysis.overcrowdedStates.length > 0) {
+      // No movable players available (all have positions)
+      embed.addFields({
+        name: '📋 Movement Note',
+        value: `All players in overcrowded states currently hold positions. Consider primary challenges or waiting for term limits.`,
+        inline: false
+      });
+    }
+  }
+
+  // AI Recommendations - concise (if provided)
+  if (recommendations && recommendations !== "AI recommendations unavailable." && !recommendations.includes('⚠️')) {
     embed.addFields({
-      name: '🤖 Strategic Movement Recommendations',
+      name: '🤖 AI Strategic Analysis',
       value: recommendations.slice(0, 800),
       inline: false
     });
@@ -326,13 +481,8 @@ module.exports = {
 
       // Handle different analysis types
       if (analysisType === 'movement') {
-        // Analyze distribution
-        const analysis = analyzePlayerDistribution(profiles, party);
-        
-        // Enhance analysis with state data if available
-        if (statesData) {
-          analysis.statesData = statesData.states || {};
-        }
+        // Analyze distribution with state data integration
+        const analysis = analyzePlayerDistribution(profiles, party, statesData);
         
         // Generate AI recommendations if requested
         let recommendations = null;
