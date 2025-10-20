@@ -5,6 +5,9 @@ const {
   EmbedBuilder,
   MessageFlags,
   Collection,
+  ActionRowBuilder,
+  ButtonBuilder,
+  ButtonStyle,
 } = require('discord.js');
 const { fetchMember, canManageBot } = require('../lib/permissions');
 const { getSendLimit, formatLimit, ROLE_TREASURY_ADMIN, BASE_LIMIT, UNLIMITED } = require('../lib/send-access');
@@ -144,6 +147,35 @@ function buildOverviewEmbed(commandInfos) {
     .setColor(BRAND_COLOR)
     .setTimestamp(new Date());
 
+  // Helper: add a field, splitting into multiple fields if content exceeds Discord limits
+  const addChunkedField = (name, lines) => {
+    const MAX_FIELD_LEN = 1000; // under 1024 to leave margin
+    if (!Array.isArray(lines) || !lines.length) return;
+    let chunk = [];
+    let length = 0;
+    let part = 1;
+    const pushChunk = () => {
+      if (!chunk.length) return;
+      const fieldName = part === 1 ? name : `${name} (${part})`;
+      embed.addFields({ name: fieldName, value: chunk.join('\n') });
+      chunk = [];
+      length = 0;
+      part++;
+    };
+    for (const line of lines) {
+      const ln = line.length + 1;
+      if (length + ln > MAX_FIELD_LEN) {
+        pushChunk();
+        // Hard stop if we exceed 25 fields total
+        if (Array.isArray(embed.data.fields) && embed.data.fields.length >= 25) return;
+      }
+      chunk.push(line);
+      length += ln;
+      if (Array.isArray(embed.data.fields) && embed.data.fields.length >= 25) break;
+    }
+    if (chunk.length && (!Array.isArray(embed.data.fields) || embed.data.fields.length < 25)) pushChunk();
+  };
+
   const grouped = new Map();
   for (const info of commandInfos) {
     const key = info.groupKey || info.requirementLabel || ACCESS_GENERAL;
@@ -155,36 +187,89 @@ function buildOverviewEmbed(commandInfos) {
   for (const key of order) {
     if (!grouped.has(key)) continue;
     const list = grouped.get(key).sort((a, b) => a.name.localeCompare(b.name));
-    embed.addFields({
-      name: key,
-      value: list
-        .map(
-          (cmd) =>
-            `**${cmd.signature}**\n${INDENT}${cmd.description || '_No description provided_'}\n${INDENT}Requires: ${
-              cmd.requirementLabel || key
-            }`,
-        )
-        .join('\n\n'),
-    });
+    const lines = list.map(
+      (cmd) => `**${cmd.signature}**\n${INDENT}${cmd.description || '_No description provided_'}\n${INDENT}Requires: ${cmd.requirementLabel || key}`,
+    );
+    addChunkedField(key, lines);
     grouped.delete(key);
   }
 
   for (const [key, list] of grouped.entries()) {
     const sorted = list.sort((a, b) => a.name.localeCompare(b.name));
-    embed.addFields({
-      name: key,
-      value: sorted
-        .map(
-          (cmd) =>
-            `**${cmd.signature}**\n${INDENT}${cmd.description || '_No description provided_'}\n${INDENT}Requires: ${
-              cmd.requirementLabel || key
-            }`,
-        )
-        .join('\n\n'),
-    });
+    const lines = sorted.map(
+      (cmd) => `**${cmd.signature}**\n${INDENT}${cmd.description || '_No description provided_'}\n${INDENT}Requires: ${cmd.requirementLabel || key}`,
+    );
+    addChunkedField(key, lines);
   }
 
   return embed;
+}
+
+function buildOverviewPages(commandInfos) {
+  const sorted = commandInfos.slice().sort((a, b) => a.name.localeCompare(b.name));
+  const pageSize = 10;
+  const pages = [];
+  for (let i = 0; i < sorted.length; i += pageSize) {
+    const slice = sorted.slice(i, i + pageSize);
+    const lines = slice.map((cmd) =>
+      `• **${cmd.signature}**\n${INDENT}${cmd.description || '_No description provided_'}\n${INDENT}Requires: ${cmd.requirementLabel}`
+    );
+    const embed = new EmbedBuilder()
+      .setTitle('DemBot Commands')
+      .setDescription('Use `/help command:<name>` for details on a single command.')
+      .setColor(BRAND_COLOR)
+      .setTimestamp(new Date())
+      .addFields({ name: `Commands ${i + 1}-${Math.min(i + pageSize, sorted.length)} of ${sorted.length}`, value: lines.join('\n\n') });
+    pages.push(embed);
+  }
+  if (pages.length === 0) {
+    pages.push(new EmbedBuilder().setTitle('DemBot Commands').setDescription('No commands available.').setColor(BRAND_COLOR));
+  }
+  return pages;
+}
+
+function buildControlsRow(nonce, index, total) {
+  const first = new ButtonBuilder().setCustomId(`help:${nonce}:first`).setEmoji('⏮️').setStyle(ButtonStyle.Secondary).setDisabled(index === 0);
+  const prev = new ButtonBuilder().setCustomId(`help:${nonce}:prev`).setEmoji('◀️').setStyle(ButtonStyle.Secondary).setDisabled(index === 0);
+  const next = new ButtonBuilder().setCustomId(`help:${nonce}:next`).setEmoji('▶️').setStyle(ButtonStyle.Secondary).setDisabled(index >= total - 1);
+  const last = new ButtonBuilder().setCustomId(`help:${nonce}:last`).setEmoji('⏭️').setStyle(ButtonStyle.Secondary).setDisabled(index >= total - 1);
+  const close = new ButtonBuilder().setCustomId(`help:${nonce}:close`).setEmoji('🛑').setStyle(ButtonStyle.Danger);
+  return new ActionRowBuilder().addComponents(first, prev, next, last, close);
+}
+
+async function sendPaginatedHelp(interaction, commandInfos, makePublic) {
+  const pages = buildOverviewPages(commandInfos);
+  if (pages.length === 1) {
+    return interaction.reply({ embeds: [pages[0]], ephemeral: !makePublic });
+  }
+
+  let index = 0;
+  const nonce = interaction.id;
+  const row = buildControlsRow(nonce, index, pages.length);
+  await interaction.reply({ embeds: [pages[index]], components: [row], ephemeral: !makePublic });
+  const msg = await interaction.fetchReply();
+
+  const filter = (i) => i.user.id === interaction.user.id && typeof i.customId === 'string' && i.customId.startsWith(`help:${nonce}:`);
+  const collector = msg.createMessageComponentCollector({ filter, time: 120_000 });
+
+  collector.on('collect', async (i) => {
+    const id = i.customId.split(':')[2];
+    if (id === 'close') {
+      collector.stop('closed');
+      try { await i.update({ components: [] }); } catch (_) {}
+      return;
+    }
+    if (id === 'first') index = 0;
+    else if (id === 'prev') index = Math.max(0, index - 1);
+    else if (id === 'next') index = Math.min(pages.length - 1, index + 1);
+    else if (id === 'last') index = pages.length - 1;
+    const rowNew = buildControlsRow(nonce, index, pages.length);
+    try { await i.update({ embeds: [pages[index]], components: [rowNew] }); } catch (_) {}
+  });
+
+  collector.on('end', async () => {
+    try { await interaction.editReply({ components: [] }); } catch (_) {}
+  });
 }
 
 /**
@@ -311,8 +396,7 @@ module.exports = {
       );
     }
 
-    const embed = buildOverviewEmbed(visible);
-    return interaction.reply(withVisibility({ embeds: [embed] }));
+    return sendPaginatedHelp(interaction, visible, makePublic);
   },
 };
 
