@@ -498,7 +498,12 @@ module.exports = {
         const parsedProfile = parseProfile(profilePage.html);
         playerInfo = extractPlayerPoliticalInfo(profilePage.html, { baseUrl: BASE, profileId });
         if (parsedProfile) {
-          mergeProfileRecord(profilesDb, profileId, parsedProfile);
+          // Persist the latest detected positions into the cache for future comparisons
+          const withPositions = {
+            ...parsedProfile,
+            policyPositions: playerInfo?.positions || null,
+          };
+          mergeProfileRecord(profilesDb, profileId, withPositions);
           profilesDirty = true;
           if (parsedProfile.name && !playerInfo?.name) playerInfo = { ...playerInfo, name: parsedProfile.name };
           if (parsedProfile.party && !playerInfo?.party) playerInfo = { ...playerInfo, party: parsedProfile.party };
@@ -552,9 +557,10 @@ module.exports = {
         return;
       }
 
-      const comparisonData = playerInfo?.positions
-        ? buildComparisonData(stateInfo, playerInfo.positions)
-        : null;
+      // Prefer fresh positions from live page; fallback to cached policyPositions if present
+      const cachedPositions = profileId ? profilesDb.profiles?.[profileId]?.policyPositions : null;
+      const positionsSource = playerInfo?.positions || cachedPositions || null;
+      const comparisonData = positionsSource ? buildComparisonData(stateInfo, positionsSource) : null;
 
       const playerNormalizedState = normalizeStateName(
         playerInfo?.stateName || cachedProfile?.state || stateTargetName || ''

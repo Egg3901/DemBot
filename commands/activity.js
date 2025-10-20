@@ -29,7 +29,13 @@ const addHandle = (map, key, member) => {
 module.exports = {
   data: new SlashCommandBuilder()
     .setName('activity')
-    .setDescription('Show members with cached profiles 2-5 days offline'),
+    .setDescription('Show members with cached profiles 2-5 days offline')
+    .addBooleanOption(opt =>
+      opt
+        .setName('general')
+        .setDescription('If true, show overall activity snapshot by party from dashboard')
+        .setRequired(false)
+    ),
 
   /**
    * @param {import('discord.js').ChatInputCommandInteraction} interaction
@@ -40,6 +46,35 @@ module.exports = {
     }
 
     await interaction.deferReply();
+
+    const general = interaction.options.getBoolean('general') || false;
+
+    if (general) {
+      try {
+        const host = process.env.STATUS_HOST || process.env.DASHBOARD_HOST || '127.0.0.1';
+        const port = Number(process.env.STATUS_PORT || process.env.DASHBOARD_PORT || 3000);
+        const url = `http://${host}:${port}/stats.json`;
+        const res = await fetch(url).catch(() => null);
+        if (!res || !res.ok) {
+          return interaction.editReply('Dashboard snapshot unavailable. Is the dashboard running?');
+        }
+        const data = await res.json();
+        const lines = [];
+        const render = (label, s) => `${label}: members ${s.count}, avg last online ${s.avgOnlineDays}d, <3d ${s.recentCount}, <5d ${s.activeCount}`;
+        if (data?.dem) lines.push(`• ${render('Democratic', data.dem)}`);
+        if (data?.gop) lines.push(`• ${render('Republican', data.gop)}`);
+        if (data?.all) lines.push(`• ${render('All', data.all)}`);
+        const embed = {
+          title: 'Party Activity Snapshot',
+          description: lines.join('\n') || 'No data',
+          footer: { text: data?.updatedAt ? `profiles.json updated ${new Date(data.updatedAt).toLocaleString()}` : 'profiles.json' },
+          timestamp: new Date().toISOString(),
+        };
+        return interaction.editReply({ embeds: [embed] });
+      } catch (_) {
+        return interaction.editReply('Failed to fetch dashboard snapshot.');
+      }
+    }
 
     const db = loadProfiles();
     if (!db?.profiles) {
