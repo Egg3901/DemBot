@@ -177,7 +177,7 @@ client.on(Events.GuildMemberAdd, async (member) => {
         console.warn(`⚠️ Could not fetch WELCOME_CHANNEL_ID=${WELCOME_CHANNEL_ID}:`, e?.message ?? e);
       }
     }
-
+//test
     // Fallback to system channel if configured one not available
     if (!channel || !channel.isTextBased?.()) {
       channel = member.guild?.systemChannel ?? null;
