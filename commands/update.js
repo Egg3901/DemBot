@@ -24,6 +24,27 @@ const TYPE_LABELS = {
 };
 
 /**
+ * Detects blank or redirected pages that shouldn't be parsed.
+ */
+function isBlankOrRedirect(html = '', finalUrl = '') {
+  try {
+    const raw = String(html || '');
+    // Very small pages or obvious blank wrappers
+    if (raw.length < 400) return true;
+    const text = raw.replace(/<script[\s\S]*?<\/script>/gi, '').replace(/<style[\s\S]*?<\/style>/gi, '');
+    const textLen = text.replace(/<[^>]+>/g, '').replace(/\s+/g, ' ').trim().length;
+    if (textLen < 80) return true;
+    // Meta refresh or JS redirects
+    if (/http-equiv\s*=\s*["']refresh["']/i.test(raw)) return true;
+    if (/window\.location\s*=|location\.href\s*=|location\.replace\(/i.test(raw)) return true;
+    // Login or not-found redirects
+    if (/\/login\b/i.test(finalUrl)) return true;
+    if (/404|not\s*found/i.test(text)) return true;
+  } catch (_) {}
+  return false;
+}
+
+/**
  * Helper to force resource cleanup on a page
  */
 async function clearPageResources(page) {
@@ -451,6 +472,7 @@ async function scrapeStatesData(interaction, page, writeDb) {
       if (status >= 400 || !isStateUrl) continue;
       
           const html = await page.content();
+      if (isBlankOrRedirect(html, finalUrl)) continue;
       const stateData = parseStateData(html);
 
       if (stateData && stateData.stateName) {
@@ -579,9 +601,10 @@ async function scrapeRacesData(interaction, page, writeDb) {
 
           // Then go to races page
           const resp = await page.goto(`${BASE}/states/${stateId}/races`, { waitUntil: 'domcontentloaded', timeout: 8000 });
-          const status = resp?.status?.() ?? 200;
-          const finalUrl = page.url();
-          const html = await page.content();
+        const status = resp?.status?.() ?? 200;
+        const finalUrl = page.url();
+        const html = await page.content();
+        if (isBlankOrRedirect(html, finalUrl)) continue;
 
           const isRacesUrl = /\/races\b/i.test(finalUrl);
           if (status >= 400 || !isRacesUrl) continue;
@@ -766,6 +789,7 @@ async function scrapePrimariesData(interaction, page, writeDb) {
           const status = resp?.status?.() ?? 200;
           const finalUrl = page.url();
           const html = await page.content();
+          if (isBlankOrRedirect(html, finalUrl)) continue;
 
           const isPrimariesUrl = /\/primaries\b/i.test(finalUrl);
           if (status >= 400 || !isPrimariesUrl) continue;
