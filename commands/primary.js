@@ -229,6 +229,27 @@ function formatAuthErrorMessage(err, cmdLabel) {
     lines.push(`**🔗 Base Connectivity Failed**`);
     lines.push(`  • Cannot establish connection to PPUSA base site.`);
     lines.push(`  • Check network connectivity and firewall settings.`);
+  } else if (d.debugInfo?.errorType === 'browser_launch_failed') {
+    lines.push(`**🌐 Browser Launch Failed**`);
+    lines.push(`  • Headless browser cannot start or connect.`);
+    lines.push(`  • **Common causes:**`);
+    lines.push(`    - Chrome/Chromium not installed`);
+    lines.push(`    - Insufficient permissions`);
+    lines.push(`    - Anti-bot detection blocking browser`);
+    lines.push(`  • **Try:** Run with PUPPETEER_HEADLESS=false`);
+  } else if (d.debugInfo?.errorType === 'browser_connection_lost') {
+    lines.push(`**🔌 Browser Connection Lost**`);
+    lines.push(`  • Browser connection terminated during operation.`);
+    lines.push(`  • **Likely cause:** Aggressive anti-bot detection.`);
+    lines.push(`  • **Solutions:**`);
+    lines.push(`    - Use cookie authentication instead`);
+    lines.push(`    - Try different browser configuration`);
+    lines.push(`    - Use non-headless mode temporarily`);
+  } else if (d.debugInfo?.errorType === 'browser_pre_auth_failure') {
+    lines.push(`**🚫 Browser Failed Before Authentication**`);
+    lines.push(`  • Browser connection lost before reaching login page.`);
+    lines.push(`  • **Cause:** Extreme anti-bot detection blocking automation.`);
+    lines.push(`  • **Recommended:** Use cookie-based authentication`);
   } else if (d.debugInfo?.errorType === 'navigation_failed') {
     lines.push(`**🔍 Login Page Navigation Issue**`);
     lines.push(`  • Can reach base site but cannot access login page.`);
