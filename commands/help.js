@@ -1,3 +1,5 @@
+// commands/help.js
+// Version: 1.0
 const {
   SlashCommandBuilder,
   EmbedBuilder,

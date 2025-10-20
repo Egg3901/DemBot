@@ -1,4 +1,5 @@
 // commands/status.js
+// Version: 1.0
 // Show bot uptime and last update times for profiles, states, primaries, and races
 
 const { SlashCommandBuilder, EmbedBuilder } = require('discord.js');

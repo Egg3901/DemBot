@@ -1,4 +1,5 @@
 // File: index.js
+// Version: 1.0
 require('dotenv').config();
 const { Blob: NodeBlob } = require('node:buffer');
 
@@ -63,6 +64,20 @@ if (!DISCORD_TOKEN) {
   process.exit(1);
 }
 
+// ---- Global crash guards ----
+try {
+  process.on('uncaughtException', (err) => {
+    try {
+      console.error('UNCAUGHT EXCEPTION:', err);
+    } catch (_) {}
+  });
+  process.on('unhandledRejection', (reason, promise) => {
+    try {
+      console.error('UNHANDLED REJECTION:', reason);
+    } catch (_) {}
+  });
+} catch (_) {}
+
 // ---- Client ----
 const client = new Client({
   intents: [
@@ -111,7 +126,11 @@ if (!fs.existsSync(commandsPath)) {
 const rest = new REST({ version: '10' }).setToken(DISCORD_TOKEN);
 
 // Lightweight status dashboard (HTML + JSON endpoints) for ops visibility
-startDashboardServer({ port: DASHBOARD_PORT, host: DASHBOARD_HOST });
+try {
+  startDashboardServer({ port: DASHBOARD_PORT, host: DASHBOARD_HOST });
+} catch (e) {
+  console.warn('Dashboard server failed to start:', e?.message ?? e);
+}
 
 // ---- Ready → register + verify ----
 client.once(Events.ClientReady, async (c) => {
@@ -162,6 +181,14 @@ client.once(Events.ClientReady, async (c) => {
     console.error('❌ Registration error:', err);
   }
 });
+
+// Extra client-level guards for stability
+try {
+  client.on('error', (err) => console.error('Discord client error:', err));
+  client.on('warn', (msg) => console.warn('Discord client warn:', msg));
+  client.on('shardError', (error) => console.error('A websocket connection encountered an error:', error));
+  client.on('invalidated', () => console.error('Discord client session invalidated.')); 
+} catch (_) {}
 
 // ---- Welcome new members ----
 client.on(Events.GuildMemberAdd, async (member) => {

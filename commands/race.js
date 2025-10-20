@@ -1,4 +1,5 @@
 // commands/race.js
+// Version: 1.0
 // Show a state race snapshot (Senate class 1/2/3, Governor, House):
 // - Outcome for the most recently finished round (Primary/General/Runoff)
 // - If active, also show the next race time (if available)
@@ -27,7 +28,7 @@ function normalizeRace(r) {
 }
 
 async function fetchHtml(page, url, waitUntil = 'domcontentloaded') {
-  await page.goto(url, { waitUntil }).catch(() => {});
+  await page.goto(url, { waitUntil, timeout: 15000 }).catch(() => {});
   return { html: await page.content(), finalUrl: page.url() };
 }
 
@@ -324,6 +325,7 @@ module.exports = {
       const session = await authenticateAndNavigate({ url: `${BASE}/national/states`, debug: !!config.debug });
       browser = session.browser;
       page = session.page;
+      try { page.setDefaultNavigationTimeout?.(15000); page.setDefaultTimeout?.(15000); } catch (_) {}
       let statesHtml = session.html;
       if (!statesHtml || statesHtml.length < 300) {
         const ref = await fetchHtml(page, `${BASE}/national/states`, 'load');

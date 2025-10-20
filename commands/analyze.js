@@ -1,6 +1,7 @@
 /**
  * Project: DemBot (Discord automation for Power Play USA)
  * File: commands/analyze.js
+ * Version: 1.0
  * Purpose: Analyze player distribution and recommend movements to Democratic-leaning states
  * Author: AI Assistant
  * Created: 2025-10-19

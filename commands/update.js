@@ -1,4 +1,5 @@
 // commands/update.js
+// Version: 1.0
 const { SlashCommandBuilder, PermissionsBitField } = require('discord.js');
 const fs = require('node:fs');
 const path = require('node:path');
@@ -529,7 +530,7 @@ module.exports = {
 
             // Navigate to state page
             const stateUrl = `${BASE}/states/${stateId}`;
-            await page.goto(stateUrl, { waitUntil: 'domcontentloaded', timeout: 10000 }).catch(() => {});
+            await page.goto(stateUrl, { waitUntil: 'domcontentloaded', timeout: 15000 }).catch(() => {});
             const stateHtml = await page.content();
             
             // Parse state data
@@ -587,6 +588,7 @@ module.exports = {
         const sess = await loginAndGet(`${BASE}/national/states`);
         browser = sess.browser;
         page = sess.page;
+        try { page.setDefaultNavigationTimeout?.(15000); page.setDefaultTimeout?.(15000); } catch (_) {}
 
         const statesIndexHtml = await page.content();
 

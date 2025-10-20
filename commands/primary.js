@@ -1,4 +1,5 @@
 // commands/primary.js
+// Version: 1.0
 // View a state primary race (Senate class 1/2/3, Governor, or House) and candidate stats.
 // Examples:
 //   /primary state:ca race:s1
@@ -279,7 +280,7 @@ function buildDebugArtifacts(enabled, data) {
 
 // -------------------- Network helpers (reuse session) --------------------
 async function fetchHtmlWithSession(url, sessionPage, waitUntil = 'domcontentloaded') {
-  await sessionPage.goto(url, { waitUntil }).catch(() => {});
+  await sessionPage.goto(url, { waitUntil, timeout: 15000 }).catch(() => {});
   await delay(150); // small paint window
   return { html: await sessionPage.content(), finalUrl: sessionPage.url() };
 }
@@ -349,6 +350,7 @@ module.exports = {
       const session = await authenticateAndNavigate({ url: `${BASE}/national/states`, debug: debugFlag });
       browser = session.browser;
       page = session.page;
+      try { page.setDefaultNavigationTimeout?.(15000); page.setDefaultTimeout?.(15000); } catch (_) {}
 
       let statesHtml = session.html;
       let statesUrlFinal = session.finalUrl || `${BASE}/national/states`;
