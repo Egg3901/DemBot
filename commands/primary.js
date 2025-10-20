@@ -181,17 +181,53 @@ function compactMetrics(metrics) {
 function formatAuthErrorMessage(err, cmdLabel) {
   if (!(err instanceof PPUSAAuthError)) return `Error: ${err.message}`;
   const d = err.details || {};
-  const lines = [`Error: ${err.message}`];
-  if (d.finalUrl) lines.push(`Page: ${d.finalUrl}`);
+  const lines = [`🔴 **Authentication Failed**`];
+  lines.push(`**Error:** ${err.message}`);
+
+  // Show debug information if available
+  if (d.debugInfo) {
+    const debug = d.debugInfo;
+    lines.push(`**Debug Info:**`);
+    if (debug.currentUrl) lines.push(`  • Current URL: ${debug.currentUrl}`);
+    if (debug.pageTitle) lines.push(`  • Page Title: ${debug.pageTitle}`);
+    if (debug.bodyText && debug.bodyText.length > 0) {
+      lines.push(`  • Page Content: ${debug.bodyText}${debug.bodyText.length >= 500 ? '...' : ''}`);
+    }
+    if (debug.errorType) lines.push(`  • Error Type: ${debug.errorType}`);
+  }
+
+  if (d.finalUrl) lines.push(`**Final URL:** ${d.finalUrl}`);
+
+  // Show authentication steps
   if (Array.isArray(d.actions) && d.actions.length) {
-    const last = d.actions[d.actions.length - 1];
-    lines.push(`Last recorded step: ${last.step || 'unknown'} (${last.success ? 'ok' : 'failed'})`);
+    lines.push(`**Authentication Steps:**`);
+    d.actions.slice(-8).forEach((action, i) => { // Show last 8 steps
+      const status = action.success ? '✅' : '❌';
+      const step = action.step || 'unknown';
+      const url = action.finalUrl ? ` (${action.finalUrl})` : '';
+      lines.push(`  ${i+1}. ${status} ${step}${url}`);
+    });
   }
+
+  // Specific guidance based on error type
   if (d.challenge === 'cloudflare-turnstile') {
-    lines.push('Cloudflare Turnstile is blocking automated login.');
-    lines.push('Workaround: sign in manually and set PPUSA_COOKIE with your session; restart the bot.');
+    lines.push(`**⚠️ Cloudflare Turnstile Detected**`);
+    lines.push(`  • Cloudflare is blocking automated login.`);
+    lines.push(`  • **Solution:** Sign in manually and set PPUSA_COOKIE with your session cookie.`);
+    lines.push(`  • **Command:** Run \`/primary debug:true\` for troubleshooting steps.`);
+  } else if (d.debugInfo?.errorType === 'navigation_failed') {
+    lines.push(`**🔍 Navigation Issue**`);
+    lines.push(`  • Could not reach the login page.`);
+    lines.push(`  • Check if the PPUSA_BASE_URL is correct.`);
+    lines.push(`  • Verify network connectivity and firewall settings.`);
+  } else if (d.debugInfo?.errorType === 'form_submission_failed') {
+    lines.push(`**📝 Form Submission Issue**`);
+    lines.push(`  • Could not submit the login form.`);
+    lines.push(`  • The login form may have changed or be blocked.`);
+    lines.push(`  • Try manual login first to verify credentials.`);
   }
-  lines.push(`Tip: run ${cmdLabel} debug:true to include a debug trail.`);
+
+  lines.push(`**💡 Tip:** Run \`${cmdLabel} debug:true\` to include detailed debug information.`);
   return lines.join('\n');
 }
 
