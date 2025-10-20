@@ -208,10 +208,38 @@ function buildDebugArtifacts(enabled, data) {
 }
 
 // -------------------- Network helpers (reuse session) --------------------
+// Optimized page loading with faster wait strategy and better error handling
 async function fetchHtmlWithSession(url, sessionPage, waitUntil = 'domcontentloaded') {
-  await sessionPage.goto(url, { waitUntil }).catch(() => {});
-  await delay(150); // small paint window
-  return { html: await sessionPage.content(), finalUrl: sessionPage.url() };
+  try {
+    await sessionPage.goto(url, {
+      waitUntil,
+      timeout: 15000 // Reduced timeout for individual pages
+    });
+    // Brief wait for dynamic content, but not too long
+    await delay(100);
+    return { html: await sessionPage.content(), finalUrl: sessionPage.url() };
+  } catch (error) {
+    console.warn(`Page load timeout for ${url}, continuing anyway:`, error.message);
+    try {
+      return { html: await sessionPage.content(), finalUrl: sessionPage.url() };
+    } catch (contentError) {
+      return { html: '', finalUrl: url, error: contentError.message };
+    }
+  }
+}
+
+// Load multiple pages concurrently when possible for better performance
+async function fetchMultiplePages(page, urls) {
+  const promises = urls.map(async (url) => {
+    try {
+      return await fetchHtmlWithSession(url, page, 'domcontentloaded');
+    } catch (error) {
+      console.warn(`Failed to load ${url}:`, error.message);
+      return { html: '', finalUrl: url, error: error.message };
+    }
+  });
+
+  return Promise.allSettled(promises);
 }
 
 // -------------------- Command --------------------
@@ -304,9 +332,15 @@ module.exports = {
         return;
       }
 
-      // Visit state page (best-effort), then primaries page
-      await fetchHtmlWithSession(`${BASE}/states/${stateId}`, page, 'domcontentloaded');
-      const primaries = await fetchHtmlWithSession(`${BASE}/states/${stateId}/primaries`, page, 'domcontentloaded');
+      // Load state page and primaries page concurrently for better performance
+      const [stateResult, primariesResult] = await Promise.allSettled([
+        fetchHtmlWithSession(`${BASE}/states/${stateId}`, page, 'domcontentloaded'),
+        fetchHtmlWithSession(`${BASE}/states/${stateId}/primaries`, page, 'domcontentloaded')
+      ]);
+
+      const statePage = stateResult.status === 'fulfilled' ? stateResult.value : { html: '', finalUrl: `${BASE}/states/${stateId}` };
+      const primaries = primariesResult.status === 'fulfilled' ? primariesResult.value : { html: '', finalUrl: `${BASE}/states/${stateId}/primaries` };
+
       const primariesHtml = primaries.html;
       const primariesUrl = primaries.finalUrl;
 
@@ -318,28 +352,54 @@ module.exports = {
         return;
       }
 
-      // Fetch party pages and parse candidates
+      // Fetch party pages and parse candidates (optimized with concurrent loading)
       const parties = party === 'both' ? ['dem', 'gop'] : [party];
       const results = [];
 
-      for (const p of parties) {
+      // Prepare party data for concurrent loading
+      const partyLoadTasks = parties.map(async (p) => {
         const meta = p === 'dem' ? raceInfo.dem : raceInfo.gop;
         const label = p === 'dem' ? 'Democratic Primary' : 'Republican Primary';
 
         if (!meta || !meta.url) {
-          results.push({ label, error: 'No primary link found', candidates: [], count: meta?.count ?? null, deadline: meta?.deadline ?? null });
-          continue;
+          return { label, error: 'No primary link found', candidates: [], count: meta?.count ?? null, deadline: meta?.deadline ?? null };
         }
 
-        const partyPage = await fetchHtmlWithSession(meta.url, page, 'domcontentloaded');
-        const candidates = extractPrimaryCandidates(partyPage.html) || [];
-        results.push({
-          label,
-          url: partyPage.finalUrl,
-          candidates,
-          count: meta.count ?? null,
-          deadline: meta.deadline ?? null
-        });
+        try {
+          const partyPage = await fetchHtmlWithSession(meta.url, page, 'domcontentloaded');
+          const candidates = extractPrimaryCandidates(partyPage.html) || [];
+          return {
+            label,
+            url: partyPage.finalUrl,
+            candidates,
+            count: meta.count ?? null,
+            deadline: meta.deadline ?? null
+          };
+        } catch (error) {
+          console.warn(`Failed to load ${p} primary page:`, error.message);
+          return {
+            label,
+            error: error.message,
+            candidates: [],
+            count: meta?.count ?? null,
+            deadline: meta?.deadline ?? null
+          };
+        }
+      });
+
+      // Load all party pages concurrently for better performance
+      const partyResults = await Promise.allSettled(partyLoadTasks);
+      for (const result of partyResults) {
+        if (result.status === 'fulfilled') {
+          results.push(result.value);
+        } else {
+          console.error('Party page load failed:', result.reason);
+          results.push({
+            label: 'Unknown',
+            error: result.reason?.message || 'Unknown error',
+            candidates: []
+          });
+        }
       }
 
       // Build embed

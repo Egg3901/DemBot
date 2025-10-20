@@ -37,6 +37,7 @@ const {
   sampleRuntime,
 } = require('./lib/status-tracker');
 const { startDashboardServer } = require('./lib/dashboard-server');
+const { browserPool } = require('./lib/browser-pool');
 
 const { File, Blob, FormData, fetch, Headers, Request, Response } = require('undici');
 globalThis.File ??= File;
@@ -321,10 +322,19 @@ client.on(Events.InteractionCreate, async (interaction) => {
   try {
     // Execute command with timeout protection
     const executionPromise = cmd.execute(interaction);
-    const timeoutPromise = new Promise((_, reject) => 
-      setTimeout(() => reject(new Error('Command execution timeout (30s)')), 30000)
+
+    // Set command-specific timeouts (in milliseconds)
+    const commandTimeouts = {
+      'primary': 60000,  // 60 seconds for primary command (multiple page loads)
+      'update': 45000,   // 45 seconds for update command (data processing)
+      'analyze': 45000,  // 45 seconds for analyze command (complex operations)
+    };
+
+    const timeoutMs = commandTimeouts[commandName] || 30000; // Default 30s
+    const timeoutPromise = new Promise((_, reject) =>
+      setTimeout(() => reject(new Error(`Command execution timeout (${timeoutMs/1000}s)`)), timeoutMs)
     );
-    
+
     await Promise.race([executionPromise, timeoutPromise]);
     
     const duration = Date.now() - startTime;
@@ -345,23 +355,23 @@ client.on(Events.InteractionCreate, async (interaction) => {
   } catch (err) {
     const duration = Date.now() - startTime;
     const isTimeout = err.message.includes('timeout');
-    
+
     console.error(`❌ Command /${commandName} failed after ${duration}ms:`, err.message);
     console.error(`📊 Stack trace:`, err.stack);
-    
-    recordCommandError(commandName, err, { 
-      duration, 
-      userId, 
+
+    recordCommandError(commandName, err, {
+      duration,
+      userId,
       guildId,
       timeout: isTimeout,
       interactionType: interaction.type,
       channelId: interaction.channel?.id
     });
-    
+
     // Enhanced error message based on error type
     let errorMessage = 'There was an error executing that command.';
     if (isTimeout) {
-      errorMessage = 'Command timed out. Please try again with a simpler request.';
+      errorMessage = 'Command timed out. Please try again - this command requires more time to process multiple pages.';
     } else if (err.message.includes('Missing') || err.message.includes('Invalid')) {
       errorMessage = `Error: ${err.message}`;
     } else if (err.message.includes('permission') || err.message.includes('access')) {
@@ -394,6 +404,59 @@ client.on(Events.InteractionCreate, async (interaction) => {
 client.login(DISCORD_TOKEN).catch((err) => {
   markBotLoginError(err);
   console.error('Client login failed:', err);
+});
+
+// Graceful shutdown handling
+async function gracefulShutdown(signal) {
+  console.log(`\n🛑 Received ${signal}. Starting graceful shutdown...`);
+
+  try {
+    // Close all browsers in the pool
+    await browserPool.closeAllBrowsers();
+    console.log('✅ All browsers closed');
+
+    // Close Discord client
+    await client.destroy();
+    console.log('✅ Discord client destroyed');
+
+    console.log('👋 Graceful shutdown complete');
+    process.exit(0);
+  } catch (error) {
+    console.error('❌ Error during graceful shutdown:', error);
+    process.exit(1);
+  }
+}
+
+// Handle shutdown signals
+process.on('SIGTERM', () => gracefulShutdown('SIGTERM'));
+process.on('SIGINT', () => gracefulShutdown('SIGINT'));
+
+// Handle uncaught exceptions that weren't handled by existing handlers
+process.on('uncaughtException', (error) => {
+  logCrash('UNCAUGHT_EXCEPTION', error, {
+    pid: process.pid,
+    uptime: process.uptime(),
+    argv: process.argv.slice(0, 3)
+  });
+
+  if (crashCount >= MAX_CRASHES) {
+    console.error('💀 Too many crashes, exiting...');
+    gracefulShutdown('CRASH').then(() => process.exit(1));
+  }
+});
+
+// Handle unhandled promise rejections that weren't handled by existing handlers
+process.on('unhandledRejection', (reason, promise) => {
+  logCrash('UNHANDLED_REJECTION', reason, {
+    promise: promise.toString(),
+    pid: process.pid,
+    uptime: process.uptime()
+  });
+
+  if (crashCount >= MAX_CRASHES) {
+    console.error('💀 Too many crashes, exiting...');
+    gracefulShutdown('CRASH').then(() => process.exit(1));
+  }
 });
 /**
  * Project: DemBot (Discord automation for Power Play USA)
