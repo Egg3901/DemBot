@@ -208,19 +208,20 @@ function buildDebugArtifacts(enabled, data) {
 }
 
 // -------------------- Network helpers (reuse session) --------------------
-// Optimized page loading with faster wait strategy and better error handling
+// Optimized page loading with appropriate timeout strategy and better error handling
 async function fetchHtmlWithSession(url, sessionPage, waitUntil = 'domcontentloaded') {
   try {
     await sessionPage.goto(url, {
       waitUntil,
-      timeout: 15000 // Reduced timeout for individual pages
+      timeout: 25000 // Increased timeout for individual pages (25 seconds)
     });
     // Brief wait for dynamic content, but not too long
-    await delay(100);
+    await delay(200);
     return { html: await sessionPage.content(), finalUrl: sessionPage.url() };
   } catch (error) {
     console.warn(`Page load timeout for ${url}, continuing anyway:`, error.message);
     try {
+      // Try to get content even if navigation timed out
       return { html: await sessionPage.content(), finalUrl: sessionPage.url() };
     } catch (contentError) {
       return { html: '', finalUrl: url, error: contentError.message };
