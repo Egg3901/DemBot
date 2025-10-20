@@ -414,15 +414,15 @@ async function scrapeStatesData(interaction, page, writeDb) {
     await new Promise(resolve => setTimeout(resolve, 1000)); // Give it extra time to fully load
     const statesIndexHtml = await page.content();
 
-    // Extract state IDs from the index page
+    // Extract state IDs from the index page using improved logic from primary.js
     const cheerio = require('cheerio');
     const $ = cheerio.load(statesIndexHtml);
 
-    $('a[href*="/states/"]').each((_, el) => {
-      const href = $(el).attr('href');
-      const match = href && href.match(/\/states\/(\d+)/);
-      if (match && match[1]) {
-        const stateId = parseInt(match[1]);
+    $('a[href^="/states/"]').each((_, a) => {
+      const href = String($(a).attr('href') || '');
+      const m = href.match(/\/states\/(\d+)\b/);
+      if (m) {
+        const stateId = Number(m[1]);
         if (!stateIds.includes(stateId)) {
           stateIds.push(stateId);
         }
@@ -432,6 +432,9 @@ async function scrapeStatesData(interaction, page, writeDb) {
     if (stateIds.length === 0) {
       throw new Error('No states found on states index page');
     }
+    
+    // Sort state IDs for consistent processing
+    stateIds.sort((a, b) => a - b);
   } catch (err) {
     console.error('Failed to load states index page:', err.message);
     // Fallback to a reasonable list of state IDs if the index page fails
@@ -458,39 +461,51 @@ async function scrapeStatesData(interaction, page, writeDb) {
       await interaction.editReply(`Scraping states ${batchStart}-${batchEnd} of ${stateIds.length}...`);
 
       for (const stateId of batch) {
-    checked++;
-    try {
-          // Use faster loading options to avoid timeouts
+        checked++;
+        try {
+          // Use improved loading options with better timeout handling
           const resp = await page.goto(`${BASE}/states/${stateId}`, {
             waitUntil: 'domcontentloaded',
-            timeout: 8000
+            timeout: 12000  // Increased timeout for better reliability
           });
-      const status = resp?.status?.() ?? 200;
-      const finalUrl = page.url();
-      
-      const isStateUrl = /\/states\//i.test(finalUrl);
-      if (status >= 400 || !isStateUrl) continue;
-      
+          
+          const status = resp?.status?.() ?? 200;
+          const finalUrl = page.url();
+          
+          const isStateUrl = /\/states\//i.test(finalUrl);
+          if (status >= 400 || !isStateUrl) {
+            console.log(`Skipping state ${stateId}: status ${status}, URL ${finalUrl}`);
+            continue;
+          }
+          
           const html = await page.content();
-      if (isBlankOrRedirect(html, finalUrl)) continue;
-      const stateData = parseStateData(html);
+          if (isBlankOrRedirect(html, finalUrl)) {
+            console.log(`Skipping state ${stateId}: blank or redirect page`);
+            continue;
+          }
+          
+          const stateData = parseStateData(html);
 
-      if (stateData && stateData.stateName) {
-        statesData[stateId] = {
-          id: stateId,
-          ...stateData,
-          scrapedAt: new Date().toISOString()
-        };
-        found++;
-        
+          if (stateData && stateData.stateName) {
+            statesData[stateId] = {
+              id: stateId,
+              ...stateData,
+              scrapedAt: new Date().toISOString()
+            };
+            found++;
+            
             // More frequent progress updates
             if (found % 3 === 0 || checked % 5 === 0) {
               await interaction.editReply(`Scraping state data... found ${found}/${stateIds.length} states. Latest: ${stateData.stateName} (${checked}/${stateIds.length} checked)`);
-        }
-      }
-    } catch (err) {
+            }
+          } else {
+            console.log(`No valid state data found for state ${stateId}`);
+          }
+        } catch (err) {
           console.error(`Error scraping state ${stateId}:`, err?.message || err);
           // Continue with next state instead of failing completely
+          // Add a small delay to prevent rapid-fire errors
+          await new Promise(resolve => setTimeout(resolve, 500));
         }
       }
 
@@ -549,14 +564,14 @@ async function scrapeRacesData(interaction, page, writeDb) {
     await new Promise(resolve => setTimeout(resolve, 1000)); // Give it extra time to fully load
     const statesHtml = await page.content();
 
-    // Extract all state IDs from the states index
+    // Extract all state IDs from the states index using improved logic from primary.js
     const $ = cheerio.load(statesHtml);
 
-    $('a[href*="/states/"]').each((_, el) => {
-      const href = $(el).attr('href');
-      const match = href && href.match(/\/states\/(\d+)/);
-      if (match && match[1]) {
-        const stateId = parseInt(match[1]);
+    $('a[href^="/states/"]').each((_, a) => {
+      const href = String($(a).attr('href') || '');
+      const m = href.match(/\/states\/(\d+)\b/);
+      if (m) {
+        const stateId = Number(m[1]);
         if (!stateIds.includes(stateId)) {
           stateIds.push(stateId);
         }
@@ -566,6 +581,9 @@ async function scrapeRacesData(interaction, page, writeDb) {
     if (stateIds.length === 0) {
       throw new Error('No states found on states index page');
     }
+    
+    // Sort state IDs for consistent processing
+    stateIds.sort((a, b) => a - b);
   } catch (err) {
     console.error('Failed to load states index page for races:', err.message);
     // Fallback to a reasonable list of state IDs if the index page fails
@@ -595,19 +613,26 @@ async function scrapeRacesData(interaction, page, writeDb) {
       for (const stateId of batch) {
         checked++;
         try {
-          // Go to state page first
-          await page.goto(`${BASE}/states/${stateId}`, { waitUntil: 'domcontentloaded', timeout: 8000 });
+          // Go to state page first with better error handling
+          await page.goto(`${BASE}/states/${stateId}`, { waitUntil: 'domcontentloaded', timeout: 12000 });
           await new Promise(resolve => setTimeout(resolve, 300)); // Brief pause
 
           // Then go to races page
-          const resp = await page.goto(`${BASE}/states/${stateId}/races`, { waitUntil: 'domcontentloaded', timeout: 8000 });
-        const status = resp?.status?.() ?? 200;
-        const finalUrl = page.url();
-        const html = await page.content();
-        if (isBlankOrRedirect(html, finalUrl)) continue;
+          const resp = await page.goto(`${BASE}/states/${stateId}/races`, { waitUntil: 'domcontentloaded', timeout: 12000 });
+          const status = resp?.status?.() ?? 200;
+          const finalUrl = page.url();
+          const html = await page.content();
+          
+          if (isBlankOrRedirect(html, finalUrl)) {
+            console.log(`Skipping races for state ${stateId}: blank or redirect page`);
+            continue;
+          }
 
           const isRacesUrl = /\/races\b/i.test(finalUrl);
-          if (status >= 400 || !isRacesUrl) continue;
+          if (status >= 400 || !isRacesUrl) {
+            console.log(`Skipping races for state ${stateId}: status ${status}, URL ${finalUrl}`);
+            continue;
+          }
 
           // Parse races data from the page
           const racesData = parseRacesFromStatePage(html);
@@ -634,10 +659,14 @@ async function scrapeRacesData(interaction, page, writeDb) {
             if (found % 3 === 0 || checked % 5 === 0) {
               await interaction.editReply(`Scraping race data... found data for ${found}/${stateIds.length} states. Latest: State ${stateId} (${checked}/${stateIds.length} checked)`);
             }
+          } else {
+            console.log(`No valid races data found for state ${stateId}`);
           }
         } catch (err) {
           console.error(`Error scraping races for state ${stateId}:`, err?.message || err);
           // Continue with next state instead of failing completely
+          // Add a small delay to prevent rapid-fire errors
+          await new Promise(resolve => setTimeout(resolve, 500));
         }
       }
 
@@ -734,14 +763,14 @@ async function scrapePrimariesData(interaction, page, writeDb) {
     await new Promise(resolve => setTimeout(resolve, 1000)); // Give it extra time to fully load
     const statesHtml = await page.content();
 
-    // Extract all state IDs from the states index
+    // Extract all state IDs from the states index using improved logic from primary.js
     const $ = cheerio.load(statesHtml);
 
-    $('a[href*="/states/"]').each((_, el) => {
-      const href = $(el).attr('href');
-      const match = href && href.match(/\/states\/(\d+)/);
-      if (match && match[1]) {
-        const stateId = parseInt(match[1]);
+    $('a[href^="/states/"]').each((_, a) => {
+      const href = String($(a).attr('href') || '');
+      const m = href.match(/\/states\/(\d+)\b/);
+      if (m) {
+        const stateId = Number(m[1]);
         if (!stateIds.includes(stateId)) {
           stateIds.push(stateId);
         }
@@ -751,6 +780,9 @@ async function scrapePrimariesData(interaction, page, writeDb) {
     if (stateIds.length === 0) {
       throw new Error('No states found on states index page');
     }
+    
+    // Sort state IDs for consistent processing
+    stateIds.sort((a, b) => a - b);
   } catch (err) {
     console.error('Failed to load states index page for primaries:', err.message);
     // Fallback to a reasonable list of state IDs if the index page fails
@@ -780,19 +812,26 @@ async function scrapePrimariesData(interaction, page, writeDb) {
       for (const stateId of batch) {
         checked++;
         try {
-          // Go to state page first (like primary command does)
-          await page.goto(`${BASE}/states/${stateId}`, { waitUntil: 'domcontentloaded', timeout: 8000 });
+          // Go to state page first with better error handling
+          await page.goto(`${BASE}/states/${stateId}`, { waitUntil: 'domcontentloaded', timeout: 12000 });
           await new Promise(resolve => setTimeout(resolve, 300)); // Brief pause
 
           // Then go to primaries page
-          const resp = await page.goto(`${BASE}/states/${stateId}/primaries`, { waitUntil: 'domcontentloaded', timeout: 8000 });
+          const resp = await page.goto(`${BASE}/states/${stateId}/primaries`, { waitUntil: 'domcontentloaded', timeout: 12000 });
           const status = resp?.status?.() ?? 200;
           const finalUrl = page.url();
           const html = await page.content();
-          if (isBlankOrRedirect(html, finalUrl)) continue;
+          
+          if (isBlankOrRedirect(html, finalUrl)) {
+            console.log(`Skipping primaries for state ${stateId}: blank or redirect page`);
+            continue;
+          }
 
           const isPrimariesUrl = /\/primaries\b/i.test(finalUrl);
-          if (status >= 400 || !isPrimariesUrl) continue;
+          if (status >= 400 || !isPrimariesUrl) {
+            console.log(`Skipping primaries for state ${stateId}: status ${status}, URL ${finalUrl}`);
+            continue;
+          }
 
           // Parse primaries data from the page
           const primariesData = parsePrimariesFromStatePage(html);
@@ -819,10 +858,14 @@ async function scrapePrimariesData(interaction, page, writeDb) {
             if (found % 3 === 0 || checked % 5 === 0) {
               await interaction.editReply(`Scraping primary data... found data for ${found}/${stateIds.length} states. Latest: State ${stateId} (${checked}/${stateIds.length} checked)`);
             }
+          } else {
+            console.log(`No valid primaries data found for state ${stateId}`);
           }
         } catch (err) {
           console.error(`Error scraping primaries for state ${stateId}:`, err?.message || err);
           // Continue with next state instead of failing completely
+          // Add a small delay to prevent rapid-fire errors
+          await new Promise(resolve => setTimeout(resolve, 500));
         }
       }
 
