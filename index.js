@@ -34,6 +34,7 @@ const {
   markHeartbeat,
   recordCommandSuccess,
   recordCommandError,
+  recordUserCommand,
   sampleRuntime,
 } = require('./lib/status-tracker');
 const { startDashboardServer } = require('./lib/dashboard-server');
@@ -216,6 +217,11 @@ client.on(Events.InteractionCreate, async (interaction) => {
 
   const cmd = client.commands.get(interaction.commandName);
   if (!cmd) return;
+
+  // Track user command usage
+  const userId = interaction.user.id;
+  const username = interaction.user.username || interaction.user.displayName || 'Unknown';
+  recordUserCommand(userId, username, interaction.commandName);
 
   try {
     await cmd.execute(interaction);
