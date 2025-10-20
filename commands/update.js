@@ -5,18 +5,21 @@ const path = require('node:path');
 const { loginAndGet, parseProfile, BASE } = require('../lib/ppusa');
 const { canManageBot } = require('../lib/permissions');
 const { ensureDbShape, mergeProfileRecord } = require('../lib/profile-cache');
+const { resolveStateIdFromIndex } = require('../lib/state-utils');
+const { parseStateData, getAllStatesList } = require('../lib/state-scraper');
 
 // Inactive (offline) role and threshold (days)
 const INACTIVE_ROLE_ID = '1427236595345522708';
 const OFFLINE_THRESHOLD_DAYS = 4;
 const WARNING_THRESHOLD_DAYS = 3;
 
-const TYPE_CHOICES = new Set(['all', 'dems', 'gop', 'new']);
+const TYPE_CHOICES = new Set(['all', 'dems', 'gop', 'new', 'states']);
 const TYPE_LABELS = {
   all: 'All Profiles',
   dems: 'Democratic Profiles',
   gop: 'Republican Profiles',
   new: 'New Accounts',
+  states: 'State Data',
 };
 
 const isDemocratic = (party = '') => /democratic/i.test(String(party));
@@ -311,6 +314,7 @@ module.exports = {
           { name: 'Democrats', value: 'dems' },
           { name: 'Republicans', value: 'gop' },
           { name: 'New accounts only', value: 'new' },
+          { name: 'State data (EV, positions)', value: 'states' },
         )
     )
     .addBooleanOption(opt =>
@@ -413,6 +417,94 @@ module.exports = {
     let checked = 0;
     let lastProgressAt = Date.now();
 
+    // States mode: scrape state data (electoral votes, positions, officials)
+    if (updateType === 'states') {
+      const statesJsonPath = path.join(dataDir, 'states.json');
+      let statesDb = { states: {}, updatedAt: null };
+      
+      if (fs.existsSync(statesJsonPath)) {
+        try {
+          statesDb = JSON.parse(fs.readFileSync(statesJsonPath, 'utf8'));
+          if (!statesDb.states) statesDb.states = {};
+        } catch {
+          statesDb = { states: {}, updatedAt: null };
+        }
+      }
+
+      let browser, page;
+      try {
+        const statesList = getAllStatesList();
+        const sess = await loginAndGet(`${BASE}/national/states`);
+        browser = sess.browser;
+        page = sess.page;
+        
+        // Get states index page for ID resolution
+        const statesIndexHtml = await page.content();
+        
+        await interaction.editReply(`Scraping state data for ${statesList.length} states...`);
+        
+        let scraped = 0;
+        let skipped = 0;
+
+        for (const state of statesList) {
+          try {
+            // Resolve state ID from the index
+            const stateId = resolveStateIdFromIndex(statesIndexHtml, state.name);
+            
+            if (!stateId) {
+              console.warn(`Could not resolve state ID for ${state.name}`);
+              skipped++;
+              continue;
+            }
+
+            // Navigate to state page
+            const stateUrl = `${BASE}/states/${stateId}`;
+            await page.goto(stateUrl, { waitUntil: 'domcontentloaded', timeout: 10000 }).catch(() => {});
+            const stateHtml = await page.content();
+            
+            // Parse state data
+            const stateData = parseStateData(stateHtml, stateId);
+            
+            if (stateData) {
+              statesDb.states[stateId] = stateData;
+              scraped++;
+              
+              // Progress update every 10 states
+              if (scraped % 10 === 0 || scraped === 1) {
+                await interaction.editReply(
+                  `Scraping state data... ${scraped}/${statesList.length} (Latest: ${stateData.name || state.name})`
+                );
+              }
+            } else {
+              console.warn(`Failed to parse state data for ${state.name} (ID ${stateId})`);
+              skipped++;
+            }
+          } catch (err) {
+            console.error(`Error scraping ${state.name}:`, err.message);
+            skipped++;
+          }
+        }
+
+        // Save states JSON
+        statesDb.updatedAt = new Date().toISOString();
+        fs.writeFileSync(statesJsonPath, JSON.stringify(statesDb, null, 2));
+        
+        // Save backup
+        const stamp = new Date().toISOString().replace(/[:.]/g, '-');
+        const backupPath = path.join(dataDir, `states.${stamp}.json`);
+        try { fs.writeFileSync(backupPath, JSON.stringify(statesDb, null, 2)); } catch {}
+
+        await interaction.editReply(
+          `✅ State data update complete. Scraped ${scraped} states, skipped ${skipped}.\nSaved to: data/states.json`
+        );
+      } catch (err) {
+        console.error('Error during state scraping:', err);
+        await interaction.editReply(`❌ Error during state scraping: ${err?.message || String(err)}`);
+      } finally {
+        try { await browser?.close(); } catch {}
+      }
+      return;
+    }
 
     // Roles-only mode: do not scrape, only apply roles from existing JSON
     if (applyRoles) {

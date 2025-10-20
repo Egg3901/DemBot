@@ -11,6 +11,7 @@ const fs = require('node:fs');
 const path = require('node:path');
 const Anthropic = require('@anthropic-ai/sdk');
 const { canUseAnalyze } = require('../lib/permissions');
+const { loadStatesData } = require('../lib/state-scraper');
 
 // Party-leaning states based on recent electoral data
 const DEMOCRATIC_STATES = {
@@ -317,10 +318,21 @@ module.exports = {
         return interaction.editReply('❌ profiles.json is empty. Run `/update` to populate it.');
       }
 
+      // Load states data for enhanced analysis (if available)
+      const statesData = loadStatesData();
+      if (!statesData) {
+        console.warn('States data not found. Run /update type:states to enable state-level analysis features.');
+      }
+
       // Handle different analysis types
       if (analysisType === 'movement') {
         // Analyze distribution
         const analysis = analyzePlayerDistribution(profiles, party);
+        
+        // Enhance analysis with state data if available
+        if (statesData) {
+          analysis.statesData = statesData.states || {};
+        }
         
         // Generate AI recommendations if requested
         let recommendations = null;
@@ -336,7 +348,9 @@ module.exports = {
         const embed = buildAnalysisEmbed(analysis, recommendations);
         await interaction.editReply({ embeds: [embed] });
       } else if (analysisType === 'races') {
-        await interaction.editReply('🏛️ Race analysis coming soon! This will analyze competitive races and recommend strategic candidate placements.');
+        // Future: Use statesData to analyze competitive races by examining current officeholders
+        // and comparing with party distribution
+        await interaction.editReply('🏛️ Race analysis coming soon! This will analyze competitive races and recommend strategic candidate placements.\n\n💡 Tip: Run `/update type:states` to cache state-level data for enhanced race analysis.');
       } else if (analysisType === 'primaries') {
         await interaction.editReply('🗳️ Primary analysis coming soon! This will analyze primary races and recommend candidate strategies.');
       } else {
