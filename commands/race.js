@@ -198,6 +198,51 @@ function extractLatestPoll(html, stateName, raceLabel) {
   return null;
 }
 
+function extractPollAverage(html, stateName, raceLabel) {
+  const $ = cheerio.load(html || '');
+  let avg = null;
+  const contains = (haystack, needle) => String(haystack || '').toLowerCase().includes(String(needle || '').toLowerCase());
+
+  const tryFind = (requireFilters) => {
+    let found = null;
+    $('table').each((_, table) => {
+      $(table)
+        .find('tbody tr')
+        .each((__, tr) => {
+          const rowText = ($(tr).text() || '').replace(/\s+/g, ' ').trim();
+          if (!rowText) return;
+          const hasAvg = /\baverage\b/i.test(rowText) || /overall/i.test(rowText);
+          if (!hasAvg) return;
+          if (requireFilters) {
+            const okState = stateName ? contains(rowText, stateName) : true;
+            const okRace = raceLabel ? contains(rowText, raceLabel) : true;
+            if (!okState || !okRace) return;
+          }
+          const cols = $(tr)
+            .find('td')
+            .map((i, el) => {
+              const raw = ($(el).text() || '').replace(/\s+/g, ' ').trim();
+              return formatPollText(raw) || raw;
+            })
+            .get();
+          const link = $(tr).find('a[href]').first().attr('href');
+          found = {
+            text: formatPollText(rowText) || rowText,
+            cols,
+            url: link ? new URL(link, BASE).toString() : null,
+          };
+          return false;
+        });
+      if (found) return false;
+    });
+    return found;
+  };
+
+  avg = tryFind(true);
+  if (!avg) avg = tryFind(false);
+  return avg || null;
+}
+
 function extractRecentPolls(html, stateName, raceLabel, limit = 5) {
   const $ = cheerio.load(html || '');
   const matches = [];
@@ -445,6 +490,17 @@ module.exports = {
 
       if (nextInfo) {
         fields.push({ name: 'Race Ends', value: nextInfo, inline: false });
+      }
+
+      // Polling average (overall)
+      let pollAverage = null;
+      if (pollsHtml) {
+        pollAverage = extractPollAverage(pollsHtml, stateName, raceLabel);
+      }
+
+      if (pollAverage) {
+        const avgText = pollAverage.cols && pollAverage.cols.length ? pollAverage.cols.join(' | ') : pollAverage.text;
+        fields.push({ name: 'Poll Average', value: avgText || 'Unknown', inline: false });
       }
 
       if (pollResult) {
