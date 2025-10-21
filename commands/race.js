@@ -101,6 +101,7 @@ function findRaceInfoFromStateElections(html, raceLabel) {
     const rows = section.find('table tbody tr');
     let nextRaceText = null;
     let raceUrl = null;
+    let ended = true;
 
     rows.each((__, tr) => {
       const row = $(tr);
@@ -108,11 +109,10 @@ function findRaceInfoFromStateElections(html, raceLabel) {
       const dateText = (cells.eq(0).text() || '').replace(/\s+/g, ' ').trim().replace(/(AM|PM)(Week)/, '$1 - $2');
       const statusText = (cells.eq(1).text() || '').replace(/\s+/g, ' ').trim().replace(/(AM|PM)(Week)/, '$1 - $2');
       const anchor = row.find('a[href]').first();
-      if (!nextRaceText && dateText) {
-        const isEnded = /ended|finished|complete/i.test(statusText);
-        if (!isEnded) {
-          nextRaceText = statusText ? `${dateText} - ${statusText}` : dateText;
-        }
+      const isEnded = /ended|finished|complete/i.test(statusText);
+      ended = ended && isEnded;
+      if (!nextRaceText && dateText && !isEnded) {
+        nextRaceText = statusText ? `${dateText} - ${statusText}` : dateText;
       }
       if (!raceUrl && anchor.length) {
         raceUrl = anchor.attr('href');
@@ -144,7 +144,7 @@ function findRaceInfoFromStateElections(html, raceLabel) {
       }
     }
 
-    match = { url: raceUrl || null, nextRace: nextRaceText || null };
+    match = { url: raceUrl || null, nextRace: nextRaceText || null, ended };
     return false;
   });
 
@@ -196,6 +196,56 @@ function extractLatestPoll(html, stateName, raceLabel) {
     return { text: rowText, cols, url: link ? new URL(link, BASE).toString() : null };
   }
   return null;
+}
+
+function extractRecentPolls(html, stateName, raceLabel, limit = 5) {
+  const $ = cheerio.load(html || '');
+  const matches = [];
+  $('table').each((_, table) => {
+    $(table)
+      .find('tbody tr')
+      .each((__, tr) => {
+        const rowText = ($(tr).text() || '').replace(/\s+/g, ' ').trim();
+        if (!rowText) return;
+        const matchState = stateName ? rowText.toLowerCase().includes(stateName.toLowerCase()) : true;
+        const matchRace = raceLabel ? rowText.toLowerCase().includes(raceLabel.toLowerCase()) : true;
+        if (!matchState || !matchRace) return;
+        const cols = $(tr)
+          .find('td')
+          .map((i, el) => {
+            const raw = ($(el).text() || '').replace(/\s+/g, ' ').trim();
+            return formatPollText(raw) || raw;
+          })
+          .get();
+        const link = $(tr).find('a[href]').first().attr('href');
+        matches.push({
+          text: formatPollText(rowText) || rowText,
+          cols,
+          url: link ? new URL(link, BASE).toString() : null,
+        });
+      });
+  });
+
+  if (matches.length) return matches.slice(0, Math.max(1, limit));
+
+  // Fallback: take first N rows regardless of filter
+  const rows = [];
+  const trList = $('table tbody tr');
+  trList.each((i, tr) => {
+    if (rows.length >= limit) return false;
+    const rowTextRaw = ($(tr).text() || '').replace(/\s+/g, ' ').trim();
+    if (!rowTextRaw) return;
+    const cols = $(tr)
+      .find('td')
+      .map((j, el) => {
+        const raw = ($(el).text() || '').replace(/\s+/g, ' ').trim();
+        return formatPollText(raw) || raw;
+      })
+      .get();
+    const link = $(tr).find('a[href]').first().attr('href');
+    rows.push({ text: formatPollText(rowTextRaw) || rowTextRaw, cols, url: link ? new URL(link, BASE).toString() : null });
+  });
+  return rows.slice(0, Math.max(1, limit));
 }
 
 function extractFinalResultCandidates(html) {
@@ -346,22 +396,30 @@ module.exports = {
       const racePage = await fetchHtml(page, raceMeta.url, 'load');
       const latest = pickLatestResults(racePage.html);
       const finalCandidates = extractFinalResultCandidates(racePage.html);
-      const nextInfo = extractNextRaceTime(racePage.html) || raceMeta.nextRace || null;
+      const raceEnded = !!raceMeta?.ended;
+      const nextInfo = raceEnded ? null : (extractNextRaceTime(racePage.html) || raceMeta.nextRace || null);
 
       let pollResult = null;
+      let pollsUrl = null;
+      let pollsHtml = null;
       const $race = cheerio.load(racePage.html);
       const pollHref = $race('a[href*="poll"]').first().attr('href');
       if (pollHref) {
-        const pollPage = await fetchHtml(page, new URL(pollHref, BASE).toString(), 'domcontentloaded');
-        pollResult = extractLatestPoll(pollPage.html, stateName, raceLabel);
+        const absolute = new URL(pollHref, BASE).toString();
+        const pollPage = await fetchHtml(page, absolute, 'domcontentloaded');
+        pollsUrl = pollPage.finalUrl || absolute;
+        pollsHtml = pollPage.html;
+        pollResult = extractLatestPoll(pollsHtml, stateName, raceLabel);
       }
       if (!pollResult) {
         const fallback = await fetchHtml(page, `${BASE}/elections/polling`, 'domcontentloaded');
-        pollResult = extractLatestPoll(fallback.html, stateName, raceLabel);
+        pollsUrl = fallback.finalUrl || `${BASE}/elections/polling`;
+        pollsHtml = fallback.html;
+        pollResult = extractLatestPoll(pollsHtml, stateName, raceLabel);
       }
 
       const fields = [];
-      if (finalCandidates.length) {
+      if (raceEnded && finalCandidates.length) {
         const formatted = finalCandidates.map((cand) => {
           const lines = [];
           lines.push(`**${cand.name}**${cand.percent != null ? ` - ${cand.percent}%` : ''}${cand.votes ? ` (${cand.votes} votes)` : ''}`);
@@ -386,7 +444,7 @@ module.exports = {
       }
 
       if (nextInfo) {
-        fields.push({ name: 'Next Race', value: nextInfo, inline: false });
+        fields.push({ name: 'Race Ends', value: nextInfo, inline: false });
       }
 
       if (pollResult) {
@@ -405,7 +463,76 @@ module.exports = {
         timestamp: new Date().toISOString(),
       };
 
-      await interaction.editReply({ embeds: [embed] });
+      // Build page 2: Top recent polls (up to 5)
+      const pages = [embed];
+      if (pollsHtml) {
+        const recentPolls = extractRecentPolls(pollsHtml, stateName, raceLabel, 5);
+        if (recentPolls && recentPolls.length) {
+          const lines = recentPolls.map((p, i) => {
+            const text = p.cols && p.cols.length ? p.cols.join(' | ') : p.text;
+            return `${i + 1}. ${text}`;
+          });
+          const pollsEmbed = {
+            title: `${stateName} - ${raceLabel} (Recent Polls)`,
+            url: pollsUrl || undefined,
+            fields: [
+              { name: 'Top 5 Most Recent Polls', value: lines.join('\n'), inline: false },
+              ...(pollsUrl ? [{ name: 'Polling Page', value: pollsUrl, inline: false }] : []),
+            ],
+            footer: { text: new URL(BASE).hostname },
+            timestamp: new Date().toISOString(),
+          };
+          pages.push(pollsEmbed);
+        }
+      }
+
+      await interaction.editReply({ embeds: [pages[0]] });
+
+      // Add reaction-based pagination controls (like positions)
+      const message = await interaction.fetchReply();
+      if (message && typeof message.react === 'function' && pages.length > 1) {
+        const controls = ['\u2B05\uFE0F', '\u27A1\uFE0F']; // ⬅️, ➡️
+        let reactionsReady = true;
+        for (const emoji of controls) {
+          try {
+            await message.react(emoji);
+          } catch (err) {
+            reactionsReady = false;
+            break;
+          }
+        }
+
+        if (!reactionsReady) {
+          await interaction
+            .followUp({
+              content:
+                'Unable to add reaction controls for pagination (missing permission to add reactions?). Showing first page only.',
+              ephemeral: true,
+            })
+            .catch(() => {});
+        } else {
+          let index = 0;
+          const filter = (reaction, user) => controls.includes(reaction.emoji.name) && user.id === interaction.user.id;
+          const collector = message.createReactionCollector({ filter, time: 5 * 60 * 1000 });
+
+          collector.on('collect', async (reaction, user) => {
+            if (reaction.emoji.name === controls[0]) index = (index - 1 + pages.length) % pages.length;
+            else if (reaction.emoji.name === controls[1]) index = (index + 1) % pages.length;
+            try {
+              await interaction.editReply({ embeds: [pages[index]] });
+            } catch (_) {}
+            try {
+              await reaction.users.remove(user.id);
+            } catch (_) {}
+          });
+
+          collector.on('end', async () => {
+            try {
+              await message.reactions.removeAll();
+            } catch (_) {}
+          });
+        }
+      }
     } catch (err) {
       if (err instanceof PPUSAAuthError) {
         await reportCommandError(interaction, err, { message: err.message, followUp: true });
