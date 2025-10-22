@@ -189,7 +189,7 @@ module.exports = {
         try { writeProfileDb(db); } catch (_) {}
       }
     } finally {
-      try { await browser?.close(); } catch {}
+      try { await page?.close(); } catch {}
     }
   },
 };

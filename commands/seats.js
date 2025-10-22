@@ -244,7 +244,7 @@ module.exports = {
     } catch (err) {
       await interaction.editReply(`Error fetching chamber data: ${err?.message || String(err)}`);
     } finally {
-      try { await browser?.close(); } catch (_) {}
+      try { await page?.close(); } catch (_) {}
     }
   },
 };

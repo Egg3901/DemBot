@@ -243,6 +243,33 @@ function extractPollAverage(html, stateName, raceLabel) {
   return avg || null;
 }
 
+function computeAverageFromRecentPolls(html, stateName, raceLabel, maxRows = 5) {
+  const recent = extractRecentPolls(html, stateName, raceLabel, maxRows) || [];
+  if (!recent.length) return null;
+  const pairs = [];
+  for (const row of recent) {
+    const cells = Array.isArray(row.cols) && row.cols.length ? row.cols : (row.text ? [row.text] : []);
+    const nums = [];
+    for (const cell of cells) {
+      const m = String(cell || '').match(/([0-9]+(?:\.[0-9]+)?)%/g);
+      if (m) {
+        for (const tok of m) {
+          const v = Number(tok.replace('%', ''));
+          if (Number.isFinite(v)) nums.push(v);
+        }
+      }
+    }
+    if (nums.length >= 2) {
+      nums.sort((a, b) => b - a);
+      pairs.push([nums[0], nums[1]]);
+    }
+  }
+  if (!pairs.length) return null;
+  const topAvg = Math.round((pairs.reduce((s, p) => s + p[0], 0) / pairs.length) * 10) / 10;
+  const secondAvg = Math.round((pairs.reduce((s, p) => s + p[1], 0) / pairs.length) * 10) / 10;
+  return { text: `Avg (last ${pairs.length}): ${topAvg}% / ${secondAvg}%`, cols: [`${topAvg}%`, `${secondAvg}%`], url: null };
+}
+
 function extractRecentPolls(html, stateName, raceLabel, limit = 5) {
   const $ = cheerio.load(html || '');
   const matches = [];
@@ -492,10 +519,10 @@ module.exports = {
         fields.push({ name: 'Race Ends', value: nextInfo, inline: false });
       }
 
-      // Polling average (overall)
+      // Polling average (overall), with fallback to compute from recent polls
       let pollAverage = null;
       if (pollsHtml) {
-        pollAverage = extractPollAverage(pollsHtml, stateName, raceLabel);
+        pollAverage = extractPollAverage(pollsHtml, stateName, raceLabel) || computeAverageFromRecentPolls(pollsHtml, stateName, raceLabel, 5);
       }
 
       if (pollAverage) {
@@ -599,7 +626,7 @@ module.exports = {
         try { await interaction.editReply({ content: `Error: ${err.message}` }); } catch (_) {}
       }
     } finally {
-      try { await browser?.close(); } catch {}
+      try { await page?.close(); } catch {}
     }
   },
 };

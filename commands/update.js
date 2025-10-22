@@ -598,7 +598,7 @@ module.exports = {
         console.error('Error during state scraping:', err);
         await interaction.editReply(`❌ Error during state scraping: ${err?.message || String(err)}`);
       } finally {
-        try { await browser?.close(); } catch {}
+        try { await page?.close(); } catch {}
       }
       return;
     }
@@ -813,7 +813,7 @@ module.exports = {
         console.error('Error during primaries scraping:', err);
         await interaction.editReply(`❌ Error during primaries scraping: ${err?.message || String(err)}`);
       } finally {
-        try { await browser?.close(); } catch {}
+        try { await page?.close(); } catch {}
       }
       return;
     }
@@ -967,7 +967,7 @@ module.exports = {
         console.error('Error during races scraping:', err);
         await interaction.editReply(`❌ Error during races scraping: ${err?.message || String(err)}`);
       } finally {
-        try { await browser?.close(); } catch {}
+        try { await page?.close(); } catch {}
       }
       return;
     }
@@ -1078,7 +1078,7 @@ module.exports = {
     } catch (err) {
       try { await interaction.editReply(`Error during update: ${err?.message || String(err)}`); } catch {}
     } finally {
-      try { await browser?.close(); } catch {}
+      try { await page?.close(); } catch {}
     }
   },
 };

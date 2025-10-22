@@ -530,14 +530,14 @@ async function performWebSend({ type, name, amount, debug }) {
     }
     throw err;
   } finally {
-    if (browser) {
+    if (page) {
       try {
-        actions.push({ step: 'cleanup', detail: 'Closing browser.', timestamp: new Date().toISOString() });
-        await browser.close();
+        actions.push({ step: 'cleanup', detail: 'Closing page.', timestamp: new Date().toISOString() });
+        await page.close();
       } catch (closeErr) {
         actions.push({
           step: 'cleanup',
-          detail: 'Browser close failed.',
+          detail: 'Page close failed.',
           error: closeErr?.message ?? String(closeErr),
           timestamp: new Date().toISOString(),
         });

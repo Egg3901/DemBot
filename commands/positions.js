@@ -667,7 +667,7 @@ module.exports = {
         meta: { command: 'positions' },
       });
     } finally {
-      try { await browser?.close(); } catch {}
+      try { await page?.close(); } catch {}
       if (profilesDirty) {
         try { writeProfileDb(profilesDb); } catch (_) {}
       }

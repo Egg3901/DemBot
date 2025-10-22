@@ -451,7 +451,7 @@ module.exports = {
         catch (e) { if (e?.code !== 10062) throw e; }
       }
     } finally {
-      try { await browser?.close(); } catch {}
+      try { await page?.close(); } catch {}
     }
   }
 };

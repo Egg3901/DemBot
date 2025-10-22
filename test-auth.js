@@ -4,7 +4,7 @@ console.log('Testing PPUSA auth with enhanced error reporting...');
 
 authenticateAndNavigate({ url: '/national/states' }).then(result => {
   console.log('✅ Auth successful! Final URL:', result.finalUrl);
-  result.browser.close();
+  try { result.page.close(); } catch (_) {}
   process.exit(0);
 }).catch(err => {
   console.log('❌ Auth failed with enhanced error info:');

@@ -70,11 +70,11 @@ const buildDebugArtifacts = (enabled, data) => {
 
 async function fetchTreasuryHtml(targetUrl, debug) {
   const session = await authenticateAndNavigate({ url: targetUrl, debug });
-  const { browser, html, finalUrl, actions } = session;
+  const { page, html, finalUrl, actions } = session;
   try {
     return { html, finalUrl, actions };
   } finally {
-    try { await browser.close(); } catch (_) {}
+    try { await page.close(); } catch (_) {}
   }
 }
 
