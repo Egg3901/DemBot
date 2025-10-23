@@ -31,6 +31,11 @@ module.exports = {
       subcommand
         .setName('restart')
         .setDescription('Restart the automated update cron job')
+    )
+    .addSubcommand(subcommand =>
+      subcommand
+        .setName('force-stop')
+        .setDescription('Force stop the cron service if it\'s stuck')
     ),
 
   async execute(interaction) {
@@ -61,12 +66,25 @@ module.exports = {
             ? new Date(status.nextRun).toLocaleString()
             : 'Every hour at minute 0';
 
+          const runningStatus = status && status.runningTooLong
+            ? '🚨 **STUCK** (Running too long!)'
+            : status && status.isRunning
+              ? '🔄 Yes'
+              : '⏸️ No';
+
           const message = `📊 **Cron Service Status**
-• **Running**: ${status && status.isRunning ? '🔄 Yes' : '⏸️ No'}
+• **Running**: ${runningStatus}
 • **Scheduled**: ${status && status.scheduled ? '✅ Yes' : '❌ No'}
 • **Job Active**: ${status && status.jobActive ? '✅ Yes' : '❌ No'}
 • **Last Run**: ${lastRunText}
 • **Next Run**: ${nextRunText}`;
+
+          // Auto-force-stop if stuck
+          if (status && status.runningTooLong) {
+            console.log('🚨 Cron service detected as stuck, auto force-stopping...');
+            cronService.forceStop();
+            message += `\n\n🚨 **Auto-recovery**: Force stopped stuck process`;
+          }
 
           await interaction.editReply(message);
           break;
@@ -97,6 +115,12 @@ module.exports = {
         case 'restart': {
           cronService.restart();
           await interaction.editReply('🔄 Automated update cron job restarted.');
+          break;
+        }
+
+        case 'force-stop': {
+          cronService.forceStop();
+          await interaction.editReply('🚨 Cron service force stopped. Use `/cron start` to restart it.');
           break;
         }
 
