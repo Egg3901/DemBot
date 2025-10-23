@@ -8,6 +8,36 @@ const { ParallelProcessor } = require('../lib/parallel-processor');
 const { smartCache, SmartCache } = require('../lib/smart-cache');
 const { navigateWithSession } = require('../lib/ppusa-auth-optimized');
 
+// Log channel ID for debug information
+const LOG_CHANNEL_ID = '1430939330406383688';
+
+// Helper function to log debug information to Discord channel
+async function logDebugToChannel(client, message, error = false) {
+  try {
+    if (!client || !client.isReady()) {
+      console.log('Discord client not ready, skipping channel log');
+      return;
+    }
+
+    const channel = await client.channels.fetch(LOG_CHANNEL_ID);
+    const timestamp = new Date().toISOString();
+    const prefix = error ? '❌' : '🔍';
+    const content = `${prefix} **Profile Debug** [${timestamp}]\n${message}`;
+
+    // Split long messages if needed
+    if (content.length > 2000) {
+      const chunks = content.match(/.{1,1900}/g) || [];
+      for (const chunk of chunks) {
+        await channel.send(chunk);
+      }
+    } else {
+      await channel.send(content);
+    }
+  } catch (err) {
+    console.error('Failed to log debug info to Discord channel:', err);
+  }
+}
+
 module.exports = {
   data: new SlashCommandBuilder()
     .setName('profile')
@@ -55,16 +85,20 @@ module.exports = {
     const page = interaction.options.getInteger('page') || 1;
     const sortBy = interaction.options.getString('sort') || 'name';
 
-    console.log(`[Profile Command Debug] discordUser: ${discordUser?.username || 'none'}, queryRaw: "${queryRaw}", page: ${page}, sortBy: ${sortBy}`);
+    const debugInfo = `discordUser: ${discordUser?.username || 'none'}, queryRaw: "${queryRaw}", page: ${page}, sortBy: ${sortBy}`;
+    console.log(`[Profile Command Debug] ${debugInfo}`);
+    await logDebugToChannel(interaction.client, debugInfo);
 
     // If user or query provided, do specific lookup
     if (discordUser || queryRaw) {
       console.log(`[Profile Command Debug] Going to lookupSpecificProfile`);
+      await logDebugToChannel(interaction.client, 'Going to lookupSpecificProfile');
       return this.lookupSpecificProfile(interaction, discordUser, queryRaw);
     }
 
     // Show all profiles with pagination
     console.log(`[Profile Command Debug] Going to showAllProfiles`);
+    await logDebugToChannel(interaction.client, 'Going to showAllProfiles');
     return this.showAllProfiles(interaction, page, sortBy);
   },
 
@@ -74,8 +108,12 @@ module.exports = {
     const byDiscord = db.byDiscord || {};
     let dbDirty = false;
 
-    console.log(`[Profile Command Debug] Database stats: ${Object.keys(profiles).length} profiles, ${Object.keys(byDiscord).length} Discord entries`);
-    console.log(`[Profile Command Debug] Sample byDiscord entries:`, Object.keys(byDiscord).slice(0, 5));
+    const debugInfo = [];
+    debugInfo.push(`Database stats: ${Object.keys(profiles).length} profiles, ${Object.keys(byDiscord).length} Discord entries`);
+    debugInfo.push(`Sample byDiscord entries: ${Object.keys(byDiscord).slice(0, 5).join(', ')}`);
+    
+    console.log(`[Profile Command Debug] ${debugInfo.join(' | ')}`);
+    await logDebugToChannel(interaction.client, debugInfo.join(' | '));
 
     const idSet = new Set();
 
@@ -91,35 +129,54 @@ module.exports = {
     const lookupDiscord = (name) => {
       if (!name) return;
       const key = name.toLowerCase();
-      console.log(`[Profile Command Debug] Looking up Discord: "${name}" -> key: "${key}"`);
+      const lookupMsg = `Looking up Discord: "${name}" -> key: "${key}"`;
+      console.log(`[Profile Command Debug] ${lookupMsg}`);
+      debugInfo.push(lookupMsg);
+      await logDebugToChannel(interaction.client, lookupMsg);
       
       if (byDiscord[key]) {
-        console.log(`[Profile Command Debug] Found in byDiscord index: ${JSON.stringify(byDiscord[key])}`);
+        const foundMsg = `Found in byDiscord index: ${JSON.stringify(byDiscord[key])}`;
+        console.log(`[Profile Command Debug] ${foundMsg}`);
+        debugInfo.push(foundMsg);
+        await logDebugToChannel(interaction.client, foundMsg);
         addIds(byDiscord[key]);
       } else {
-        console.log(`[Profile Command Debug] Not in byDiscord index, searching profiles...`);
+        const notFoundMsg = `Not in byDiscord index, searching profiles...`;
+        console.log(`[Profile Command Debug] ${notFoundMsg}`);
+        debugInfo.push(notFoundMsg);
+        await logDebugToChannel(interaction.client, notFoundMsg);
+        
         let found = false;
         for (const [pid, info] of Object.entries(profiles)) {
           const profileDiscord = (info.discord || '').toLowerCase();
           if (profileDiscord === key) {
-            console.log(`[Profile Command Debug] Found in profiles: ID ${pid}, Discord: "${info.discord}"`);
+            const profileFoundMsg = `Found in profiles: ID ${pid}, Discord: "${info.discord}"`;
+            console.log(`[Profile Command Debug] ${profileFoundMsg}`);
+            debugInfo.push(profileFoundMsg);
+            await logDebugToChannel(interaction.client, profileFoundMsg);
             addIds(Number(pid));
             found = true;
           }
         }
         if (!found) {
-          console.log(`[Profile Command Debug] No matching Discord found in profiles`);
+          const noMatchMsg = `No matching Discord found in profiles`;
+          console.log(`[Profile Command Debug] ${noMatchMsg}`);
+          debugInfo.push(noMatchMsg);
+          await logDebugToChannel(interaction.client, noMatchMsg);
         }
       }
     };
 
     if (discordUser) {
-      console.log(`[Profile Command Debug] Discord user object:`, {
+      const userObj = {
         username: discordUser.username,
         discriminator: discordUser.discriminator,
         globalName: discordUser.globalName,
         id: discordUser.id
-      });
+      };
+      console.log(`[Profile Command Debug] Discord user object:`, userObj);
+      debugInfo.push(`Discord user: ${JSON.stringify(userObj)}`);
+      await logDebugToChannel(interaction.client, `Discord user: ${JSON.stringify(userObj)}`);
       
       lookupDiscord(discordUser.username);
       if (discordUser.discriminator && discordUser.discriminator !== '0') {
@@ -172,11 +229,15 @@ module.exports = {
     await handleQuery();
 
     const ids = Array.from(idSet).slice(0, 10);
-    console.log(`[Profile Command Debug] Found ${ids.length} profile IDs: ${ids.join(', ')}`);
+    const resultMsg = `Found ${ids.length} profile IDs: ${ids.join(', ')}`;
+    console.log(`[Profile Command Debug] ${resultMsg}`);
+    await logDebugToChannel(interaction.client, resultMsg);
     
     if (ids.length === 0) {
       const label = discordUser ? `Discord user "${discordUser.username}"` : `"${queryRaw}"`;
-      return interaction.editReply(`No profile found for ${label}. Try /update to refresh the cache.`);
+      const debugText = debugInfo.length > 0 ? `\n\n**Debug Info:**\n\`\`\`\n${debugInfo.join('\n')}\`\`\`` : '';
+      await logDebugToChannel(interaction.client, `No profile found for ${label}`, true);
+      return interaction.editReply(`No profile found for ${label}. Try /update to refresh the cache.${debugText}`);
     }
 
     // Check cache first
@@ -273,7 +334,26 @@ module.exports = {
     }).filter(Boolean); // Remove null embeds
 
     console.log(`[Profile Command Debug] Created ${embeds.length} embeds for display`);
-    await interaction.editReply({ embeds });
+    
+    // Always add debug info to Discord response
+    if (debugInfo.length > 0) {
+      const debugText = debugInfo.join('\n');
+      if (embeds.length > 0) {
+        // Add to first embed if we have embeds
+        if (debugText.length > 1000) {
+          embeds[0].description = (embeds[0].description || '') + `\n\n**Debug Info:**\n\`\`\`\n${debugText.substring(0, 900)}...\`\`\``;
+        } else {
+          embeds[0].description = (embeds[0].description || '') + `\n\n**Debug Info:**\n\`\`\`\n${debugText}\`\`\``;
+        }
+        await interaction.editReply({ embeds });
+      } else {
+        // Send as text if no embeds
+        const debugMessage = `**Debug Info:**\n\`\`\`\n${debugText}\`\`\``;
+        await interaction.editReply(debugMessage);
+      }
+    } else {
+      await interaction.editReply({ embeds });
+    }
 
     if (dbDirty) {
       try {
@@ -289,10 +369,15 @@ module.exports = {
     const profiles = db.profiles || {};
     const profileEntries = Object.entries(profiles);
 
-    console.log(`[Profile Command Debug] showAllProfiles: Found ${profileEntries.length} profiles in database`);
+    const debugInfo = [];
+    debugInfo.push(`showAllProfiles: Found ${profileEntries.length} profiles in database`);
+    debugInfo.push(`Page: ${page}, Sort: ${sortBy}`);
+    
+    console.log(`[Profile Command Debug] ${debugInfo.join(' | ')}`);
 
     if (profileEntries.length === 0) {
-      return interaction.editReply('No profiles found. Try running /update to populate the database.');
+      const debugText = debugInfo.length > 0 ? `\n\n**Debug Info:**\n\`\`\`\n${debugInfo.join('\n')}\`\`\`` : '';
+      return interaction.editReply(`No profiles found. Try running /update to populate the database.${debugText}`);
     }
 
     const PROFILES_PER_PAGE = 10;
@@ -326,7 +411,8 @@ module.exports = {
 
     const pageProfiles = sortedProfiles.slice(startIndex, endIndex);
 
-    console.log(`[Profile Command Debug] showAllProfiles: Displaying ${pageProfiles.length} profiles on page ${page}/${totalPages}`);
+    debugInfo.push(`Displaying ${pageProfiles.length} profiles on page ${page}/${totalPages}`);
+    console.log(`[Profile Command Debug] ${debugInfo.join(' | ')}`);
 
     // Create embed
     const embed = new EmbedBuilder()
