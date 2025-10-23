@@ -126,7 +126,7 @@ module.exports = {
       else addOne(value);
     };
 
-    const lookupDiscord = (name) => {
+    const lookupDiscord = async (name) => {
       if (!name) return;
       const key = name.toLowerCase();
       const lookupMsg = `Looking up Discord: "${name}" -> key: "${key}"`;
@@ -178,11 +178,11 @@ module.exports = {
       debugInfo.push(`Discord user: ${JSON.stringify(userObj)}`);
       await logDebugToChannel(interaction.client, `Discord user: ${JSON.stringify(userObj)}`);
       
-      lookupDiscord(discordUser.username);
+      await lookupDiscord(discordUser.username);
       if (discordUser.discriminator && discordUser.discriminator !== '0') {
-        lookupDiscord(`${discordUser.username}#${discordUser.discriminator}`);
+        await lookupDiscord(`${discordUser.username}#${discordUser.discriminator}`);
       }
-      if (discordUser.globalName) lookupDiscord(discordUser.globalName);
+      if (discordUser.globalName) await lookupDiscord(discordUser.globalName);
     }
 
     const handleQuery = async () => {
@@ -192,11 +192,11 @@ module.exports = {
         try {
           const fetched = await interaction.client.users.fetch(mentionMatch[1]);
           if (fetched) {
-            lookupDiscord(fetched.username);
+            await lookupDiscord(fetched.username);
             if (fetched.discriminator && fetched.discriminator !== '0') {
-              lookupDiscord(`${fetched.username}#${fetched.discriminator}`);
+              await lookupDiscord(`${fetched.username}#${fetched.discriminator}`);
             }
-            if (fetched.globalName) lookupDiscord(fetched.globalName);
+            if (fetched.globalName) await lookupDiscord(fetched.globalName);
           }
         } catch (_) {}
         return;
@@ -209,7 +209,7 @@ module.exports = {
         return;
       }
 
-      lookupDiscord(plain);
+      await lookupDiscord(plain);
       if (idSet.size) return;
 
       const nameNorm = plain.toLowerCase();
