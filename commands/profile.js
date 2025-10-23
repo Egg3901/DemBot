@@ -140,7 +140,9 @@ module.exports = {
     await logDebugToChannel(interaction.client, `Database loading debug: ${debugEgg3901.join(' | ')}`);
 
     const debugInfo = [];
-    debugInfo.push(`Database stats: ${Object.keys(profiles).length} profiles, ${Object.keys(byDiscord).length} Discord entries`);
+    const totalProfiles = Object.keys(profiles).length;
+    const validProfiles = Object.values(profiles).filter(p => p && typeof p === 'object').length;
+    debugInfo.push(`Database stats: ${validProfiles} valid profiles (${totalProfiles} total entries), ${Object.keys(byDiscord).length} Discord entries`);
     debugInfo.push(`Sample byDiscord entries: ${Object.keys(byDiscord).slice(0, 5).join(', ')}`);
     
     // Check if egg3901 exists in byDiscord index
@@ -149,11 +151,30 @@ module.exports = {
     
     // Check if egg3901 exists in profiles
     const egg3901Profiles = Object.entries(profiles).filter(([pid, info]) => 
-      (info.discord || '').toLowerCase() === 'egg3901'
+      info && typeof info === 'object' && (info.discord || '').toLowerCase() === 'egg3901'
     );
     debugInfo.push(`egg3901 in profiles: ${egg3901Profiles.length} matches`);
     if (egg3901Profiles.length > 0) {
       debugInfo.push(`egg3901 profile details: ${JSON.stringify(egg3901Profiles.map(([pid, info]) => ({ id: pid, discord: info.discord, name: info.name })))}`);
+    } else {
+      // Look for similar Discord usernames
+      const similarDiscords = Object.entries(profiles)
+        .filter(([pid, info]) => info && typeof info === 'object' && info.discord)
+        .map(([pid, info]) => info.discord.toLowerCase())
+        .filter(discord => discord.includes('egg') || discord.includes('3901'))
+        .slice(0, 10);
+      if (similarDiscords.length > 0) {
+        debugInfo.push(`Similar Discord usernames found: ${similarDiscords.join(', ')}`);
+      }
+      
+      // Check for exact case variations
+      const exactMatches = Object.entries(profiles)
+        .filter(([pid, info]) => info && typeof info === 'object' && info.discord)
+        .filter(([pid, info]) => info.discord.toLowerCase() === 'egg3901')
+        .map(([pid, info]) => ({ id: pid, discord: info.discord, name: info.name }));
+      if (exactMatches.length > 0) {
+        debugInfo.push(`Exact matches (case variations): ${JSON.stringify(exactMatches)}`);
+      }
     }
     
     console.log(`[Profile Command Debug] ${debugInfo.join(' | ')}`);
@@ -192,8 +213,17 @@ module.exports = {
         
         let found = false;
         let searchCount = 0;
+        let validProfileCount = 0;
+        
         for (const [pid, info] of Object.entries(profiles)) {
           searchCount++;
+          
+          // Skip null/undefined profiles
+          if (!info || typeof info !== 'object') {
+            continue;
+          }
+          
+          validProfileCount++;
           const profileDiscord = (info.discord || '').toLowerCase();
           if (profileDiscord === key) {
             const profileFoundMsg = `Found in profiles: ID ${pid}, Discord: "${info.discord}"`;
@@ -206,7 +236,7 @@ module.exports = {
         }
         
         // Log search statistics
-        const searchStats = `Searched ${searchCount} profiles for key "${key}", found: ${found}`;
+        const searchStats = `Searched ${validProfileCount} valid profiles (${searchCount} total entries) for key "${key}", found: ${found}`;
         console.log(`[Profile Command Debug] ${searchStats}`);
         debugInfo.push(searchStats);
         await logDebugToChannel(interaction.client, searchStats);
