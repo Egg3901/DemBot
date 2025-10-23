@@ -243,8 +243,30 @@ client.on(Events.GuildMemberAdd, async (member) => {
   }
 });
 
+// ---- Button interaction handlers ----
+async function handleButtonInteraction(interaction) {
+  const [commandName, action, currentPage, sortBy] = interaction.customId.split('_');
+
+  if (commandName === 'profile') {
+    const page = action === 'next' ? parseInt(currentPage) + 1 :
+                 action === 'prev' ? parseInt(currentPage) - 1 :
+                 parseInt(currentPage);
+
+    // Re-execute the profile command with the new page
+    const profileCommand = client.commands.get('profile');
+    if (profileCommand && profileCommand.showAllProfiles) {
+      await profileCommand.showAllProfiles(interaction, page, sortBy);
+    }
+  }
+}
+
 // ---- Interaction routing ----
 client.on(Events.InteractionCreate, async (interaction) => {
+  // Handle button interactions for pagination
+  if (interaction.isButton()) {
+    return handleButtonInteraction(interaction);
+  }
+
   if (!interaction.isChatInputCommand()) return;
 
   // DM gating (why: prevent misuse in DMs)

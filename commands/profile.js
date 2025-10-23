@@ -348,12 +348,25 @@ module.exports = {
         components.push(paginationRow);
       }
 
-      await interaction.editReply({
-        embeds: [embed],
-        components
-      });
+      // Handle button interaction vs command interaction
+      if (interaction.isButton && interaction.update) {
+        await interaction.update({
+          embeds: [embed],
+          components
+        });
+      } else {
+        await interaction.editReply({
+          embeds: [embed],
+          components
+        });
+      }
     } else {
-      await interaction.editReply({ embeds: [embed] });
+      // Handle button interaction vs command interaction
+      if (interaction.isButton && interaction.update) {
+        await interaction.update({ embeds: [embed] });
+      } else {
+        await interaction.editReply({ embeds: [embed] });
+      }
     }
   },
 };
