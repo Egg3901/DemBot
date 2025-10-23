@@ -574,6 +574,17 @@ module.exports = {
         });
       }
     }
+    } catch (error) {
+      console.error('Profile lookup error:', error);
+      await reportCommandError(interaction, error, {
+        message: `Failed to lookup profile: ${error.message}`,
+        meta: {
+          discordUser: discordUser?.username,
+          query: queryRaw,
+          step: 'lookup'
+        }
+      });
+    }
   },
 
   // Render a specific page for multi-profile pagination (one profile per page)
