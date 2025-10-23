@@ -356,55 +356,109 @@ module.exports = {
 
     // Build embeds with enhanced validation
     console.log(`[Profile Command Debug] Processing ${allProfiles.length} profiles for display`);
-    const embeds = allProfiles.map(profile => {
-      // Skip profiles that appear to be login pages or have invalid data
+    const validProfiles = allProfiles.filter((profile) => {
       if (!profile.name || /login/i.test(profile.name) || profile.name === 'Power Play USA' || profile.name.length < 2) {
         console.log(`[Profile Command] Skipping invalid profile: ${JSON.stringify(profile)}`);
-        return null;
+        return false;
       }
+      return true;
+    });
 
-      const fields = [];
-      if (profile.discord) fields.push({ name: 'Discord', value: profile.discord, inline: true });
-      if (profile.party) fields.push({ name: 'Party', value: profile.party, inline: true });
-      if (profile.state) fields.push({ name: 'State', value: profile.state, inline: true });
-      if (profile.position) fields.push({ name: 'Position', value: profile.position, inline: true });
-      if (profile.es) fields.push({ name: 'ES', value: String(profile.es), inline: true });
-      if (profile.co) fields.push({ name: 'CO', value: String(profile.co), inline: true });
-      if (profile.nr) fields.push({ name: 'NR', value: String(profile.nr), inline: true });
-      if (profile.cash) fields.push({ name: '$', value: profile.cash, inline: true });
-      if (profile.accountAge) fields.push({ name: 'Account Age', value: profile.accountAge, inline: true });
+    // If multiple profiles found, paginate one profile per page
+    if (validProfiles.length > 1) {
+      const idsJoined = validProfiles.map((p) => p.id).join('-');
+      const pageNum = 1;
 
-      return {
-        title: `${profile.name} (ID ${profile.id})`,
-        url: `${BASE}/users/${profile.id}`,
-        fields,
-        ...(profile.avatar ? { thumbnail: { url: profile.avatar } } : {}),
-        footer: { text: new URL(BASE).hostname },
-        timestamp: new Date().toISOString(),
-        color: 0x3b82f6, // Blue color for valid profiles
+      const renderOne = (profile, extraDebug) => {
+        const fields = [];
+        if (profile.discord) fields.push({ name: 'Discord', value: profile.discord, inline: true });
+        if (profile.party) fields.push({ name: 'Party', value: profile.party, inline: true });
+        if (profile.state) fields.push({ name: 'State', value: profile.state, inline: true });
+        if (profile.position) fields.push({ name: 'Position', value: profile.position, inline: true });
+        if (profile.es) fields.push({ name: 'ES', value: String(profile.es), inline: true });
+        if (profile.co) fields.push({ name: 'CO', value: String(profile.co), inline: true });
+        if (profile.nr) fields.push({ name: 'NR', value: String(profile.nr), inline: true });
+        if (profile.cash) fields.push({ name: '$', value: profile.cash, inline: true });
+        if (profile.accountAge) fields.push({ name: 'Account Age', value: profile.accountAge, inline: true });
+
+        const embed = new EmbedBuilder()
+          .setTitle(`${profile.name} (ID ${profile.id})`)
+          .setURL(`${BASE}/users/${profile.id}`)
+          .setColor(0x3b82f6)
+          .setFooter({ text: new URL(BASE).hostname })
+          .setTimestamp();
+        if (profile.avatar) embed.setThumbnail(profile.avatar);
+        if (fields.length) embed.addFields(fields);
+        if (extraDebug) embed.setDescription(extraDebug);
+        return embed;
       };
-    }).filter(Boolean); // Remove null embeds
 
-    console.log(`[Profile Command Debug] Created ${embeds.length} embeds for display`);
-    
-    // Always add debug info to Discord response
-    if (debugInfo.length > 0) {
-      const debugText = debugInfo.join('\n');
-      if (embeds.length > 0) {
-        // Add to first embed if we have embeds
-        if (debugText.length > 1000) {
-          embeds[0].description = (embeds[0].description || '') + `\n\n**Debug Info:**\n\`\`\`\n${debugText.substring(0, 900)}...\`\`\``;
-        } else {
-          embeds[0].description = (embeds[0].description || '') + `\n\n**Debug Info:**\n\`\`\`\n${debugText}\`\`\``;
-        }
-        await interaction.editReply({ embeds });
-      } else {
-        // Send as text if no embeds
-        const debugMessage = `**Debug Info:**\n\`\`\`\n${debugText}\`\`\``;
-        await interaction.editReply(debugMessage);
+      // Compose debug text (trimmed)
+      let debugText = '';
+      if (debugInfo.length > 0) {
+        const joined = debugInfo.join('\n');
+        debugText = joined.length > 1000
+          ? `**Debug Info:**\n\`\`\`\n${joined.substring(0, 900)}...\`\`\``
+          : `**Debug Info:**\n\`\`\`\n${joined}\`\`\``;
       }
+
+      const embed = renderOne(validProfiles[0], debugText);
+      const totalPages = validProfiles.length;
+      const components = [
+        {
+          type: 1,
+          components: [
+            { type: 2, style: 2, label: 'Previous', custom_id: `profile_multi_prev_${pageNum}_${idsJoined}`, disabled: true },
+            { type: 2, style: 1, label: `${pageNum}/${totalPages}`, custom_id: `profile_multi_page_${pageNum}_${idsJoined}`, disabled: true },
+            { type: 2, style: totalPages > 1 ? 1 : 2, label: 'Next', custom_id: `profile_multi_next_${pageNum}_${idsJoined}`, disabled: totalPages <= 1 },
+          ],
+        },
+      ];
+      await interaction.editReply({ embeds: [embed], components });
     } else {
-      await interaction.editReply({ embeds });
+      // Single profile (or none) -> behave like before
+      const embeds = validProfiles.map((profile) => {
+        const fields = [];
+        if (profile.discord) fields.push({ name: 'Discord', value: profile.discord, inline: true });
+        if (profile.party) fields.push({ name: 'Party', value: profile.party, inline: true });
+        if (profile.state) fields.push({ name: 'State', value: profile.state, inline: true });
+        if (profile.position) fields.push({ name: 'Position', value: profile.position, inline: true });
+        if (profile.es) fields.push({ name: 'ES', value: String(profile.es), inline: true });
+        if (profile.co) fields.push({ name: 'CO', value: String(profile.co), inline: true });
+        if (profile.nr) fields.push({ name: 'NR', value: String(profile.nr), inline: true });
+        if (profile.cash) fields.push({ name: '$', value: profile.cash, inline: true });
+        if (profile.accountAge) fields.push({ name: 'Account Age', value: profile.accountAge, inline: true });
+
+        const embed = new EmbedBuilder()
+          .setTitle(`${profile.name} (ID ${profile.id})`)
+          .setURL(`${BASE}/users/${profile.id}`)
+          .setColor(0x3b82f6)
+          .setFooter({ text: new URL(BASE).hostname })
+          .setTimestamp();
+        if (profile.avatar) embed.setThumbnail(profile.avatar);
+        if (fields.length) embed.addFields(fields);
+        return embed;
+      });
+
+      console.log(`[Profile Command Debug] Created ${embeds.length} embeds for display`);
+
+      if (debugInfo.length > 0) {
+        const debugText = debugInfo.join('\n');
+        if (embeds.length > 0) {
+          // Add to first embed if we have embeds
+          if (debugText.length > 1000) {
+            embeds[0].setDescription(`${embeds[0].data.description || ''}\n\n**Debug Info:**\n\`\`\`\n${debugText.substring(0, 900)}...\`\`\``);
+          } else {
+            embeds[0].setDescription(`${embeds[0].data.description || ''}\n\n**Debug Info:**\n\`\`\`\n${debugText}\`\`\``);
+          }
+          await interaction.editReply({ embeds });
+        } else {
+          const debugMessage = `**Debug Info:**\n\`\`\`\n${debugText}\`\`\``;
+          await interaction.editReply(debugMessage);
+        }
+      } else {
+        await interaction.editReply({ embeds });
+      }
     }
 
     if (dbDirty) {
@@ -413,6 +467,75 @@ module.exports = {
       } catch (error) {
         console.error('Error saving profile database:', error);
       }
+    }
+  },
+
+  // Render a specific page for multi-profile pagination (one profile per page)
+  async showMultipleProfiles(interaction, ids, page) {
+    const targetIds = (Array.isArray(ids) ? ids : String(ids).split('-')
+      .filter(Boolean)
+      .map((s) => Number(s))
+      .filter((n) => Number.isFinite(n)));
+    const totalPages = targetIds.length || 1;
+    const index = Math.min(Math.max(1, Number(page) || 1), totalPages) - 1;
+    const profileId = targetIds[index];
+
+    if (!profileId) {
+      return interaction.update?.({ content: 'No profiles to display.', components: [], embeds: [] })
+        || interaction.editReply({ content: 'No profiles to display.', components: [], embeds: [] });
+    }
+
+    // Try cache first else fetch
+    const cacheKey = SmartCache.createProfileKey(profileId);
+    let profile = smartCache.get(cacheKey);
+    if (!profile) {
+      try {
+        const session = await sessionManager.authenticateSession('profile', `${BASE}/users/${profileId}`);
+        const result = await navigateWithSession(session, `${BASE}/users/${profileId}`, 'networkidle2');
+        profile = parseProfile(result.html);
+        smartCache.set(cacheKey, profile, 10 * 60 * 1000);
+      } catch (e) {
+        console.error('Failed to fetch profile during pagination:', e);
+      }
+    }
+
+    // Build embed
+    const fields = [];
+    if (profile?.discord) fields.push({ name: 'Discord', value: profile.discord, inline: true });
+    if (profile?.party) fields.push({ name: 'Party', value: profile.party, inline: true });
+    if (profile?.state) fields.push({ name: 'State', value: profile.state, inline: true });
+    if (profile?.position) fields.push({ name: 'Position', value: profile.position, inline: true });
+    if (profile?.es) fields.push({ name: 'ES', value: String(profile.es), inline: true });
+    if (profile?.co) fields.push({ name: 'CO', value: String(profile.co), inline: true });
+    if (profile?.nr) fields.push({ name: 'NR', value: String(profile.nr), inline: true });
+    if (profile?.cash) fields.push({ name: '$', value: profile.cash, inline: true });
+    if (profile?.accountAge) fields.push({ name: 'Account Age', value: profile.accountAge, inline: true });
+
+    const embed = new EmbedBuilder()
+      .setTitle(`${profile?.name || 'Unknown'} (ID ${profileId})`)
+      .setURL(`${BASE}/users/${profileId}`)
+      .setColor(0x3b82f6)
+      .setFooter({ text: new URL(BASE).hostname })
+      .setTimestamp();
+    if (profile?.avatar) embed.setThumbnail(profile.avatar);
+    if (fields.length) embed.addFields(fields);
+
+    const idsJoined = targetIds.join('-');
+    const components = [
+      {
+        type: 1,
+        components: [
+          { type: 2, style: index > 0 ? 1 : 2, label: 'Previous', custom_id: `profile_multi_prev_${index + 1}_${idsJoined}`, disabled: index <= 0 },
+          { type: 2, style: 1, label: `${index + 1}/${totalPages}`, custom_id: `profile_multi_page_${index + 1}_${idsJoined}`, disabled: true },
+          { type: 2, style: index < totalPages - 1 ? 1 : 2, label: 'Next', custom_id: `profile_multi_next_${index + 1}_${idsJoined}`, disabled: index >= totalPages - 1 },
+        ],
+      },
+    ];
+
+    if (interaction.isButton && interaction.update) {
+      await interaction.update({ embeds: [embed], components });
+    } else {
+      await interaction.editReply({ embeds: [embed], components });
     }
   },
 

@@ -248,18 +248,35 @@ client.on(Events.GuildMemberAdd, async (member) => {
 
 // ---- Button interaction handlers ----
 async function handleButtonInteraction(interaction) {
-  const [commandName, action, currentPage, sortBy] = interaction.customId.split('_');
+  const parts = interaction.customId.split('_');
+  const primary = parts[0];
 
-  if (commandName === 'profile') {
+  // Multi-profile pagination takes precedence: custom_id = profile_multi_{action}_{page}_{ids}
+  if (primary === 'profile' && parts[1] === 'multi') {
+    const action = parts[2];
+    const currentPage = parts[3];
+    const idsJoined = parts.slice(4).join('_');
+    const nextPage = action === 'next' ? parseInt(currentPage) + 1 :
+                     action === 'prev' ? parseInt(currentPage) - 1 :
+                     parseInt(currentPage);
+    const profileCommand = client.commands.get('profile');
+    if (profileCommand?.showMultipleProfiles) {
+      await profileCommand.showMultipleProfiles(interaction, idsJoined, nextPage);
+    }
+    return;
+  }
+
+  // All-profiles pagination: custom_id = profile_{action}_{page}_{sortBy}
+  if (primary === 'profile') {
+    const action = parts[1];
+    const currentPage = parts[2];
+    const sortBy = parts[3];
     const page = action === 'next' ? parseInt(currentPage) + 1 :
                  action === 'prev' ? parseInt(currentPage) - 1 :
                  parseInt(currentPage);
-
-    // Re-execute the profile command with the new page
     const profileCommand = client.commands.get('profile');
-    if (profileCommand && profileCommand.showAllProfiles) {
-      await profileCommand.showAllProfiles(interaction, page, sortBy);
-    }
+    if (profileCommand?.showAllProfiles) await profileCommand.showAllProfiles(interaction, page, sortBy);
+    return;
   }
 }
 
