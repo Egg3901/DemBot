@@ -74,6 +74,9 @@ module.exports = {
     const byDiscord = db.byDiscord || {};
     let dbDirty = false;
 
+    console.log(`[Profile Command Debug] Database stats: ${Object.keys(profiles).length} profiles, ${Object.keys(byDiscord).length} Discord entries`);
+    console.log(`[Profile Command Debug] Sample byDiscord entries:`, Object.keys(byDiscord).slice(0, 5));
+
     const idSet = new Set();
 
     const addIds = (value) => {
@@ -88,15 +91,36 @@ module.exports = {
     const lookupDiscord = (name) => {
       if (!name) return;
       const key = name.toLowerCase();
-      if (byDiscord[key]) addIds(byDiscord[key]);
-      else {
+      console.log(`[Profile Command Debug] Looking up Discord: "${name}" -> key: "${key}"`);
+      
+      if (byDiscord[key]) {
+        console.log(`[Profile Command Debug] Found in byDiscord index: ${JSON.stringify(byDiscord[key])}`);
+        addIds(byDiscord[key]);
+      } else {
+        console.log(`[Profile Command Debug] Not in byDiscord index, searching profiles...`);
+        let found = false;
         for (const [pid, info] of Object.entries(profiles)) {
-          if ((info.discord || '').toLowerCase() === key) addIds(Number(pid));
+          const profileDiscord = (info.discord || '').toLowerCase();
+          if (profileDiscord === key) {
+            console.log(`[Profile Command Debug] Found in profiles: ID ${pid}, Discord: "${info.discord}"`);
+            addIds(Number(pid));
+            found = true;
+          }
+        }
+        if (!found) {
+          console.log(`[Profile Command Debug] No matching Discord found in profiles`);
         }
       }
     };
 
     if (discordUser) {
+      console.log(`[Profile Command Debug] Discord user object:`, {
+        username: discordUser.username,
+        discriminator: discordUser.discriminator,
+        globalName: discordUser.globalName,
+        id: discordUser.id
+      });
+      
       lookupDiscord(discordUser.username);
       if (discordUser.discriminator && discordUser.discriminator !== '0') {
         lookupDiscord(`${discordUser.username}#${discordUser.discriminator}`);
