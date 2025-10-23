@@ -112,6 +112,19 @@ module.exports = {
     debugInfo.push(`Database stats: ${Object.keys(profiles).length} profiles, ${Object.keys(byDiscord).length} Discord entries`);
     debugInfo.push(`Sample byDiscord entries: ${Object.keys(byDiscord).slice(0, 5).join(', ')}`);
     
+    // Check if egg3901 exists in byDiscord index
+    const egg3901InIndex = byDiscord['egg3901'];
+    debugInfo.push(`egg3901 in byDiscord: ${JSON.stringify(egg3901InIndex)}`);
+    
+    // Check if egg3901 exists in profiles
+    const egg3901Profiles = Object.entries(profiles).filter(([pid, info]) => 
+      (info.discord || '').toLowerCase() === 'egg3901'
+    );
+    debugInfo.push(`egg3901 in profiles: ${egg3901Profiles.length} matches`);
+    if (egg3901Profiles.length > 0) {
+      debugInfo.push(`egg3901 profile details: ${JSON.stringify(egg3901Profiles.map(([pid, info]) => ({ id: pid, discord: info.discord, name: info.name })))}`);
+    }
+    
     console.log(`[Profile Command Debug] ${debugInfo.join(' | ')}`);
     await logDebugToChannel(interaction.client, debugInfo.join(' | '));
 
@@ -147,7 +160,9 @@ module.exports = {
         await logDebugToChannel(interaction.client, notFoundMsg);
         
         let found = false;
+        let searchCount = 0;
         for (const [pid, info] of Object.entries(profiles)) {
+          searchCount++;
           const profileDiscord = (info.discord || '').toLowerCase();
           if (profileDiscord === key) {
             const profileFoundMsg = `Found in profiles: ID ${pid}, Discord: "${info.discord}"`;
@@ -158,6 +173,12 @@ module.exports = {
             found = true;
           }
         }
+        
+        // Log search statistics
+        const searchStats = `Searched ${searchCount} profiles for key "${key}", found: ${found}`;
+        console.log(`[Profile Command Debug] ${searchStats}`);
+        debugInfo.push(searchStats);
+        await logDebugToChannel(interaction.client, searchStats);
         if (!found) {
           const noMatchMsg = `No matching Discord found in profiles`;
           console.log(`[Profile Command Debug] ${noMatchMsg}`);
