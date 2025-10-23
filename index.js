@@ -39,6 +39,7 @@ const {
   sampleRuntime,
 } = require('./lib/status-tracker');
 const { startDashboardServer } = require('./lib/dashboard-server');
+const CronService = require('./lib/cron-service');
 
 const { File, Blob, FormData, fetch, Headers, Request, Response } = require('undici');
 globalThis.File ??= File;
@@ -93,6 +94,9 @@ const client = new Client({
 
 client.commands = new Collection();
 const commandsJSON = [];
+
+// Initialize cron service
+let cronService = null;
 
 // Periodic heartbeat (keeps dashboard status fresh even without command traffic)
 setInterval(() => markHeartbeat(), 60_000).unref();
@@ -177,6 +181,12 @@ client.once(Events.ClientReady, async (c) => {
     console.log('🔎 Guild commands:', DISCORD_GUILD_ID ? guildCmds.map((c) => c.name) : []);
     console.log('🔎 Global commands:', globalCmds.map((c) => c.name));
     console.log('👉 Type "/" in the target guild; if missing, Ctrl+R to reload Discord client.');
+
+    // Start cron service for automated updates
+    cronService = new CronService(client);
+    client.cronService = cronService; // Make it accessible to commands
+    cronService.start();
+    console.log('⏰ Automated update cron job started');
   } catch (err) {
     console.error('❌ Registration error:', err);
   }
@@ -279,6 +289,27 @@ client.on(Events.InteractionCreate, async (interaction) => {
 client.login(DISCORD_TOKEN).catch((err) => {
   markBotLoginError(err);
   console.error('Client login failed:', err);
+});
+
+// Graceful shutdown
+process.on('SIGINT', () => {
+  console.log('\n🛑 Received SIGINT, shutting down gracefully...');
+  if (cronService) {
+    cronService.stop();
+    console.log('⏹️ Cron service stopped');
+  }
+  client.destroy();
+  process.exit(0);
+});
+
+process.on('SIGTERM', () => {
+  console.log('\n🛑 Received SIGTERM, shutting down gracefully...');
+  if (cronService) {
+    cronService.stop();
+    console.log('⏹️ Cron service stopped');
+  }
+  client.destroy();
+  process.exit(0);
 });
 /**
  * Project: DemBot (Discord automation for Power Play USA)

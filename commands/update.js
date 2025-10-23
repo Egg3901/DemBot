@@ -952,23 +952,33 @@ module.exports = {
         const extractRaceCandidates = (html) => {
           const $ = cheerio.load(html || '');
           const items = [];
-          const wrappers = $('#statewide-info .progress-wrapper, .progress-wrapper');
+          const wrappers = $('.progress-wrapper');
           wrappers.each((_, el) => {
             const wrap = $(el);
             const aUser = wrap.find('a[href^="/users/"]').first();
             const href = aUser.attr('href') || '';
             const idMatch = href.match(/\/users\/(\d+)/);
-            const name = (wrap.find('.progress-label a .text-primary, .progress-label .text-primary, .progress-label').first().text() || '').replace(/\s+/g, ' ').trim();
+            
+            // Extract name from the text-primary span inside the link
+            const name = wrap.find('.progress-label a .text-primary').first().text().trim();
             if (!name) return;
+            
+            // Extract party from the color-coded span
             let party = null;
-            const partyNode = wrap.find('.progress-label span').filter((__, node) => /party/i.test($(node).text())).first();
-            const partyText = (partyNode.text() || '').toLowerCase();
-            if (/democrat/.test(partyText)) party = 'dem';
+            const partySpan = wrap.find('.progress-label span').filter((__, node) => {
+              const text = $(node).text().toLowerCase();
+              return text.includes('democratic') || text.includes('republican');
+            }).first();
+            const partyText = (partySpan.text() || '').toLowerCase();
+            if (/democratic/.test(partyText)) party = 'dem';
             else if (/republican/.test(partyText)) party = 'gop';
+            
+            // Extract percentage from progress-percentage span
             let percent = null;
-            const pctText = (wrap.find('.progress-percentage span').filter((__, node) => /%/.test($(node).text())).last().text() || '').trim();
+            const pctText = wrap.find('.progress-percentage .text-primary').last().text().trim();
             const mp = pctText.match(/([0-9]+(?:\.[0-9]+)?)/);
             if (mp) percent = Number(mp[1]);
+            
             items.push({ userId: idMatch ? Number(idMatch[1]) : null, name, party, percent });
           });
 

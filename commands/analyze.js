@@ -633,9 +633,97 @@ module.exports = {
         const embed = buildAnalysisEmbed(analysis, aiSummary);
         await interaction.editReply({ embeds: [embed] });
       } else if (analysisType === 'races') {
-        // Future: Use statesData to analyze competitive races by examining current officeholders
-        // and comparing with party distribution
-        await interaction.editReply('🏛️ Race analysis coming soon! This will analyze competitive races and recommend strategic candidate placements.\n\n💡 Tip: Run `/update type:states` to cache state-level data for enhanced race analysis.');
+        // Load race data saved by /update type:races
+        const racesPath = path.join(process.cwd(), 'data', 'races.json');
+        if (!fs.existsSync(racesPath)) {
+          return interaction.editReply('❌ races.json not found. Run `/update type:races` to scrape race data.');
+        }
+
+        let racesDb = null;
+        try {
+          racesDb = JSON.parse(fs.readFileSync(racesPath, 'utf8'));
+        } catch (e) {
+          return interaction.editReply('❌ Failed to read races.json.');
+        }
+
+        const races = Array.isArray(racesDb.races) ? racesDb.races : [];
+        const partiesToAnalyze = requestedParty ? [requestedParty] : ['dem', 'gop'];
+
+        // Normalize state name to match lean maps
+        const norm = (s) => String(s || '').trim().toLowerCase();
+        const stateLean = (stateName) => {
+          const s = norm(stateName);
+          if (DEMOCRATIC_STATES[s]) return 'lean_dem';
+          if (REPUBLICAN_STATES[s]) return 'lean_gop';
+          return 'swing';
+        };
+
+        const embeds = [];
+
+        for (const pty of partiesToAnalyze) {
+          const ourParty = pty; // 'dem' or 'gop'
+          const oppParty = pty === 'dem' ? 'gop' : 'dem';
+          const partyName = ourParty === 'dem' ? 'Democratic' : 'Republican';
+          const partyEmoji = ourParty === 'dem' ? '🔵' : '🔴';
+
+          // Build active races with candidate information
+          const activeRaces = [];
+          const finishedRaces = [];
+
+          for (const race of races) {
+            const bucket = stateLean(race.stateName);
+            const label = `${race.stateName} – ${race.race.toUpperCase()}`;
+            
+            // Find our party's candidate
+            const ourCandidate = race.candidates?.find(c => c.party === ourParty);
+            const oppCandidate = race.candidates?.find(c => c.party === oppParty);
+            
+            if (race.status === 'active') {
+              const ourInfo = ourCandidate ? `${ourCandidate.name} (${ourCandidate.percent || 'N/A'}%)` : 'No candidate';
+              const oppInfo = oppCandidate ? `${oppCandidate.name} (${oppCandidate.percent || 'N/A'}%)` : 'No candidate';
+              activeRaces.push({
+                bucket,
+                text: `• ${label}\n${partyEmoji} us: ${ourInfo}\n${ourParty === 'dem' ? '🔴' : '🔵'} them: ${oppInfo}`
+              });
+            } else {
+              const ourInfo = ourCandidate ? `${ourCandidate.name} (${ourCandidate.percent || 'N/A'}%)` : 'No candidate';
+              const oppInfo = oppCandidate ? `${oppCandidate.name} (${oppCandidate.percent || 'N/A'}%)` : 'No candidate';
+              finishedRaces.push({
+                bucket,
+                text: `• ${label} (Finished)\n${partyEmoji} us: ${ourInfo}\n${ourParty === 'dem' ? '🔴' : '🔵'} them: ${oppInfo}`
+              });
+            }
+          }
+
+          const groupBy = (rows) => rows.reduce((acc, r) => { (acc[r.bucket] ||= []).push(r.text); return acc; }, {});
+          const activeBy = groupBy(activeRaces);
+          const finishedBy = groupBy(finishedRaces);
+
+          const embed = new EmbedBuilder()
+            .setTitle(`🏛️ Race Analysis (${partyName})`)
+            .setColor(ourParty === 'dem' ? 0x1e40af : 0xdc2626)
+            .setTimestamp(new Date())
+            .setFooter({ text: 'Active races first • Source: races.json' });
+
+          const pushFieldIfAny = (name, list) => {
+            if (Array.isArray(list) && list.length) {
+              embed.addFields({ name: `${partyEmoji} ${name}`, value: list.slice(0, 10).join('\n') });
+            }
+          };
+
+          pushFieldIfAny('Active – Lean Dem', activeBy.lean_dem);
+          pushFieldIfAny('Active – Swing', activeBy.swing);
+          pushFieldIfAny('Active – Lean GOP', activeBy.lean_gop);
+
+          pushFieldIfAny('Finished – Lean Dem', finishedBy.lean_dem);
+          pushFieldIfAny('Finished – Swing', finishedBy.swing);
+          pushFieldIfAny('Finished – Lean GOP', finishedBy.lean_gop);
+
+          if (embed.data.fields?.length) embeds.push(embed);
+        }
+
+        if (embeds.length) await interaction.editReply({ embeds });
+        else await interaction.editReply('No races found. Run `/update type:races` to refresh.');
       } else if (analysisType === 'primaries') {
         // Load primaries data saved by /update type:primaries
         const primariesPath = path.join(process.cwd(), 'data', 'primaries.json');
