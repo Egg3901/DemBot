@@ -38,8 +38,40 @@ const {
   recordUserCommand,
   sampleRuntime,
 } = require('./lib/status-tracker');
+const { reportCommandErrorWithReset } = require('./lib/command-utils');
 const { startDashboardServer } = require('./lib/dashboard-server');
 const CronService = require('./lib/cron-service');
+
+// Function to determine if a command should be reset based on error type
+function shouldResetCommand(error, interaction) {
+  // Reset for network-related errors
+  if (error.code === 'ENOTFOUND' || error.code === 'ECONNRESET' || error.code === 'ETIMEDOUT') {
+    return true;
+  }
+  
+  // Reset for Discord API errors that might be temporary
+  if (error.code === 50013 || error.code === 50001 || error.code === 50035) {
+    return true;
+  }
+  
+  // Reset for authentication errors that might be temporary
+  if (error.message?.includes('authentication') || error.message?.includes('unauthorized')) {
+    return true;
+  }
+  
+  // Reset for rate limiting
+  if (error.code === 429 || error.message?.includes('rate limit')) {
+    return true;
+  }
+  
+  // Don't reset for user input errors or permanent failures
+  if (error.message?.includes('invalid') || error.message?.includes('not found')) {
+    return false;
+  }
+  
+  // Default to not reset for unknown errors
+  return false;
+}
 
 const { File, Blob, FormData, fetch, Headers, Request, Response } = require('undici');
 globalThis.File ??= File;
@@ -323,19 +355,22 @@ client.on(Events.InteractionCreate, async (interaction) => {
     }
     recordCommandSuccess(interaction.commandName);
   } catch (err) {
-    recordCommandError(interaction.commandName, err);
-    console.error(err);
-    const msg = { content: 'There was an error executing that command.', flags: MessageFlags.Ephemeral };
-    try {
-      if (interaction.deferred || interaction.replied) await interaction.followUp(msg);
-      else await interaction.reply(msg);
-    } catch (sendErr) {
-      if (sendErr?.code === 10062) {
-        console.warn('Skipped error follow-up: interaction token expired.');
-      } else {
-        console.error('Failed to notify user about the error:', sendErr);
+    // Determine if this error should trigger a command reset
+    const shouldReset = shouldResetCommand(err, interaction);
+    
+    // Use enhanced error reporting with reset capability
+    await reportCommandErrorWithReset(interaction, err, {
+      message: 'There was an error executing that command.',
+      shouldReset,
+      retryDelay: 2000,
+      meta: {
+        commandName: interaction.commandName,
+        userId: interaction.user?.id,
+        guildId: interaction.guildId,
       }
-    }
+    });
+    
+    console.error(`Command ${interaction.commandName} error:`, err);
   }
 });
 
