@@ -14,6 +14,9 @@ const Anthropic = require('@anthropic-ai/sdk');
 const { canUseAnalyze } = require('../lib/permissions');
 const { loadStatesData } = require('../lib/state-scraper');
 
+// Treat four party members as a "full" state (Gov + 2 Senators + 1 House lead)
+const STATE_FULL_CAPACITY = 4;
+
 // Party-leaning states based on recent electoral data
 const DEMOCRATIC_STATES = {
   'california': { lean: 'strong', electoral: 55, population: 39.5 },
@@ -106,6 +109,12 @@ function isActive(profile) {
   return typeof profile.lastOnlineDays === 'number' && profile.lastOnlineDays < 5;
 }
 
+function activityScore(days) {
+  if (typeof days !== 'number' || !Number.isFinite(days)) return 0.2;
+  const clamped = Math.max(0, Math.min(30, days));
+  return 1 / (1 + clamped); // 1.0 today, ~0.17 at 5d, ~0.03 at 30d
+}
+
 function hasPosition(profile) {
   // Check if player holds any office (not a Private Citizen)
   const position = (profile.position || '').toLowerCase();
@@ -134,6 +143,7 @@ function analyzePlayerDistribution(profiles, party = 'dem', statesData = null) {
         position: profile.position || 'Private Citizen',
         hasPosition: hasPosition(profile),
         discord: profile.discord,
+        lastOnlineDays: typeof profile.lastOnlineDays === 'number' ? profile.lastOnlineDays : null,
       });
     }
     
@@ -235,13 +245,16 @@ function analyzePlayerDistribution(profiles, party = 'dem', statesData = null) {
   // Use enhanced data if available, fallback to hardcoded
   const finalStateData = Object.keys(enhancedStateData).length > 0 ? enhancedStateData : partyStates;
   
-  // Find overcrowded states (more than 4 party members - governor + 2 senators + 1 house rep)
+  // Find overcrowded states (more than capacity)
   // Include list of movable players (those without positions)
   const overcrowdedStates = Object.entries(stateCounts)
-    .filter(([state, count]) => count > 4)
+    .filter(([state, count]) => count > STATE_FULL_CAPACITY)
     .map(([state, count]) => {
       const players = statePlayersMap[state] || [];
-      const movablePlayers = players.filter(p => !p.hasPosition);
+      const movablePlayers = players
+        .filter(p => !p.hasPosition)
+        .map(p => ({ ...p, lastOnlineDays: p.lastOnlineDays, activity: activityScore(p.lastOnlineDays) }))
+        .sort((a, b) => (b.activity - a.activity));
       const stateInfo = finalStateData[state] || null;
       return {
         state,
@@ -255,11 +268,11 @@ function analyzePlayerDistribution(profiles, party = 'dem', statesData = null) {
     })
     .sort((a, b) => b.count - a.count);
   
-  // Find underutilized party-leaning states (fewer than 2 party members)
+  // Find underutilized party-leaning states (below capacity)
   const underutilizedStates = Object.entries(finalStateData)
     .filter(([state, data]) => {
       const currentCount = stateCounts[state] || 0;
-      return currentCount < 2;
+      return currentCount < STATE_FULL_CAPACITY;
     })
     .map(([state, data]) => {
       // Check for vacant positions or opposing party control
@@ -271,10 +284,13 @@ function analyzePlayerDistribution(profiles, party = 'dem', statesData = null) {
       const vacantSenators = (hasVacancies?.senators || []).filter(s => s.vacant).length;
       const opportunities = vacantGov ? 'Gov vacant' : 
         vacantSenators > 0 ? `${vacantSenators} Senate seat(s) vacant` : '';
+      const currentCount = stateCounts[state] || 0;
+      const capacityGap = Math.max(0, STATE_FULL_CAPACITY - currentCount);
       
       return {
         state,
-        currentCount: stateCounts[state] || 0,
+        currentCount,
+        capacityGap,
         lean: data.lean,
         electoral: data.electoral,
         population: data.population,
@@ -285,7 +301,9 @@ function analyzePlayerDistribution(profiles, party = 'dem', statesData = null) {
       };
     })
     .sort((a, b) => {
-      // Heavy weighting: Actual party control >> Historical lean >> Electoral votes
+      // Priority: capacity gap >> strong control >> moderate control >> actual lean >> strong historical lean >> EVs
+      // 0. Capacity gap
+      if (a.capacityGap !== b.capacityGap) return b.capacityGap - a.capacityGap;
       // 1. Prioritize states with strong actual control (score >= 3)
       const aStrongControl = a.controlScore >= 3 ? 1000 : 0;
       const bStrongControl = b.controlScore >= 3 ? 1000 : 0;
@@ -330,21 +348,32 @@ async function generateRecommendations(analysis) {
   
   const partyName = analysis.party === 'dem' ? 'Democratic' : 'Republican';
   
-  // Build overcrowded states summary with movable player counts
+  // Build summaries incorporating capacity gaps and activity
   const overcrowdedSummary = analysis.overcrowdedStates
-    .map(s => `${s.state}(${s.count} total, ${s.movablePlayers} without positions)`)
+    .map(s => `${s.state}(${s.count} total, ${s.movablePlayers} movable)`)
     .join(', ');
   
-  const topTargets = analysis.underutilizedStates.slice(0, 3).map(s => `${s.state}(${s.electoral}ev${s.opportunities ? ',vacant' : ''})`).join(', ');
+  const topTargets = analysis.underutilizedStates
+    .slice(0, 3)
+    .map(s => `${s.state}(needs ${s.capacityGap}, ${s.electoral}ev${s.opportunities ? ',vacant' : ''})`)
+    .join(', ');
   const topSource = analysis.overcrowdedStates[0];
   
-  const prompt = `Power Play USA game: ${analysis.totalPartyMembers} ${partyName} players. ${topSource?.movablePlayers || 0} movable in ${topSource?.state || 'overcrowded states'}. Top targets: ${topTargets}. Write 1 concise sentence (15 words max) summarizing the strategic opportunity.`;
+  const prompt = [
+    `Power Play USA game: ${analysis.totalPartyMembers} ${partyName} players.`,
+    `Treat 4 players as full capacity per state; target states below capacity first.`,
+    `Prioritize states with actual control/strong lean and open roles; weight by electoral votes next.`,
+    `Prefer moving active, positionless players.`,
+    `Sources: ${topSource?.state || 'none'} has ${topSource?.movablePlayers || 0} movable.`,
+    `Top targets: ${topTargets}.`,
+    `Write 1 concise sentence (≤15 words) summarizing the strategic opportunity.`
+  ].join(' ');
 
   try {
     const response = await anthropic.messages.create({
       model: "claude-3-haiku-20240307",
       max_tokens: 50,
-      system: "You are a gaming strategy advisor for Power Play USA, a fictional video game. Respond with 1 short sentence only.",
+      system: "You are a gaming strategy advisor for Power Play USA. Incorporate state control/lean, a 4-player capacity per state, and player activity when summarizing. Respond with 1 short sentence only.",
       messages: [{
         role: "user",
         content: prompt
@@ -399,13 +428,13 @@ function buildAnalysisEmbed(analysis, aiSummary) {
     });
   }
 
-  // Top underutilized states - only show top 5, with opportunities if available
+  // Top underutilized states - only show top 5, with capacity needs and opportunities
   if (analysis.underutilizedStates.length > 0) {
     const underutilizedText = analysis.underutilizedStates
       .slice(0, 5)
       .map(s => {
         const marker = s.opportunities ? '🏛️' : s.hasActivePlayers ? '⚠️' : '✅';
-        return `• **${s.state}**: ${s.electoral}ev ${marker}`;
+        return `• **${s.state}**: needs ${s.capacityGap}, ${s.electoral}ev ${marker}`;
       })
       .join('\n');
     
@@ -420,11 +449,13 @@ function buildAnalysisEmbed(analysis, aiSummary) {
   if (analysis.overcrowdedStates.length > 0 && analysis.underutilizedStates.length > 0) {
     const movementRecs = [];
     
-    // Prioritize states with vacant positions, then by electoral votes
+    // Start from analysis ordering (capacity gap, control, lean, EV).
+    // Nudge states with vacancies slightly higher.
     const targetStates = [...analysis.underutilizedStates.slice(0, 8)].sort((a, b) => {
-      if (a.opportunities && !b.opportunities) return -1;
-      if (!a.opportunities && b.opportunities) return 1;
-      return b.electoral - a.electoral;
+      const av = a.opportunities ? 1 : 0;
+      const bv = b.opportunities ? 1 : 0;
+      if (av !== bv) return bv - av;
+      return 0; // keep base ordering otherwise
     });
     
     let targetIdx = 0;
@@ -440,13 +471,22 @@ function buildAnalysisEmbed(analysis, aiSummary) {
         });
       });
     }
+    // Sort by activity (most active first)
+    allMovablePlayers.sort((a, b) => (b.activity || 0) - (a.activity || 0));
     
-    // Match players to target states (round-robin for better distribution)
-    const maxRecommendations = Math.min(allMovablePlayers.length, targetStates.length, 10);
+    // Build a weighted target list based on capacity gaps
+    const expandedTargets = [];
+    targetStates.forEach(t => {
+      const reps = Math.max(1, Math.min(STATE_FULL_CAPACITY, t.capacityGap || 1));
+      for (let i = 0; i < reps; i++) expandedTargets.push(t);
+    });
+    
+    // Match players to weighted targets (round-robin)
+    const maxRecommendations = Math.min(allMovablePlayers.length, expandedTargets.length, 10);
     
     for (let i = 0; i < maxRecommendations; i++) {
       const player = allMovablePlayers[i];
-      const target = targetStates[targetIdx % targetStates.length];
+      const target = expandedTargets[targetIdx % expandedTargets.length];
       
       const playerLink = `[${player.name}](${BASE_URL}/users/${player.id})`;
       const discordNote = player.discord ? ` @${player.discord}` : '';
