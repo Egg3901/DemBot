@@ -589,78 +589,79 @@ module.exports = {
 
   // Render a specific page for multi-profile pagination (one profile per page)
   async showMultipleProfiles(interaction, ids, page) {
-    const targetIds = (Array.isArray(ids) ? ids : String(ids).split('-')
-      .filter(Boolean)
-      .map((s) => Number(s))
-      .filter((n) => Number.isFinite(n)));
-    const totalPages = targetIds.length || 1;
-    const index = Math.min(Math.max(1, Number(page) || 1), totalPages) - 1;
-    const profileId = targetIds[index];
+    try {
+      const targetIds = (Array.isArray(ids) ? ids : String(ids).split('-')
+        .filter(Boolean)
+        .map((s) => Number(s))
+        .filter((n) => Number.isFinite(n)));
+      const totalPages = targetIds.length || 1;
+      const index = Math.min(Math.max(1, Number(page) || 1), totalPages) - 1;
+      const profileId = targetIds[index];
 
-    if (!profileId) {
-      return interaction.update?.({ content: 'No profiles to display.', components: [], embeds: [] })
-        || interaction.editReply({ content: 'No profiles to display.', components: [], embeds: [] });
-    }
-
-    // Try cache first else fetch
-    const cacheKey = SmartCache.createProfileKey(profileId);
-    let profile = smartCache.get(cacheKey);
-    if (!profile) {
-      try {
-        const session = await sessionManager.authenticateSession('profile', `${BASE}/users/${profileId}`);
-        const result = await navigateWithSession(session, `${BASE}/users/${profileId}`, 'networkidle2');
-        profile = parseProfile(result.html);
-        smartCache.set(cacheKey, profile, 10 * 60 * 1000);
-      } catch (e) {
-        console.error('Failed to fetch profile during pagination:', e);
+      if (!profileId) {
+        return interaction.update?.({ content: 'No profiles to display.', components: [], embeds: [] })
+          || interaction.editReply({ content: 'No profiles to display.', components: [], embeds: [] });
       }
-    }
 
-    // Build embed
-    const fields = [];
-    if (profile?.discord) fields.push({ name: 'Discord', value: profile.discord, inline: true });
-    if (profile?.party) fields.push({ name: 'Party', value: profile.party, inline: true });
-    if (profile?.state) fields.push({ name: 'State', value: profile.state, inline: true });
-    if (profile?.position) fields.push({ name: 'Position', value: profile.position, inline: true });
-    if (profile?.es) fields.push({ name: 'ES', value: String(profile.es), inline: true });
-    if (profile?.co) fields.push({ name: 'CO', value: String(profile.co), inline: true });
-    if (profile?.nr) fields.push({ name: 'NR', value: String(profile.nr), inline: true });
-    if (profile?.cash) fields.push({ name: '$', value: profile.cash, inline: true });
-    if (profile?.accountAge) fields.push({ name: 'Account Age', value: profile.accountAge, inline: true });
+      // Try cache first else fetch
+      const cacheKey = SmartCache.createProfileKey(profileId);
+      let profile = smartCache.get(cacheKey);
+      if (!profile) {
+        try {
+          const session = await sessionManager.authenticateSession('profile', `${BASE}/users/${profileId}`);
+          const result = await navigateWithSession(session, `${BASE}/users/${profileId}`, 'networkidle2');
+          profile = parseProfile(result.html);
+          smartCache.set(cacheKey, profile, 10 * 60 * 1000);
+        } catch (e) {
+          console.error('Failed to fetch profile during pagination:', e);
+        }
+      }
 
-    const embed = new EmbedBuilder()
-      .setTitle(`${profile?.name || 'Unknown'} (ID ${profileId})`)
-      .setURL(`${BASE}/users/${profileId}`)
-      .setColor(0x3b82f6)
-      .setFooter({ text: new URL(BASE).hostname })
-      .setTimestamp();
-    if (profile?.avatar) embed.setThumbnail(profile.avatar);
-    if (fields.length) embed.addFields(fields);
+      // Build embed
+      const fields = [];
+      if (profile?.discord) fields.push({ name: 'Discord', value: profile.discord, inline: true });
+      if (profile?.party) fields.push({ name: 'Party', value: profile.party, inline: true });
+      if (profile?.state) fields.push({ name: 'State', value: profile.state, inline: true });
+      if (profile?.position) fields.push({ name: 'Position', value: profile.position, inline: true });
+      if (profile?.es) fields.push({ name: 'ES', value: String(profile.es), inline: true });
+      if (profile?.co) fields.push({ name: 'CO', value: String(profile.co), inline: true });
+      if (profile?.nr) fields.push({ name: 'NR', value: String(profile.nr), inline: true });
+      if (profile?.cash) fields.push({ name: '$', value: profile.cash, inline: true });
+      if (profile?.accountAge) fields.push({ name: 'Account Age', value: profile.accountAge, inline: true });
 
-    const idsJoined = targetIds.join('-');
-    const components = [
-      {
-        type: 1,
-        components: [
-          { type: 2, style: index > 0 ? 1 : 2, label: 'Previous', custom_id: `profile_multi_prev_${index + 1}_${idsJoined}`, disabled: index <= 0 },
-          { type: 2, style: 1, label: `${index + 1}/${totalPages}`, custom_id: `profile_multi_page_${index + 1}_${idsJoined}`, disabled: true },
-          { type: 2, style: index < totalPages - 1 ? 1 : 2, label: 'Next', custom_id: `profile_multi_next_${index + 1}_${idsJoined}`, disabled: index >= totalPages - 1 },
-        ],
-      },
-    ];
+      const embed = new EmbedBuilder()
+        .setTitle(`${profile?.name || 'Unknown'} (ID ${profileId})`)
+        .setURL(`${BASE}/users/${profileId}`)
+        .setColor(0x3b82f6)
+        .setFooter({ text: new URL(BASE).hostname })
+        .setTimestamp();
+      if (profile?.avatar) embed.setThumbnail(profile.avatar);
+      if (fields.length) embed.addFields(fields);
 
-    if (interaction.isButton && interaction.update) {
-      await interaction.update({ embeds: [embed], components });
-    } else {
-      await interaction.editReply({ embeds: [embed], components });
-    }
+      const idsJoined = targetIds.join('-');
+      const components = [
+        {
+          type: 1,
+          components: [
+            { type: 2, style: index > 0 ? 1 : 2, label: 'Previous', custom_id: `profile_multi_prev_${index + 1}_${idsJoined}`, disabled: index <= 0 },
+            { type: 2, style: 1, label: `${index + 1}/${totalPages}`, custom_id: `profile_multi_page_${index + 1}_${idsJoined}`, disabled: true },
+            { type: 2, style: index < totalPages - 1 ? 1 : 2, label: 'Next', custom_id: `profile_multi_next_${index + 1}_${idsJoined}`, disabled: index >= totalPages - 1 },
+          ],
+        },
+      ];
+
+      if (interaction.isButton && interaction.update) {
+        await interaction.update({ embeds: [embed], components });
+      } else {
+        await interaction.editReply({ embeds: [embed], components });
+      }
     } catch (error) {
       console.error('Profile lookup error:', error);
       await reportCommandError(interaction, error, {
         message: `Failed to lookup profile: ${error.message}`,
         meta: {
-          discordUser: discordUser?.username,
-          query: queryRaw,
+          discordUser: interaction.user?.username,
+          query: 'multi-profile',
           step: 'lookup'
         }
       });
