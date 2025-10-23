@@ -141,8 +141,8 @@ module.exports = {
 
     const debugInfo = [];
     const totalProfiles = Object.keys(profiles).length;
-    const validProfiles = Object.values(profiles).filter(p => p && typeof p === 'object').length;
-    debugInfo.push(`Database stats: ${validProfiles} valid profiles (${totalProfiles} total entries), ${Object.keys(byDiscord).length} Discord entries`);
+    const validProfileCount = Object.values(profiles).filter(p => p && typeof p === 'object').length;
+    debugInfo.push(`Database stats: ${validProfileCount} valid profiles (${totalProfiles} total entries), ${Object.keys(byDiscord).length} Discord entries`);
     debugInfo.push(`Sample byDiscord entries: ${Object.keys(byDiscord).slice(0, 5).join(', ')}`);
     
     // Check if egg3901 exists in byDiscord index
