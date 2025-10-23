@@ -282,19 +282,61 @@ async function performWebSend({ type, name, amount, debug }) {
       countData: preData.length,
     });
 
-    // Set recipient type if selector exists
-    const selectSel = '#partyTransactions select#target, #target';
-    if (await page.$(selectSel)) {
+    // Set recipient type if selector exists - try multiple selectors
+    const selectSels = [
+      '#partyTransactions select#target',
+      '#partyTransactions select[name="target"]',
+      'select#target',
+      'select[name="target"]',
+      '#target',
+      'select[data-target]',
+      '.form-group select',
+      'form select'
+    ];
+
+    let selectSel = null;
+    for (const sel of selectSels) {
+      if (await page.$(sel)) {
+        selectSel = sel;
+        break;
+      }
+    }
+
+    if (selectSel) {
       await page.select(selectSel, type);
       note('form', 'Recipient type selected.', { selectSel, type });
     } else {
-      note('form', 'Recipient type selector missing.', { selectSel });
+      note('form', 'Recipient type selector missing.', { triedSelectors: selectSels });
     }
 
-    // Name input
-    const nameSel = '#partyTransactions #target_id, #target_id';
-    if (!(await page.$(nameSel))) {
-      note('form', 'Name field missing.', { nameSel });
+    // Name input - try multiple selectors
+    const nameSels = [
+      '#partyTransactions #target_id',
+      '#partyTransactions input#target_id',
+      '#partyTransactions input[name="target_id"]',
+      '#target_id',
+      'input#target_id',
+      'input[name="target_id"]',
+      'input[name*="target"]',
+      'input[name*="recipient"]',
+      'input[name*="player"]',
+      'input[placeholder*="name" i]',
+      'input[placeholder*="player" i]',
+      'input[placeholder*="recipient" i]',
+      '#partyTransactions input[type="text"]',
+      '.form-group input[type="text"]'
+    ];
+
+    let nameSel = null;
+    for (const sel of nameSels) {
+      if (await page.$(sel)) {
+        nameSel = sel;
+        break;
+      }
+    }
+
+    if (!nameSel) {
+      note('form', 'Name field missing.', { triedSelectors: nameSels });
       return { ok: false, step: 'locate-name', reason: 'Name field not found', actions };
     }
     await page.$eval(nameSel, (el) => (el.value = ''));
@@ -350,10 +392,35 @@ async function performWebSend({ type, name, amount, debug }) {
       note('form', 'Autosuggest selection step failed (continuing).', { error: e?.message || String(e) });
     }
 
-    // Amount input
-    const amountSel = '#partyTransactions #money, #money, #partyTransactions input[type="money"]';
-    if (!(await page.$(amountSel))) {
-      note('form', 'Amount field missing.', { amountSel });
+    // Amount input - try multiple selectors
+    const amountSels = [
+      '#partyTransactions #money',
+      '#partyTransactions input#money',
+      '#partyTransactions input[name="money"]',
+      '#money',
+      'input#money',
+      'input[name="money"]',
+      'input[name*="amount" i]',
+      'input[name*="money" i]',
+      'input[placeholder*="amount" i]',
+      'input[placeholder*="money" i]',
+      'input[placeholder*="dollar" i]',
+      'input[type="number"]',
+      '#partyTransactions input[type="text"]',
+      '.form-group input[type="number"]',
+      '.form-group input[type="text"]'
+    ];
+
+    let amountSel = null;
+    for (const sel of amountSels) {
+      if (await page.$(sel)) {
+        amountSel = sel;
+        break;
+      }
+    }
+
+    if (!amountSel) {
+      note('form', 'Amount field missing.', { triedSelectors: amountSels });
       return { ok: false, step: 'locate-amount', reason: 'Amount field not found', actions };
     }
     const plain = String(Math.round(Number(amount))).replace(/[^0-9]/g, '');
@@ -365,10 +432,29 @@ async function performWebSend({ type, name, amount, debug }) {
     });
     note('form', 'Amount filled.', { amountDigits: plain });
 
-    // Submit via form.requestSubmit()/submit()
-    const formSel = '#partyTransactions form, form#partyTransactions';
-    if (!(await page.$(formSel))) {
-      note('form', 'Form element not found for submission.', { formSel });
+    // Submit via form.requestSubmit()/submit() - try multiple selectors
+    const formSels = [
+      '#partyTransactions form',
+      'form#partyTransactions',
+      'form[action*="treasury"]',
+      'form[action*="party"]',
+      'form button[type="submit"]',
+      'form input[type="submit"]',
+      'form',
+      '.container form',
+      '.card form'
+    ];
+
+    let formSel = null;
+    for (const sel of formSels) {
+      if (await page.$(sel)) {
+        formSel = sel;
+        break;
+      }
+    }
+
+    if (!formSel) {
+      note('form', 'Form element not found for submission.', { triedSelectors: formSels });
       return { ok: false, step: 'locate-form', reason: 'Form not found', actions };
     }
 

@@ -211,8 +211,14 @@ module.exports = {
       dbDirty = true;
     }
 
-    // Build embeds
+    // Build embeds with enhanced validation
     const embeds = allProfiles.map(profile => {
+      // Skip profiles that appear to be login pages or have invalid data
+      if (!profile.name || /login/i.test(profile.name) || profile.name === 'Power Play USA' || profile.name.length < 2) {
+        console.log(`[Profile Command] Skipping invalid profile: ${JSON.stringify(profile)}`);
+        return null;
+      }
+
       const fields = [];
       if (profile.discord) fields.push({ name: 'Discord', value: profile.discord, inline: true });
       if (profile.party) fields.push({ name: 'Party', value: profile.party, inline: true });
@@ -225,14 +231,15 @@ module.exports = {
       if (profile.accountAge) fields.push({ name: 'Account Age', value: profile.accountAge, inline: true });
 
       return {
-        title: `${profile.name || 'Unknown'} (ID ${profile.id})`,
+        title: `${profile.name} (ID ${profile.id})`,
         url: `${BASE}/users/${profile.id}`,
         fields,
         ...(profile.avatar ? { thumbnail: { url: profile.avatar } } : {}),
         footer: { text: new URL(BASE).hostname },
         timestamp: new Date().toISOString(),
+        color: 0x3b82f6, // Blue color for valid profiles
       };
-    });
+    }).filter(Boolean); // Remove null embeds
 
     await interaction.editReply({ embeds });
 
@@ -296,9 +303,15 @@ module.exports = {
       })
       .setTimestamp();
 
-    // Add profile fields
+    // Add profile fields with validation
     for (const [id, profile] of pageProfiles) {
-      const name = profile.name || 'Unknown';
+      // Skip invalid profiles
+      if (!profile.name || /login/i.test(profile.name) || profile.name === 'Power Play USA' || profile.name.length < 2) {
+        console.log(`[Profile All Command] Skipping invalid profile: ${JSON.stringify(profile)}`);
+        continue;
+      }
+
+      const name = profile.name;
       const party = profile.party ? ` [${profile.party}]` : '';
       const state = profile.state ? ` - ${profile.state}` : '';
       const cash = profile.cash ? ` • $${profile.cash}` : '';
