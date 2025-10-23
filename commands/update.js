@@ -184,10 +184,10 @@ module.exports = {
 
       await interaction.editReply(`Updating profiles (${typeSummaryLabel})...`);
 
-      const processor = new ParallelProcessor({ 
-        maxConcurrency: 3, 
-        batchSize: 10,
-        delayBetweenBatches: 2000 
+      const processor = new ParallelProcessor({
+        maxConcurrency: 12,
+        batchSize: 20,
+        delayBetweenBatches: 200
       });
 
       // Process existing profiles first

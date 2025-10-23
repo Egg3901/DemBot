@@ -1,6 +1,6 @@
 // commands/profile.js
 // Version: 2.0 - Enhanced with parallel processing and smart caching
-const { SlashCommandBuilder } = require('discord.js');
+const { SlashCommandBuilder, EmbedBuilder } = require('discord.js');
 const { parseProfile, BASE } = require('../lib/ppusa');
 const { loadProfileDb, writeProfileDb, mergeProfileRecord } = require('../lib/profile-cache');
 const { sessionManager } = require('../lib/session-manager');
@@ -11,16 +11,35 @@ const { navigateWithSession } = require('../lib/ppusa-auth-optimized');
 module.exports = {
   data: new SlashCommandBuilder()
     .setName('profile')
-    .setDescription('Show a player\'s current Power Play USA profile by Discord mention, name, or id')
+    .setDescription('Show Power Play USA profiles - all profiles or specific user lookup')
     .addUserOption(opt =>
       opt.setName('user')
-        .setDescription('Discord user to look up')
+        .setDescription('Discord user to look up (optional - shows all if not specified)')
         .setRequired(false)
     )
     .addStringOption(opt =>
       opt.setName('query')
-        .setDescription('Profile name, Discord username, mention, or numeric id')
+        .setDescription('Profile name, Discord username, mention, or numeric id (optional)')
         .setRequired(false)
+    )
+    .addIntegerOption(opt =>
+      opt.setName('page')
+        .setDescription('Page number for all profiles view (default: 1)')
+        .setRequired(false)
+        .setMinValue(1)
+    )
+    .addStringOption(opt =>
+      opt.setName('sort')
+        .setDescription('Sort by: name, cash, es, party, state, position')
+        .setRequired(false)
+        .addChoices(
+          { name: 'Name', value: 'name' },
+          { name: 'Cash', value: 'cash' },
+          { name: 'ES', value: 'es' },
+          { name: 'Party', value: 'party' },
+          { name: 'State', value: 'state' },
+          { name: 'Position', value: 'position' }
+        )
     ),
 
   /**
@@ -33,11 +52,19 @@ module.exports = {
 
     const discordUser = interaction.options.getUser('user');
     const queryRaw = (interaction.options.getString('query') || '').trim();
+    const page = interaction.options.getInteger('page') || 1;
+    const sortBy = interaction.options.getString('sort') || 'name';
 
-    if (!discordUser && !queryRaw) {
-      return interaction.editReply('Provide a Discord user, mention, name, or numeric profile id.');
+    // If user or query provided, do specific lookup
+    if (discordUser || queryRaw) {
+      return this.lookupSpecificProfile(interaction, discordUser, queryRaw);
     }
 
+    // Show all profiles with pagination
+    return this.showAllProfiles(interaction, page, sortBy);
+  },
+
+  async lookupSpecificProfile(interaction, discordUser, queryRaw) {
     const { db } = loadProfileDb();
     const profiles = db.profiles || {};
     const byDiscord = db.byDiscord || {};
@@ -141,18 +168,18 @@ module.exports = {
     if (uncachedIds.length > 0) {
       try {
         const session = await sessionManager.authenticateSession('profile', `${BASE}/users/${uncachedIds[0]}`);
-        const processor = new ParallelProcessor({ maxConcurrency: 3, batchSize: 5 });
+        const processor = new ParallelProcessor({ maxConcurrency: 8, batchSize: 10 });
 
         const profileProcessor = async (profileId) => {
           try {
             const targetUrl = `${BASE}/users/${profileId}`;
             const result = await navigateWithSession(session, targetUrl, 'networkidle2');
             const info = parseProfile(result.html);
-            
+
             // Cache the result
             const cacheKey = SmartCache.createProfileKey(profileId);
             smartCache.set(cacheKey, info, 10 * 60 * 1000); // 10 minutes TTL
-            
+
             return { id: profileId, ...info };
           } catch (error) {
             console.error(`Error processing profile ${profileId}:`, error.message);
@@ -177,7 +204,7 @@ module.exports = {
 
     // Combine cached and fresh profiles
     const allProfiles = [...cachedProfiles, ...freshProfiles];
-    
+
     // Update database with fresh profiles
     for (const profile of freshProfiles) {
       mergeProfileRecord(db, profile.id, profile);
@@ -208,13 +235,125 @@ module.exports = {
     });
 
     await interaction.editReply({ embeds });
-    
+
     if (dbDirty) {
-      try { 
-        writeProfileDb(db); 
+      try {
+        writeProfileDb(db);
       } catch (error) {
         console.error('Error saving profile database:', error);
       }
+    }
+  },
+
+  async showAllProfiles(interaction, page, sortBy) {
+    const { db } = loadProfileDb();
+    const profiles = db.profiles || {};
+    const profileEntries = Object.entries(profiles);
+
+    if (profileEntries.length === 0) {
+      return interaction.editReply('No profiles found. Try running /update to populate the database.');
+    }
+
+    const PROFILES_PER_PAGE = 10;
+    const totalPages = Math.ceil(profileEntries.length / PROFILES_PER_PAGE);
+    const startIndex = (page - 1) * PROFILES_PER_PAGE;
+    const endIndex = startIndex + PROFILES_PER_PAGE;
+
+    // Sort profiles
+    const sortedProfiles = profileEntries.sort((a, b) => {
+      const [, profileA] = a;
+      const [, profileB] = b;
+
+      switch (sortBy) {
+        case 'cash':
+          const cashA = parseFloat(profileA.cash?.replace(/[$,]/g, '') || '0');
+          const cashB = parseFloat(profileB.cash?.replace(/[$,]/g, '') || '0');
+          return cashB - cashA;
+        case 'es':
+          return (profileB.es || 0) - (profileA.es || 0);
+        case 'party':
+          return (profileA.party || '').localeCompare(profileB.party || '');
+        case 'state':
+          return (profileA.state || '').localeCompare(profileB.state || '');
+        case 'position':
+          return (profileA.position || '').localeCompare(profileB.position || '');
+        case 'name':
+        default:
+          return (profileA.name || '').localeCompare(profileB.name || '');
+      }
+    });
+
+    const pageProfiles = sortedProfiles.slice(startIndex, endIndex);
+
+    // Create embed
+    const embed = new EmbedBuilder()
+      .setTitle(`All Profiles (Page ${page}/${totalPages})`)
+      .setDescription(`Showing ${startIndex + 1}-${Math.min(endIndex, profileEntries.length)} of ${profileEntries.length} profiles`)
+      .setColor(0x3b82f6)
+      .setFooter({
+        text: `Sorted by ${sortBy} • Last updated: ${new Date(db.updatedAt).toLocaleString()}`,
+        iconURL: interaction.guild?.iconURL()
+      })
+      .setTimestamp();
+
+    // Add profile fields
+    for (const [id, profile] of pageProfiles) {
+      const name = profile.name || 'Unknown';
+      const party = profile.party ? ` [${profile.party}]` : '';
+      const state = profile.state ? ` - ${profile.state}` : '';
+      const cash = profile.cash ? ` • $${profile.cash}` : '';
+      const es = profile.es ? ` • ES:${profile.es}` : '';
+      const position = profile.position ? ` (${profile.position})` : '';
+
+      const value = `${party}${state}${position}${cash}${es}`;
+
+      embed.addFields({
+        name: `${name} (ID ${id})`,
+        value: value || 'No additional info',
+        inline: false
+      });
+    }
+
+    // Add pagination info if multiple pages
+    if (totalPages > 1) {
+      const components = [];
+
+      if (totalPages > 1) {
+        const paginationRow = {
+          type: 1, // ACTION_ROW
+          components: [
+            {
+              type: 2, // BUTTON
+              style: page > 1 ? 1 : 2, // PRIMARY or SECONDARY
+              label: 'Previous',
+              custom_id: `profile_prev_${page}_${sortBy}`,
+              disabled: page <= 1
+            },
+            {
+              type: 2, // BUTTON
+              style: 1, // PRIMARY
+              label: `${page}/${totalPages}`,
+              custom_id: `profile_page_${page}_${sortBy}`,
+              disabled: true
+            },
+            {
+              type: 2, // BUTTON
+              style: page < totalPages ? 1 : 2, // PRIMARY or SECONDARY
+              label: 'Next',
+              custom_id: `profile_next_${page}_${sortBy}`,
+              disabled: page >= totalPages
+            }
+          ]
+        };
+        components.push(paginationRow);
+      }
+
+      await interaction.editReply({
+        embeds: [embed],
+        components
+      });
+    } else {
+      await interaction.editReply({ embeds: [embed] });
     }
   },
 };
