@@ -373,7 +373,7 @@ async function generateRecommendations(analysis) {
     const response = await anthropic.messages.create({
       model: "claude-3-haiku-20240307",
       max_tokens: 50,
-      system: "You are a gaming strategy advisor for Power Play USA. Incorporate state control/lean, a 4-player capacity per state, and player activity when summarizing. Respond with 1 short sentence only.",
+      system: "You are a gaming strategy advisor for Power Play USA. Incorporate state control/lean, a 4-player capacity per state, and player activity when summarizing. Respond with 3 short sentence only.",
       messages: [{
         role: "user",
         content: prompt
