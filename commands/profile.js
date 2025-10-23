@@ -55,12 +55,16 @@ module.exports = {
     const page = interaction.options.getInteger('page') || 1;
     const sortBy = interaction.options.getString('sort') || 'name';
 
+    console.log(`[Profile Command Debug] discordUser: ${discordUser?.username || 'none'}, queryRaw: "${queryRaw}", page: ${page}, sortBy: ${sortBy}`);
+
     // If user or query provided, do specific lookup
     if (discordUser || queryRaw) {
+      console.log(`[Profile Command Debug] Going to lookupSpecificProfile`);
       return this.lookupSpecificProfile(interaction, discordUser, queryRaw);
     }
 
     // Show all profiles with pagination
+    console.log(`[Profile Command Debug] Going to showAllProfiles`);
     return this.showAllProfiles(interaction, page, sortBy);
   },
 
@@ -144,6 +148,8 @@ module.exports = {
     await handleQuery();
 
     const ids = Array.from(idSet).slice(0, 10);
+    console.log(`[Profile Command Debug] Found ${ids.length} profile IDs: ${ids.join(', ')}`);
+    
     if (ids.length === 0) {
       const label = discordUser ? `Discord user "${discordUser.username}"` : `"${queryRaw}"`;
       return interaction.editReply(`No profile found for ${label}. Try /update to refresh the cache.`);
@@ -212,6 +218,7 @@ module.exports = {
     }
 
     // Build embeds with enhanced validation
+    console.log(`[Profile Command Debug] Processing ${allProfiles.length} profiles for display`);
     const embeds = allProfiles.map(profile => {
       // Skip profiles that appear to be login pages or have invalid data
       if (!profile.name || /login/i.test(profile.name) || profile.name === 'Power Play USA' || profile.name.length < 2) {
@@ -241,6 +248,7 @@ module.exports = {
       };
     }).filter(Boolean); // Remove null embeds
 
+    console.log(`[Profile Command Debug] Created ${embeds.length} embeds for display`);
     await interaction.editReply({ embeds });
 
     if (dbDirty) {
@@ -256,6 +264,8 @@ module.exports = {
     const { db } = loadProfileDb();
     const profiles = db.profiles || {};
     const profileEntries = Object.entries(profiles);
+
+    console.log(`[Profile Command Debug] showAllProfiles: Found ${profileEntries.length} profiles in database`);
 
     if (profileEntries.length === 0) {
       return interaction.editReply('No profiles found. Try running /update to populate the database.');
@@ -291,6 +301,8 @@ module.exports = {
     });
 
     const pageProfiles = sortedProfiles.slice(startIndex, endIndex);
+
+    console.log(`[Profile Command Debug] showAllProfiles: Displaying ${pageProfiles.length} profiles on page ${page}/${totalPages}`);
 
     // Create embed
     const embed = new EmbedBuilder()
