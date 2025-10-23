@@ -26,6 +26,11 @@ module.exports = {
       subcommand
         .setName('start')
         .setDescription('Start the automated update cron job')
+    )
+    .addSubcommand(subcommand =>
+      subcommand
+        .setName('restart')
+        .setDescription('Restart the automated update cron job')
     ),
 
   async execute(interaction) {
@@ -43,28 +48,35 @@ module.exports = {
     }
 
     try {
+      // Get status for all operations that need it
+      const status = cronService ? cronService.getStatus() : null;
+
       switch (subcommand) {
         case 'status': {
-          const status = cronService.getStatus();
-          const lastRunText = status.lastRun 
-            ? status.lastRun.toLocaleString() 
+          const lastRunText = status && status.lastRun
+            ? status.lastRun.toLocaleString()
             : 'Never';
-          
+
+          const nextRunText = status && status.nextRun
+            ? new Date(status.nextRun).toLocaleString()
+            : 'Every hour at minute 0';
+
           const message = `📊 **Cron Service Status**
-• **Running**: ${status.isRunning ? '🔄 Yes' : '⏸️ No'}
-• **Scheduled**: ${status.scheduled ? '✅ Yes' : '❌ No'}
+• **Running**: ${status && status.isRunning ? '🔄 Yes' : '⏸️ No'}
+• **Scheduled**: ${status && status.scheduled ? '✅ Yes' : '❌ No'}
+• **Job Active**: ${status && status.jobActive ? '✅ Yes' : '❌ No'}
 • **Last Run**: ${lastRunText}
-• **Next Run**: Every hour at minute 0`;
-          
+• **Next Run**: ${nextRunText}`;
+
           await interaction.editReply(message);
           break;
         }
 
         case 'run': {
-          if (status.isRunning) {
+          if (status && status.isRunning) {
             return interaction.editReply('❌ Update is already running. Please wait for it to complete.');
           }
-          
+
           await interaction.editReply('🔄 Manually triggering all automated updates...');
           await cronService.runHourlyUpdate();
           break;
@@ -79,6 +91,12 @@ module.exports = {
         case 'start': {
           cronService.start();
           await interaction.editReply('▶️ Automated update cron job started.');
+          break;
+        }
+
+        case 'restart': {
+          cronService.restart();
+          await interaction.editReply('🔄 Automated update cron job restarted.');
           break;
         }
 
