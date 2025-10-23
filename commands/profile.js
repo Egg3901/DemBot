@@ -103,10 +103,41 @@ module.exports = {
   },
 
   async lookupSpecificProfile(interaction, discordUser, queryRaw) {
-    const { db } = loadProfileDb();
+    const { db, jsonPath } = loadProfileDb();
     const profiles = db.profiles || {};
     const byDiscord = db.byDiscord || {};
     let dbDirty = false;
+
+    // Debug: Check what file is being loaded
+    const fs = require('fs');
+    const fileExists = fs.existsSync(jsonPath);
+    const fileStats = fileExists ? fs.statSync(jsonPath) : null;
+    const fileSize = fileStats ? fileStats.size : 0;
+    const fileModified = fileStats ? fileStats.mtime.toISOString() : 'N/A';
+    
+    console.log(`[Profile Command Debug] Loading from: ${jsonPath}`);
+    console.log(`[Profile Command Debug] File exists: ${fileExists}, size: ${fileSize}, modified: ${fileModified}`);
+    await logDebugToChannel(interaction.client, `Loading from: ${jsonPath} | File exists: ${fileExists}, size: ${fileSize}, modified: ${fileModified}`);
+
+    // Debug: Check if we can find egg3901 in the loaded data
+    const debugEgg3901 = [];
+    debugEgg3901.push(`Loaded profiles count: ${Object.keys(profiles).length}`);
+    debugEgg3901.push(`Loaded byDiscord count: ${Object.keys(byDiscord).length}`);
+    debugEgg3901.push(`Direct byDiscord['egg3901']: ${JSON.stringify(byDiscord['egg3901'])}`);
+    
+    // Check specific profile IDs that should have egg3901
+    const expectedIds = [1157, 1240, 1241];
+    for (const id of expectedIds) {
+      const profile = profiles[id];
+      if (profile) {
+        debugEgg3901.push(`Profile ${id}: discord="${profile.discord}", name="${profile.name}"`);
+      } else {
+        debugEgg3901.push(`Profile ${id}: NOT FOUND`);
+      }
+    }
+    
+    console.log(`[Profile Command Debug] Database loading debug: ${debugEgg3901.join(' | ')}`);
+    await logDebugToChannel(interaction.client, `Database loading debug: ${debugEgg3901.join(' | ')}`);
 
     const debugInfo = [];
     debugInfo.push(`Database stats: ${Object.keys(profiles).length} profiles, ${Object.keys(byDiscord).length} Discord entries`);
