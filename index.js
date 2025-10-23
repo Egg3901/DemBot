@@ -183,10 +183,15 @@ client.once(Events.ClientReady, async (c) => {
     console.log('👉 Type "/" in the target guild; if missing, Ctrl+R to reload Discord client.');
 
     // Start cron service for automated updates
-    cronService = new CronService(client);
-    client.cronService = cronService; // Make it accessible to commands
-    cronService.start();
-    console.log('⏰ Automated update cron job started');
+    try {
+      cronService = new CronService(client);
+      client.cronService = cronService; // Make it accessible to commands
+      cronService.start();
+      console.log('⏰ Automated update cron job started');
+    } catch (error) {
+      console.error('❌ Failed to start cron service:', error);
+      // Continue without cron service rather than crashing
+    }
   } catch (err) {
     console.error('❌ Registration error:', err);
   }

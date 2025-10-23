@@ -1,16 +1,13 @@
 // commands/race.js
-// Version: 1.0
-// Show a state race snapshot (Senate class 1/2/3, Governor, House):
-// - Outcome for the most recently finished round (Primary/General/Runoff)
-// - If active, also show the next race time (if available)
-// - Always include the most recent poll for this race
-
+// Version: 2.0 - Enhanced with parallel processing and smart caching
 const { SlashCommandBuilder } = require('discord.js');
 const cheerio = require('cheerio');
-const { authenticateAndNavigate, PPUSAAuthError } = require('../lib/ppusa-auth');
+const { sessionManager } = require('../lib/session-manager');
+const { smartCache } = require('../lib/smart-cache');
 const { config } = require('../lib/ppusa-config');
 const { normalizeStateName, resolveStateIdFromIndex } = require('../lib/state-utils');
 const { reportCommandError } = require('../lib/command-utils');
+const { navigateWithSession } = require('../lib/ppusa-auth-optimized');
 
 const BASE = config.baseUrl;
 
@@ -156,11 +153,9 @@ function formatPollText(text) {
   let formatted = text.replace(/\s+/g, ' ').trim();
   formatted = formatted.replace(/%(\S)/g, '% $1');
   formatted = formatted.replace(/(\d)V\s+/i, '$1 | ');
-  // Remove explicit pollster attribution like "Poll by Emerson College." (and similar)
   formatted = formatted
     .replace(/\bPoll\s+by\s+[^.|\n]+\.?/gi, '')
     .replace(/\(\s*Poll\s+by\s+[^)]+\)/gi, '');
-  // Tidy up extra separators after removal
   formatted = formatted
     .replace(/\s*\|\s*\|\s*/g, ' | ')
     .replace(/\s{2,}/g, ' ')
@@ -208,78 +203,6 @@ function extractLatestPoll(html, stateName, raceLabel) {
   return null;
 }
 
-function extractPollAverage(html, stateName, raceLabel) {
-  const $ = cheerio.load(html || '');
-  let avg = null;
-  const contains = (haystack, needle) => String(haystack || '').toLowerCase().includes(String(needle || '').toLowerCase());
-
-  const tryFind = (requireFilters) => {
-    let found = null;
-    $('table').each((_, table) => {
-      $(table)
-        .find('tbody tr')
-        .each((__, tr) => {
-          const rowText = ($(tr).text() || '').replace(/\s+/g, ' ').trim();
-          if (!rowText) return;
-          const hasAvg = /\baverage\b/i.test(rowText) || /overall/i.test(rowText);
-          if (!hasAvg) return;
-          if (requireFilters) {
-            const okState = stateName ? contains(rowText, stateName) : true;
-            const okRace = raceLabel ? contains(rowText, raceLabel) : true;
-            if (!okState || !okRace) return;
-          }
-          const cols = $(tr)
-            .find('td')
-            .map((i, el) => {
-              const raw = ($(el).text() || '').replace(/\s+/g, ' ').trim();
-              return formatPollText(raw) || raw;
-            })
-            .get();
-          const link = $(tr).find('a[href]').first().attr('href');
-          found = {
-            text: formatPollText(rowText) || rowText,
-            cols,
-            url: link ? new URL(link, BASE).toString() : null,
-          };
-          return false;
-        });
-      if (found) return false;
-    });
-    return found;
-  };
-
-  avg = tryFind(true);
-  if (!avg) avg = tryFind(false);
-  return avg || null;
-}
-
-function computeAverageFromRecentPolls(html, stateName, raceLabel, maxRows = 5) {
-  const recent = extractRecentPolls(html, stateName, raceLabel, maxRows) || [];
-  if (!recent.length) return null;
-  const pairs = [];
-  for (const row of recent) {
-    const cells = Array.isArray(row.cols) && row.cols.length ? row.cols : (row.text ? [row.text] : []);
-    const nums = [];
-    for (const cell of cells) {
-      const m = String(cell || '').match(/([0-9]+(?:\.[0-9]+)?)%/g);
-      if (m) {
-        for (const tok of m) {
-          const v = Number(tok.replace('%', ''));
-          if (Number.isFinite(v)) nums.push(v);
-        }
-      }
-    }
-    if (nums.length >= 2) {
-      nums.sort((a, b) => b - a);
-      pairs.push([nums[0], nums[1]]);
-    }
-  }
-  if (!pairs.length) return null;
-  const topAvg = Math.round((pairs.reduce((s, p) => s + p[0], 0) / pairs.length) * 10) / 10;
-  const secondAvg = Math.round((pairs.reduce((s, p) => s + p[1], 0) / pairs.length) * 10) / 10;
-  return { text: `Avg (last ${pairs.length}): ${topAvg}% / ${secondAvg}%`, cols: [`${topAvg}%`, `${secondAvg}%`], url: null };
-}
-
 function extractRecentPolls(html, stateName, raceLabel, limit = 5) {
   const $ = cheerio.load(html || '');
   const matches = [];
@@ -310,7 +233,6 @@ function extractRecentPolls(html, stateName, raceLabel, limit = 5) {
 
   if (matches.length) return matches.slice(0, Math.max(1, limit));
 
-  // Fallback: take first N rows regardless of filter
   const rows = [];
   const trList = $('table tbody tr');
   trList.each((i, tr) => {
@@ -328,91 +250,6 @@ function extractRecentPolls(html, stateName, raceLabel, limit = 5) {
     rows.push({ text: formatPollText(rowTextRaw) || rowTextRaw, cols, url: link ? new URL(link, BASE).toString() : null });
   });
   return rows.slice(0, Math.max(1, limit));
-}
-
-function extractFinalResultCandidates(html) {
-  const $ = cheerio.load(html || '');
-  const clean = (text) => String(text || '').replace(/\u00a0/g, ' ').replace(/\s+/g, ' ').trim();
-  const metricsRegex = /\b(?:ES|CO|NR|AR|CR)\s*[:]/i;
-
-  const wrappers = $('#statewide-info .progress-wrapper, .progress-wrapper:has(.progress-label span:contains("Party"))');
-  const results = [];
-
-  wrappers.each((_, el) => {
-    const wrap = $(el);
-    const label = wrap.find('.progress-label').first();
-    if (!label.length) return;
-
-    let nameText = clean(label.find('a .text-primary, .text-primary').first().text());
-    if (!nameText) {
-      nameText = clean(label.contents().filter((__, node) => node.type === 'text').text());
-    }
-    const name = clean(nameText);
-    if (!name) return;
-
-    const statsNode = label
-      .find('span')
-      .filter((__, node) => metricsRegex.test($(node).text()))
-      .first();
-    const stats = clean(statsNode.text());
-
-    const partyNode = label
-      .find('span')
-      .filter((__, node) => /party/i.test($(node).text()))
-      .first();
-    const party = clean(partyNode.text());
-
-    const percentageNode = wrap
-      .find('.progress-percentage span')
-      .filter((__, node) => /%/.test($(node).text()))
-      .last();
-    const percentMatch = clean(percentageNode.text()).match(/([0-9]+(?:\.[0-9]+)?)/);
-    const percent = percentMatch ? Number(percentMatch[1]) : null;
-
-    const votesNode = wrap
-      .find('.progress-percentage span')
-      .filter((__, node) => /votes/i.test($(node).text()))
-      .first();
-    const votesMatch = clean(votesNode.text()).match(/([0-9][0-9,]*)/);
-    const votes = votesMatch ? votesMatch[1] : null;
-
-    results.push({ name, stats, party, votes, percent });
-  });
-
-  if (results.length) {
-    return results.sort((a, b) => (b.percent ?? -1) - (a.percent ?? -1));
-  }
-
-  const heading = $('h4').filter((_, el) => ($(el).text() || '').trim().toLowerCase().includes('final results')).first();
-  if (!heading.length) return [];
-
-  const sectionTexts = [];
-  let node = heading.parent();
-  while ((node = node.next()).length) {
-    if (node.is('h4')) break;
-    sectionTexts.push(node.text());
-  }
-  const section = sectionTexts.join('\n').replace(/\s+/g, ' ').trim();
-  if (!section) return [];
-
-  const legacy = [];
-  const regex = /([A-Za-z0-9' .-]+?)\s*\(([^)]*CO:[^)]*)\)\s*\(([^)]*Party)\)\s*\(([^)]+) votes\)\s*([0-9]+(?:\.[0-9]+)?)%/gi;
-  let match;
-  while ((match = regex.exec(section))) {
-    const name = match[1].trim();
-    const stats = match[2].trim();
-    const party = match[3].replace(/^\(|\)$/g, '').trim();
-    const votesRaw = match[4].replace(/,/g, '').trim();
-    const percent = Number(match[5]);
-    legacy.push({
-      name,
-      stats,
-      party,
-      votes: votesRaw ? Number(votesRaw).toLocaleString('en-US') : null,
-      percent: Number.isFinite(percent) ? percent : null,
-    });
-  }
-  return legacy;
 }
 
 module.exports = {
@@ -441,6 +278,15 @@ module.exports = {
       return interaction.reply({ content: `Unknown state "${stateRaw}". Use a two-letter code or full state name.`, ephemeral: true });
     }
 
+    // Check cache first
+    const cacheKey = smartCache.createRaceKey(stateName, raceLabel);
+    const cached = smartCache.get(cacheKey);
+    
+    if (cached) {
+      await interaction.reply({ embeds: [cached.embed] });
+      return;
+    }
+
     let deferred = false;
     try {
       await interaction.deferReply();
@@ -450,18 +296,19 @@ module.exports = {
       throw e;
     }
 
-    let browser = null;
-    let page = null;
-
+    let session = null;
     try {
-      const session = await authenticateAndNavigate({ url: `${BASE}/national/states`, debug: !!config.debug });
-      browser = session.browser;
-      page = session.page;
-      try { page.setDefaultNavigationTimeout?.(15000); page.setDefaultTimeout?.(15000); } catch (_) {}
-      let statesHtml = session.html;
-      if (!statesHtml || statesHtml.length < 300) {
-        const ref = await fetchHtml(page, `${BASE}/national/states`, 'load');
-        statesHtml = ref.html;
+      // Get authenticated session
+      session = await sessionManager.authenticateSession('race', `${BASE}/national/states`);
+
+      // Fetch states index
+      let statesHtml = '';
+      try {
+        const statesResult = await navigateWithSession(session, `${BASE}/national/states`, 'load');
+        statesHtml = statesResult.html;
+      } catch (error) {
+        console.error('Error fetching states index:', error);
+        return interaction.editReply('Failed to fetch states index');
       }
 
       const stateId = resolveStateIdFromIndex(statesHtml, stateName);
@@ -469,48 +316,54 @@ module.exports = {
         return interaction.editReply({ content: `Could not find a state matching "${stateName}" on the states listing.` });
       }
 
-      const elections = await fetchHtml(page, `${BASE}/states/${stateId}/elections`, 'domcontentloaded');
+      // Fetch elections page
+      const elections = await navigateWithSession(session, `${BASE}/states/${stateId}/elections`, 'domcontentloaded');
       const raceMeta = findRaceInfoFromStateElections(elections.html, raceLabel);
       if (!raceMeta?.url) {
         return interaction.editReply({ content: `Could not find a ${raceLabel} election page for ${stateName}.` });
       }
 
-      const racePage = await fetchHtml(page, raceMeta.url, 'load');
+      // Fetch race page
+      const racePage = await navigateWithSession(session, raceMeta.url, 'load');
       const latest = pickLatestResults(racePage.html);
-      const finalCandidates = extractFinalResultCandidates(racePage.html);
       const raceEnded = !!raceMeta?.ended;
       const nextInfo = raceEnded ? null : (extractNextRaceTime(racePage.html) || raceMeta.nextRace || null);
 
+      // Fetch polls in parallel
       let pollResult = null;
       let pollsUrl = null;
       let pollsHtml = null;
+      
       const $race = cheerio.load(racePage.html);
       const pollHref = $race('a[href*="poll"]').first().attr('href');
+      
       if (pollHref) {
         const absolute = new URL(pollHref, BASE).toString();
-        const pollPage = await fetchHtml(page, absolute, 'domcontentloaded');
+        const pollPage = await navigateWithSession(session, absolute, 'domcontentloaded');
         pollsUrl = pollPage.finalUrl || absolute;
         pollsHtml = pollPage.html;
         pollResult = extractLatestPoll(pollsHtml, stateName, raceLabel);
       }
+      
       if (!pollResult) {
-        const fallback = await fetchHtml(page, `${BASE}/elections/polling`, 'domcontentloaded');
+        const fallback = await navigateWithSession(session, `${BASE}/elections/polling`, 'domcontentloaded');
         pollsUrl = fallback.finalUrl || `${BASE}/elections/polling`;
         pollsHtml = fallback.html;
         pollResult = extractLatestPoll(pollsHtml, stateName, raceLabel);
       }
 
+      // Build embed
       const fields = [];
-      if (raceEnded && finalCandidates.length) {
-        const formatted = finalCandidates.map((cand) => {
-          const lines = [];
-          lines.push(`**${cand.name}**${cand.percent != null ? ` - ${cand.percent}%` : ''}${cand.votes ? ` (${cand.votes} votes)` : ''}`);
-          if (cand.stats) lines.push(cand.stats);
-          if (cand.party) lines.push(cand.party);
-          return lines.join('\n');
-        }).join('\n\n');
-        const note = finalCandidates.length === 1 ? `${formatted}\n_Unopposed_` : formatted;
-        fields.push({ name: 'Final Results', value: note, inline: false });
+      if (raceEnded && latest && latest.rows.length >= 2) {
+        const [a, b] = latest.rows;
+        fields.push({
+          name: 'Final Results',
+          value: [
+            `**${a.name}**${a.percent != null ? ` - ${a.percent}%` : ''}`,
+            `**${b.name}**${b.percent != null ? ` - ${b.percent}%` : ''}`,
+          ].join('\n'),
+          inline: false,
+        });
       } else if (latest && latest.rows.length >= 2) {
         const [a, b] = latest.rows;
         fields.push({
@@ -529,8 +382,6 @@ module.exports = {
         fields.push({ name: 'Race Ends', value: nextInfo, inline: false });
       }
 
-      // Note: do not show poll average; rely on race page's current/finished results instead
-
       if (pollResult) {
         const pollText = pollResult.cols && pollResult.cols.length ? pollResult.cols.join(' | ') : pollResult.text;
         fields.push({ name: 'Most Recent Poll', value: pollText || 'Unknown', inline: false });
@@ -546,6 +397,9 @@ module.exports = {
         footer: { text: new URL(BASE).hostname },
         timestamp: new Date().toISOString(),
       };
+
+      // Cache the result
+      smartCache.set(cacheKey, { embed }, 5 * 60 * 1000); // 5 minutes TTL
 
       // Build page 2: Top recent polls (up to 5)
       const pages = [embed];
@@ -572,7 +426,7 @@ module.exports = {
 
       await interaction.editReply({ embeds: [pages[0]] });
 
-      // Add reaction-based pagination controls (like positions)
+      // Add reaction-based pagination controls
       const message = await interaction.fetchReply();
       if (message && typeof message.react === 'function' && pages.length > 1) {
         const controls = ['\u2B05\uFE0F', '\u27A1\uFE0F']; // ⬅️, ➡️
@@ -618,16 +472,10 @@ module.exports = {
         }
       }
     } catch (err) {
-      if (err instanceof PPUSAAuthError) {
-        await reportCommandError(interaction, err, { message: err.message, followUp: true });
-        return;
-      }
       await reportCommandError(interaction, err, { message: `Error: ${err.message}`, meta: { command: 'race' } });
       if (deferred) {
         try { await interaction.editReply({ content: `Error: ${err.message}` }); } catch (_) {}
       }
-    } finally {
-      try { await page?.close(); } catch {}
     }
   },
 };

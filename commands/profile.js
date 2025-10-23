@@ -1,8 +1,12 @@
 // commands/profile.js
-// Shows a player's current Power Play USA profile by Discord mention, username, name, or numeric id.
+// Version: 2.0 - Enhanced with parallel processing and smart caching
 const { SlashCommandBuilder } = require('discord.js');
-const { loginAndGet, parseProfile, BASE } = require('../lib/ppusa');
+const { parseProfile, BASE } = require('../lib/ppusa');
 const { loadProfileDb, writeProfileDb, mergeProfileRecord } = require('../lib/profile-cache');
+const { sessionManager } = require('../lib/session-manager');
+const { ParallelProcessor } = require('../lib/parallel-processor');
+const { smartCache, SmartCache } = require('../lib/smart-cache');
+const { navigateWithSession } = require('../lib/ppusa-auth-optimized');
 
 module.exports = {
   data: new SlashCommandBuilder()
@@ -20,9 +24,7 @@ module.exports = {
     ),
 
   /**
-   * Execute the /profile command.
-   * Resolves all profile ids associated to the mentioned Discord user and
-   * renders up to 10 profile embeds (live data when possible; cache fallback).
+   * Execute the /profile command with optimizations
    * @param {import('discord.js').ChatInputCommandInteraction} interaction
    * @returns {Promise<void>}
    */
@@ -120,84 +122,99 @@ module.exports = {
       return interaction.editReply(`No profile found for ${label}. Try /update to refresh the cache.`);
     }
 
-    let browser, page;
-    const embeds = [];
-    try {
-      const sess = await loginAndGet(`${BASE}/users/${ids[0]}`);
-      browser = sess.browser;
-      page = sess.page;
+    // Check cache first
+    const cachedProfiles = [];
+    const uncachedIds = [];
 
-      for (const id of ids.slice(0, 10)) { // up to 10 embeds
-        try {
-          if (page.url() !== `${BASE}/users/${id}`) {
-            await page.goto(`${BASE}/users/${id}`, { waitUntil: 'networkidle2' });
-          }
-          const html = await page.content();
-          const info = parseProfile(html);
-          mergeProfileRecord(db, id, info);
-          dbDirty = true;
-          const fields = [];
-          if (info.discord) fields.push({ name: 'Discord', value: info.discord, inline: true });
-          if (info.party) fields.push({ name: 'Party', value: info.party, inline: true });
-          if (info.state) fields.push({ name: 'State', value: info.state, inline: true });
-          if (info.position) fields.push({ name: 'Position', value: info.position, inline: true });
-          if (info.es) fields.push({ name: 'ES', value: String(info.es), inline: true });
-          if (info.co) fields.push({ name: 'CO', value: String(info.co), inline: true });
-          if (info.nr) fields.push({ name: 'NR', value: String(info.nr), inline: true });
-          if (info.cash) fields.push({ name: '$', value: info.cash, inline: true });
-          if (info.accountAge) fields.push({ name: 'Account Age', value: info.accountAge, inline: true });
-          embeds.push({
-            title: `${info.name || 'Unknown'} (ID ${id})`,
-            url: `${BASE}/users/${id}`,
-            fields,
-            ...(info.avatar ? { thumbnail: { url: info.avatar } } : {}),
-            footer: { text: new URL(BASE).hostname },
-            timestamp: new Date().toISOString(),
-          });
-        } catch (e) {
-          const cached = db.profiles?.[id];
-          if (cached) {
-            const fields = [];
-            if (cached.discord) fields.push({ name: 'Discord', value: cached.discord, inline: true });
-            if (cached.party) fields.push({ name: 'Party', value: cached.party, inline: true });
-            if (cached.state) fields.push({ name: 'State', value: cached.state, inline: true });
-            if (cached.position) fields.push({ name: 'Position', value: cached.position, inline: true });
-            if (cached.es) fields.push({ name: 'ES', value: String(cached.es), inline: true });
-            if (cached.co) fields.push({ name: 'CO', value: String(cached.co), inline: true });
-            if (cached.nr) fields.push({ name: 'NR', value: String(cached.nr), inline: true });
-            if (cached.cash) fields.push({ name: '$', value: String(cached.cash), inline: true });
-            if (cached.accountAge) fields.push({ name: 'Account Age', value: String(cached.accountAge), inline: true });
-            embeds.push({
-              title: `${cached.name || 'Unknown'} (ID ${id})`,
-              url: `${BASE}/users/${id}`,
-              fields,
-              ...(cached.avatar ? { thumbnail: { url: cached.avatar } } : {}),
-              footer: { text: new URL(BASE).hostname },
-              timestamp: new Date().toISOString(),
-            });
-          }
-        }
+    for (const id of ids) {
+      const cacheKey = SmartCache.createProfileKey(id);
+      const cached = smartCache.get(cacheKey);
+      if (cached) {
+        cachedProfiles.push({ id, ...cached });
+      } else {
+        uncachedIds.push(id);
       }
+    }
 
-      await interaction.editReply({ embeds });
-      if (dbDirty) {
-        try { writeProfileDb(db); } catch (_) {}
+    // Process uncached profiles in parallel
+    let freshProfiles = [];
+    if (uncachedIds.length > 0) {
+      try {
+        const session = await sessionManager.authenticateSession('profile', `${BASE}/users/${uncachedIds[0]}`);
+        const processor = new ParallelProcessor({ maxConcurrency: 3, batchSize: 5 });
+
+        const profileProcessor = async (profileId) => {
+          try {
+            const targetUrl = `${BASE}/users/${profileId}`;
+            const result = await navigateWithSession(session, targetUrl, 'networkidle2');
+            const info = parseProfile(result.html);
+            
+            // Cache the result
+            const cacheKey = SmartCache.createProfileKey(profileId);
+            smartCache.set(cacheKey, info, 10 * 60 * 1000); // 10 minutes TTL
+            
+            return { id: profileId, ...info };
+          } catch (error) {
+            console.error(`Error processing profile ${profileId}:`, error.message);
+            return null;
+          }
+        };
+
+        const { results } = await processor.processProfiles(uncachedIds, profileProcessor, {
+          onProgress: (processed, total) => {
+            if (processed % 2 === 0 || processed === total) {
+              interaction.editReply(`Loading profiles... ${processed}/${total}`);
+            }
+          }
+        });
+
+        freshProfiles = results.filter(Boolean);
+      } catch (error) {
+        console.error('Error in parallel processing:', error);
+        return interaction.editReply(`Error fetching profiles: ${error.message}`);
       }
-    } catch (err) {
-      await interaction.editReply(`Error fetching profile(s): ${err?.message || String(err)}`);
-      if (dbDirty) {
-        try { writeProfileDb(db); } catch (_) {}
+    }
+
+    // Combine cached and fresh profiles
+    const allProfiles = [...cachedProfiles, ...freshProfiles];
+    
+    // Update database with fresh profiles
+    for (const profile of freshProfiles) {
+      mergeProfileRecord(db, profile.id, profile);
+      dbDirty = true;
+    }
+
+    // Build embeds
+    const embeds = allProfiles.map(profile => {
+      const fields = [];
+      if (profile.discord) fields.push({ name: 'Discord', value: profile.discord, inline: true });
+      if (profile.party) fields.push({ name: 'Party', value: profile.party, inline: true });
+      if (profile.state) fields.push({ name: 'State', value: profile.state, inline: true });
+      if (profile.position) fields.push({ name: 'Position', value: profile.position, inline: true });
+      if (profile.es) fields.push({ name: 'ES', value: String(profile.es), inline: true });
+      if (profile.co) fields.push({ name: 'CO', value: String(profile.co), inline: true });
+      if (profile.nr) fields.push({ name: 'NR', value: String(profile.nr), inline: true });
+      if (profile.cash) fields.push({ name: '$', value: profile.cash, inline: true });
+      if (profile.accountAge) fields.push({ name: 'Account Age', value: profile.accountAge, inline: true });
+
+      return {
+        title: `${profile.name || 'Unknown'} (ID ${profile.id})`,
+        url: `${BASE}/users/${profile.id}`,
+        fields,
+        ...(profile.avatar ? { thumbnail: { url: profile.avatar } } : {}),
+        footer: { text: new URL(BASE).hostname },
+        timestamp: new Date().toISOString(),
+      };
+    });
+
+    await interaction.editReply({ embeds });
+    
+    if (dbDirty) {
+      try { 
+        writeProfileDb(db); 
+      } catch (error) {
+        console.error('Error saving profile database:', error);
       }
-    } finally {
-      try { await page?.close(); } catch {}
     }
   },
 };
-/**
- * Project: DemBot (Discord automation for Power Play USA)
- * File: commands/profile.js
- * Purpose: Show a Discord user's current PPUSA profile(s) as embeds
- * Author: egg3901
- * Created: 2025-10-16
- * Last Updated: 2025-10-16
- */
