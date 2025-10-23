@@ -355,7 +355,19 @@ async function generateRecommendations(analysis) {
   
   const topTargets = analysis.underutilizedStates
     .slice(0, 3)
-    .map(s => `${s.state}(needs ${s.capacityGap}, ${s.electoral}ev${s.opportunities ? ',vacant' : ''})`)
+    .map(s => {
+      const ev = s.stateData?.electoral || s.electoral || 0;
+      const gov = s.stateData?.governor ? (s.stateData.governor.vacant ? 'Vacant' : `${s.stateData.governor.name} (${s.stateData.governor.party || 'Unknown'})`) : 'Unknown';
+      const sens = s.stateData?.senators ? s.stateData.senators.map(sen => sen.vacant ? 'Vacant' : `${sen.name} (${sen.party || 'Unknown'})`).join(', ') : 'Unknown';
+      const opportunities = s.opportunities || '';
+      
+      // Debug logging to verify live data is being used
+      if (process.env.NODE_ENV === 'development') {
+        console.log(`State ${s.state}: stateData exists:`, !!s.stateData, 'electoral:', s.stateData?.electoral, 'governor:', s.stateData?.governor?.name);
+      }
+      
+      return `${s.state}(needs ${s.capacityGap}, ${ev}ev, Gov:${gov}, Sen:${sens}${opportunities ? `, ${opportunities}` : ''})`;
+    })
     .join(', ');
   const topSource = analysis.overcrowdedStates[0];
   
@@ -366,14 +378,20 @@ async function generateRecommendations(analysis) {
     `Prefer moving active, positionless players.`,
     `Sources: ${topSource?.state || 'none'} has ${topSource?.movablePlayers || 0} movable.`,
     `Top targets: ${topTargets}.`,
-    `Write 1 concise sentence (≤15 words) summarizing the strategic opportunity.`
+    `Write one compact paragraph (technical, specific, not overly long; ≤80 words).`
   ].join(' ');
+
+  // Debug: Log the actual prompt being sent to AI
+  if (process.env.NODE_ENV === 'development') {
+    console.log('AI Prompt being sent:', prompt);
+    console.log('Using live state data:', analysis.usingLiveStateData);
+  }
 
   try {
     const response = await anthropic.messages.create({
       model: "claude-3-haiku-20240307",
-      max_tokens: 50,
-      system: "You are a gaming strategy advisor for Power Play USA. Incorporate state control/lean, a 4-player capacity per state, and player activity when summarizing. Respond with 3 short sentence only.",
+      max_tokens: 140,
+      system: "You are a gaming strategy advisor for Power Play USA. Incorporate state control/lean, officeholder positions (Gov, Senate, House majority), and live electoral votes (EVs). Optimize for actionable, quantitative planning that respects a 4-player capacity per state and player activity. Respond with one compact technical paragraph (clear, specific, not overly long).",
       messages: [{
         role: "user",
         content: prompt

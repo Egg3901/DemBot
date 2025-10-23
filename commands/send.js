@@ -3,6 +3,7 @@ const { SlashCommandBuilder, EmbedBuilder } = require('discord.js');
 const { authenticateAndNavigate, PPUSAAuthError } = require('../lib/ppusa-auth');
 const { config, getEnv, toAbsoluteUrl } = require('../lib/ppusa-config');
 const { getSendLimit, ROLE_FINANCE, ROLE_TREASURY_ADMIN, UNLIMITED, formatLimit } = require('../lib/send-access');
+const { isBypassUser } = require('../lib/permissions');
 
 const NAV_TIMEOUT = config.navTimeout;
 const DEFAULT_DEBUG = config.debug;
@@ -162,24 +163,25 @@ module.exports = {
     .addBooleanOption((opt) =>
       opt.setName('debug').setDescription('Include diagnostics in the response').setRequired(false)
     )
-    .setDMPermission(false),
+    .setDMPermission(true),
 
   /** @param {import('discord.js').ChatInputCommandInteraction} interaction */
   async execute(interaction) {
-    // Role gate
+    // Role gate (bypass for privileged user)
+    const bypass = isBypassUser(interaction.user?.id);
     const member =
       interaction.member ||
       (interaction.guild ? await interaction.guild.members.fetch(interaction.user.id).catch(() => null) : null);
     const hasFinanceRole = member?.roles?.cache?.has(ROLE_FINANCE) || false;
     const hasAdminRole = member?.roles?.cache?.has(ROLE_TREASURY_ADMIN) || false;
-    if (!hasFinanceRole && !hasAdminRole) {
+    if (!hasFinanceRole && !hasAdminRole && !bypass) {
       return interaction.reply({
         content: 'You do not have permission to use this command.',
         ephemeral: true,
       });
     }
 
-    const limit = getSendLimit(member);
+    const limit = bypass ? UNLIMITED : getSendLimit(member);
     const limitLabel = formatLimit(limit);
 
     // Inputs

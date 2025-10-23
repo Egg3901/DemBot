@@ -1,5 +1,6 @@
 // commands/funds.js
 const { SlashCommandBuilder, EmbedBuilder, PermissionFlagsBits } = require('discord.js');
+const { isBypassUser } = require('../lib/permissions');
 
 // ===== CONFIG =====
 const ALLOWED_CHANNEL = '1426053522113433770';
@@ -72,8 +73,8 @@ module.exports = {
    * @param {import('discord.js').ChatInputCommandInteraction} interaction
    */
   async execute(interaction) {
-    // --- Channel restriction (skip in DMs) ---
-    if (interaction.inGuild() && interaction.channelId !== ALLOWED_CHANNEL) {
+    // --- Channel restriction (skip in DMs; bypass for privileged user) ---
+    if (interaction.inGuild() && interaction.channelId !== ALLOWED_CHANNEL && !isBypassUser(interaction.user?.id)) {
       return interaction.reply({
         content: '🚫 This command can only be used in the designated **fund-request** channel.',
         ephemeral: true,

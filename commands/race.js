@@ -156,6 +156,16 @@ function formatPollText(text) {
   let formatted = text.replace(/\s+/g, ' ').trim();
   formatted = formatted.replace(/%(\S)/g, '% $1');
   formatted = formatted.replace(/(\d)V\s+/i, '$1 | ');
+  // Remove explicit pollster attribution like "Poll by Emerson College." (and similar)
+  formatted = formatted
+    .replace(/\bPoll\s+by\s+[^.|\n]+\.?/gi, '')
+    .replace(/\(\s*Poll\s+by\s+[^)]+\)/gi, '');
+  // Tidy up extra separators after removal
+  formatted = formatted
+    .replace(/\s*\|\s*\|\s*/g, ' | ')
+    .replace(/\s{2,}/g, ' ')
+    .replace(/^\s*\|\s*|\s*\|\s*$/g, '')
+    .trim();
   return formatted;
 }
 
@@ -519,16 +529,7 @@ module.exports = {
         fields.push({ name: 'Race Ends', value: nextInfo, inline: false });
       }
 
-      // Polling average (overall), with fallback to compute from recent polls
-      let pollAverage = null;
-      if (pollsHtml) {
-        pollAverage = extractPollAverage(pollsHtml, stateName, raceLabel) || computeAverageFromRecentPolls(pollsHtml, stateName, raceLabel, 5);
-      }
-
-      if (pollAverage) {
-        const avgText = pollAverage.cols && pollAverage.cols.length ? pollAverage.cols.join(' | ') : pollAverage.text;
-        fields.push({ name: 'Poll Average', value: avgText || 'Unknown', inline: false });
-      }
+      // Note: do not show poll average; rely on race page's current/finished results instead
 
       if (pollResult) {
         const pollText = pollResult.cols && pollResult.cols.length ? pollResult.cols.join(' | ') : pollResult.text;

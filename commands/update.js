@@ -29,7 +29,7 @@ const TYPE_LABELS = {
 const isDemocratic = (party = '') => /democratic/i.test(String(party));
 const isRepublican = (party = '') => /republican/i.test(String(party));
 
-async function performRoleSync({ interaction, guild, db, clearRoles = false, useFollowUpForStatus = false }) {
+async function performRoleSync({ interaction, guild, db, clearRoles = false, useFollowUpForStatus = false, primaryAction = 'both' }) {
   const profiles = db.profiles || {};
   if (!profiles || Object.keys(profiles).length === 0) {
     const msg = 'profiles.json is empty. Run /update (without roles) first to build the cache.';
@@ -257,77 +257,86 @@ async function performRoleSync({ interaction, guild, db, clearRoles = false, use
         }
       }
 
-      // Sync election roles based on data/primaries.json and data/races.json (Democratic only)
-      try {
+			// Sync election roles based on data/primaries.json and data/races.json (Democratic only)
+			try {
         const fs = require('node:fs');
         const path = require('node:path');
         const primariesPath = path.join(process.cwd(), 'data', 'primaries.json');
-        let userPrimaryKeys = new Set();
-        if (fs.existsSync(primariesPath)) {
-          const primariesDb = JSON.parse(fs.readFileSync(primariesPath, 'utf8'));
-          const idx = primariesDb?.candidatesIndex || {};
-          // For each PPUSA profile id tied to this Discord handle, gather desired primary roles
-          for (const pid of g.ids) {
-            const entries = idx[String(pid)] || [];
-            for (const ent of entries) {
-              // Only assign for Democratic primaries
-              if (ent.party !== 'dem') continue;
-              if (ent.race === 's1') userPrimaryKeys.add('class1');
-              if (ent.race === 's2') userPrimaryKeys.add('class2');
-              if (ent.race === 's3') userPrimaryKeys.add('class3');
-              if (ent.race === 'rep') userPrimaryKeys.add('repelect');
-              if (ent.race === 'gov') userPrimaryKeys.add('govelect');
-            }
-          }
-        }
+				let userPrimaryKeys = new Set();
+				// When removing non-primary roles, consult primaries.json only; when adding from races, consult races.json only.
+				// Default ('both') consults both sources.
+				const usePrimariesSource = primaryAction !== 'add_from_races';
+				const useRacesSource = primaryAction !== 'remove_non_primary';
 
-        // Also include active Democratic candidates from general races (data/races.json)
-        const racesPath = path.join(process.cwd(), 'data', 'races.json');
-        if (fs.existsSync(racesPath)) {
-          try {
-            const racesDb = JSON.parse(fs.readFileSync(racesPath, 'utf8'));
-            const rIdx = racesDb?.candidatesIndex || {};
-            for (const pid of g.ids) {
-              const rEntries = rIdx[String(pid)] || [];
-              for (const ent of rEntries) {
-                // Only assign for active Democratic general races
-                if (ent.party !== 'dem') continue;
-                if (ent.status !== 'active') continue;
-                if (ent.race === 's1') userPrimaryKeys.add('class1');
-                if (ent.race === 's2') userPrimaryKeys.add('class2');
-                if (ent.race === 's3') userPrimaryKeys.add('class3');
-                if (ent.race === 'rep') userPrimaryKeys.add('repelect');
-                if (ent.race === 'gov') userPrimaryKeys.add('govelect');
-              }
-            }
-          } catch (_) {
-            // ignore races parsing errors
-          }
-        }
+				if (usePrimariesSource && fs.existsSync(primariesPath)) {
+					const primariesDb = JSON.parse(fs.readFileSync(primariesPath, 'utf8'));
+					const idx = primariesDb?.candidatesIndex || {};
+					// For each PPUSA profile id tied to this Discord handle, gather desired primary roles
+					for (const pid of g.ids) {
+						const entries = idx[String(pid)] || [];
+						for (const ent of entries) {
+							// Only consider Democratic primaries
+							if (ent.party !== 'dem') continue;
+							if (ent.race === 's1') userPrimaryKeys.add('class1');
+							if (ent.race === 's2') userPrimaryKeys.add('class2');
+							if (ent.race === 's3') userPrimaryKeys.add('class3');
+							if (ent.race === 'rep') userPrimaryKeys.add('repelect');
+							if (ent.race === 'gov') userPrimaryKeys.add('govelect');
+						}
+					}
+				}
 
-        // Add missing primary roles
-        for (const key of userPrimaryKeys) {
-          const rid = PRIMARY_ROLE_IDS[key];
-          if (!rid) continue;
-          if (!member.roles.cache.has(rid)) {
-            try {
-              await member.roles.add(rid, 'Auto-assign primary election role via /update roles');
-              applied++;
-              changeLogs.push(`+ ${PRIMARY_ROLE_NAMES[key]} -> ${member.user?.tag || member.displayName} (profiles ${g.ids.join(',')}) [reason: active/in-progress primary]`);
-            } catch (_) {}
-          }
-        }
+				// Also include active Democratic candidates from general races (data/races.json) when requested
+				const racesPath = path.join(process.cwd(), 'data', 'races.json');
+				if (useRacesSource && fs.existsSync(racesPath)) {
+					try {
+						const racesDb = JSON.parse(fs.readFileSync(racesPath, 'utf8'));
+						const rIdx = racesDb?.candidatesIndex || {};
+						for (const pid of g.ids) {
+							const rEntries = rIdx[String(pid)] || [];
+							for (const ent of rEntries) {
+								// Only assign for active Democratic general races
+								if (ent.party !== 'dem') continue;
+								if (ent.status !== 'active') continue;
+								if (ent.race === 's1') userPrimaryKeys.add('class1');
+								if (ent.race === 's2') userPrimaryKeys.add('class2');
+								if (ent.race === 's3') userPrimaryKeys.add('class3');
+								if (ent.race === 'rep') userPrimaryKeys.add('repelect');
+								if (ent.race === 'gov') userPrimaryKeys.add('govelect');
+							}
+						}
+					} catch (_) {
+						// ignore races parsing errors
+					}
+				}
 
-        // Remove primary roles not desired
-        for (const [key, rid] of Object.entries(PRIMARY_ROLE_IDS)) {
-          if (member.roles.cache.has(rid) && !userPrimaryKeys.has(key)) {
-            try {
-              await member.roles.remove(rid, 'Auto-remove primary election role via /update roles (not in primary)');
-              removed++;
-              changeLogs.push(`- ${PRIMARY_ROLE_NAMES[key]} -> ${member.user?.tag || member.displayName} (profiles ${g.ids.join(',')}) [reason: not in current primary]`);
-            } catch (_) {}
-          }
-        }
+				// Add missing primary roles (skip during removal-only mode)
+				if (primaryAction !== 'remove_non_primary') {
+					for (const key of userPrimaryKeys) {
+						const rid = PRIMARY_ROLE_IDS[key];
+						if (!rid) continue;
+						if (!member.roles.cache.has(rid)) {
+							try {
+								await member.roles.add(rid, 'Auto-assign primary election role via /update roles');
+								applied++;
+								changeLogs.push(`+ ${PRIMARY_ROLE_NAMES[key]} -> ${member.user?.tag || member.displayName} (profiles ${g.ids.join(',')}) [reason: active/in-progress primary]`);
+							} catch (_) {}
+						}
+					}
+				}
+
+				// Remove primary roles not desired (skip during add-from-races mode)
+				if (primaryAction !== 'add_from_races') {
+					for (const [key, rid] of Object.entries(PRIMARY_ROLE_IDS)) {
+						if (member.roles.cache.has(rid) && !userPrimaryKeys.has(key)) {
+							try {
+								await member.roles.remove(rid, 'Auto-remove primary election role via /update roles (not in primary)');
+								removed++;
+								changeLogs.push(`- ${PRIMARY_ROLE_NAMES[key]} -> ${member.user?.tag || member.displayName} (profiles ${g.ids.join(',')}) [reason: not in current primary]`);
+							} catch (_) {}
+						}
+					}
+				}
       } catch (_) {
         // ignore primary role sync errors
       }
@@ -542,6 +551,8 @@ module.exports = {
         
         let scraped = 0;
         let skipped = 0;
+        // Keep a copy of previous data for change detection
+        const prevStatesDb = JSON.parse(JSON.stringify(statesDb));
 
         for (const state of statesList) {
           try {
@@ -585,15 +596,74 @@ module.exports = {
         // Save states JSON
         statesDb.updatedAt = new Date().toISOString();
         fs.writeFileSync(statesJsonPath, JSON.stringify(statesDb, null, 2));
+
+        // Compute and report changes (EVs and positions)
+        const changes = [];
+        let evChanges = 0, govChanges = 0, senChanges = 0, legChanges = 0;
+        const getName = (o) => {
+          if (!o || o.vacant) return 'Vacant';
+          const party = o.party ? ` (${o.party})` : '';
+          return `${o.name || 'Unknown'}${party}`;
+        };
+        const senList = (arr) => {
+          const list = Array.isArray(arr) ? arr : [];
+          const a = [getName(list[0] || { vacant: true }), getName(list[1] || { vacant: true })];
+          return a.join(', ');
+        };
+
+        for (const [sid, cur] of Object.entries(statesDb.states || {})) {
+          const prev = (prevStatesDb.states || {})[sid];
+          if (!cur) continue;
+          const label = cur.name || `State ${sid}`;
+          const deltas = [];
+          if (prev) {
+            if (Number(prev.electoralVotes) !== Number(cur.electoralVotes) && cur.electoralVotes != null) {
+              deltas.push(`EV ${prev.electoralVotes ?? '—'} → ${cur.electoralVotes}`);
+              evChanges++;
+            }
+            const prevGov = getName(prev.governor);
+            const curGov = getName(cur.governor);
+            if (prevGov !== curGov) { deltas.push(`Gov ${prevGov} → ${curGov}`); govChanges++; }
+
+            const prevSens = senList(prev.senators);
+            const curSens = senList(cur.senators);
+            if (prevSens !== curSens) { deltas.push(`Sen ${prevSens} → ${curSens}`); senChanges++; }
+
+            const pLeg = prev.legislatureSeats || { democratic: 0, republican: 0 };
+            const cLeg = cur.legislatureSeats || { democratic: 0, republican: 0 };
+            if ((pLeg.democratic ?? 0) !== (cLeg.democratic ?? 0) || (pLeg.republican ?? 0) !== (cLeg.republican ?? 0)) {
+              deltas.push(`Leg Dem ${pLeg.democratic ?? 0}→${cLeg.democratic ?? 0}, GOP ${pLeg.republican ?? 0}→${cLeg.republican ?? 0}`);
+              legChanges++;
+            }
+          } else {
+            // New state data entry
+            if (cur.electoralVotes != null) deltas.push(`EV → ${cur.electoralVotes}`);
+            if (cur.governor) deltas.push(`Gov → ${getName(cur.governor)}`);
+            if (Array.isArray(cur.senators) && cur.senators.length) deltas.push(`Sen → ${senList(cur.senators)}`);
+          }
+          if (deltas.length) changes.push(`- ${label}: ${deltas.join('; ')}`);
+        }
         
         // Save backup
         const stamp = new Date().toISOString().replace(/[:.]/g, '-');
         const backupPath = path.join(dataDir, `states.${stamp}.json`);
         try { fs.writeFileSync(backupPath, JSON.stringify(statesDb, null, 2)); } catch {}
 
-        await interaction.editReply(
-          `✅ State data update complete. Scraped ${scraped} states, skipped ${skipped}.\nSaved to: data/states.json`
-        );
+        const header = `✅ State data update complete. Scraped ${scraped} states, skipped ${skipped}.\nSaved to: data/states.json`;
+        if (changes.length) {
+          const summaryBits = [];
+          if (evChanges) summaryBits.push(`EV: ${evChanges}`);
+          if (govChanges) summaryBits.push(`Governor: ${govChanges}`);
+          if (senChanges) summaryBits.push(`Senate: ${senChanges}`);
+          if (legChanges) summaryBits.push(`Legislature: ${legChanges}`);
+          const summary = summaryBits.length ? `\nChanges (${summaryBits.join(', ')}):` : '\nChanges:';
+          const maxLines = 40;
+          const shown = changes.slice(0, maxLines).join('\n');
+          const more = changes.length > maxLines ? `\n… and ${changes.length - maxLines} more.` : '';
+          await interaction.editReply(`${header}${summary}\n\n\u0060\u0060\u0060\n${shown}\n${more}\n\u0060\u0060\u0060`);
+        } else {
+          await interaction.editReply(header);
+        }
       } catch (err) {
         console.error('Error during state scraping:', err);
         await interaction.editReply(`❌ Error during state scraping: ${err?.message || String(err)}`);
@@ -808,7 +878,16 @@ module.exports = {
           fs.writeFileSync(path.join(dataDirPrim, `primaries.${stamp}.json`), JSON.stringify(primariesDb, null, 2));
         } catch (_) {}
 
-        await interaction.editReply(`✅ Primaries update complete. States: ${scrapedStates}/${statesList.length}. Race pages fetched: ${racePages}. Saved to: data/primaries.json`);
+		await interaction.editReply(`✅ Primaries update complete. States: ${scrapedStates}/${statesList.length}. Race pages fetched: ${racePages}. Saved to: data/primaries.json`);
+		// If requested, remove primary roles for users not currently in a primary
+		if (applyRoles) {
+			const guild = interaction.guild;
+			if (!guild) {
+				await interaction.followUp({ content: 'Roles option requested, but command not run in a guild.', ephemeral: true });
+			} else {
+				await performRoleSync({ interaction, guild, db, clearRoles: false, useFollowUpForStatus: true, primaryAction: 'remove_non_primary' });
+			}
+		}
       } catch (err) {
         console.error('Error during primaries scraping:', err);
         await interaction.editReply(`❌ Error during primaries scraping: ${err?.message || String(err)}`);
@@ -962,7 +1041,16 @@ module.exports = {
           fs.writeFileSync(path.join(dataDirRace, `races.${stamp}.json`), JSON.stringify(racesDb, null, 2));
         } catch (_) {}
 
-        await interaction.editReply(`✅ Races update complete. States: ${scrapedStates}/${statesList.length}. Race pages fetched: ${racePages}. Saved to: data/races.json`);
+		await interaction.editReply(`✅ Races update complete. States: ${scrapedStates}/${statesList.length}. Race pages fetched: ${racePages}. Saved to: data/races.json`);
+		// If requested, add primary roles for users appearing in active general races
+		if (applyRoles) {
+			const guild = interaction.guild;
+			if (!guild) {
+				await interaction.followUp({ content: 'Roles option requested, but command not run in a guild.', ephemeral: true });
+			} else {
+				await performRoleSync({ interaction, guild, db, clearRoles: false, useFollowUpForStatus: true, primaryAction: 'add_from_races' });
+			}
+		}
       } catch (err) {
         console.error('Error during races scraping:', err);
         await interaction.editReply(`❌ Error during races scraping: ${err?.message || String(err)}`);
