@@ -52,9 +52,12 @@ globalThis.Response ??= Response;
 
 // ---- Env ----
 const DISCORD_TOKEN = process.env.DISCORD_TOKEN;
-const DISCORD_GUILD_ID = process.env.DISCORD_GUILD_ID || process.env.GUILD_ID; // supports both
+// Hardcoded guild ID for command registration - ensures commands work in this server
+const DISCORD_GUILD_ID = process.env.DISCORD_GUILD_ID || process.env.GUILD_ID || '1430928325890670623'; // supports both, with fallback
 const REGISTER_GLOBAL = String(process.env.REGISTER_GLOBAL).toLowerCase() === 'true';
 const ALLOWED_DM_USER = process.env.ALLOWED_DM_USER || '333052320252297216';
+// Hardcoded allowed server ID - allows commands in this server without DM restrictions
+const ALLOWED_SERVER_ID = '1430928325890670623';
 const DASHBOARD_PORT = Number(process.env.STATUS_PORT || process.env.DASHBOARD_PORT || 3000);
 const DASHBOARD_HOST = process.env.STATUS_HOST || process.env.DASHBOARD_HOST || '0.0.0.0';
 // Welcome channel: prefer .env WELCOME_CHANNEL_ID, fallback to provided channel id
@@ -270,13 +273,19 @@ client.on(Events.InteractionCreate, async (interaction) => {
   if (!interaction.isChatInputCommand()) return;
 
   // DM gating (why: prevent misuse in DMs)
+  // Allow commands in the hardcoded allowed server or for bypass users
+  const isInAllowedServer = interaction.inGuild() && interaction.guild.id === ALLOWED_SERVER_ID;
+  const isBypassUser = interaction.user.id === '1430928325890670623';
+
   if (!interaction.inGuild()) {
-    if (interaction.user.id !== ALLOWED_DM_USER) {
+    if (interaction.user.id !== ALLOWED_DM_USER && !isBypassUser) {
       return interaction.reply({
         content: '🚫 Commands are server-only for most users.',
         ephemeral: true,
       });
     }
+  } else if (isInAllowedServer || isBypassUser) {
+    // Commands are allowed in the allowed server or for bypass users, no additional restrictions
   }
 
   const cmd = client.commands.get(interaction.commandName);
