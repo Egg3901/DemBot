@@ -2,7 +2,8 @@
 // Version: 2.0 - Enhanced with parallel processing and smart caching
 const { SlashCommandBuilder, EmbedBuilder } = require('discord.js');
 const { parseProfile, BASE } = require('../lib/ppusa');
-const { loadProfileDb, writeProfileDb, mergeProfileRecord } = require('../lib/profile-cache');
+const { loadProfileDb, writeProfileDb, mergeProfileRecord, cleanupDatabase } = require('../lib/profile-cache');
+const { recordCommandDebug } = require('../lib/status-tracker');
 const { sessionManager } = require('../lib/session-manager');
 const { ParallelProcessor } = require('../lib/parallel-processor');
 const { smartCache, SmartCache } = require('../lib/smart-cache');
@@ -11,9 +12,16 @@ const { navigateWithSession } = require('../lib/ppusa-auth-optimized');
 // Log channel ID for debug information
 const LOG_CHANNEL_ID = '1430939330406383688';
 
-// Helper function to log debug information to Discord channel
+// Helper function to log debug information to Discord channel and status tracker
 async function logDebugToChannel(client, message, error = false) {
   try {
+    // Log to status tracker for API visibility
+    recordCommandDebug('profile', message, {
+      source: 'debug',
+      isError: error,
+      timestamp: new Date().toISOString()
+    });
+
     if (!client || !client.isReady()) {
       console.log('Discord client not ready, skipping channel log');
       return;
@@ -70,6 +78,11 @@ module.exports = {
           { name: 'State', value: 'state' },
           { name: 'Position', value: 'position' }
         )
+    )
+    .addBooleanOption(opt =>
+      opt.setName('cleanup')
+        .setDescription('Clean up duplicate profiles in database (admin only)')
+        .setRequired(false)
     ),
 
   /**
@@ -78,35 +91,68 @@ module.exports = {
    * @returns {Promise<void>}
    */
   async execute(interaction) {
-    await interaction.deferReply();
+    try {
+      await interaction.deferReply();
 
-    const discordUser = interaction.options.getUser('user');
-    const queryRaw = (interaction.options.getString('query') || '').trim();
-    const page = interaction.options.getInteger('page') || 1;
-    const sortBy = interaction.options.getString('sort') || 'name';
+      const discordUser = interaction.options.getUser('user');
+      const queryRaw = (interaction.options.getString('query') || '').trim();
+      const page = interaction.options.getInteger('page') || 1;
+      const sortBy = interaction.options.getString('sort') || 'name';
+      const shouldCleanup = interaction.options.getBoolean('cleanup') || false;
 
-    const debugInfo = `discordUser: ${discordUser?.username || 'none'}, queryRaw: "${queryRaw}", page: ${page}, sortBy: ${sortBy}`;
-    console.log(`[Profile Command Debug] ${debugInfo}`);
-    await logDebugToChannel(interaction.client, debugInfo);
+      const debugInfo = `discordUser: ${discordUser?.username || 'none'}, queryRaw: "${queryRaw}", page: ${page}, sortBy: ${sortBy}, cleanup: ${shouldCleanup}`;
+      console.log(`[Profile Command Debug] ${debugInfo}`);
+      await logDebugToChannel(interaction.client, debugInfo);
 
-    // If user or query provided, do specific lookup
-    if (discordUser || queryRaw) {
-      console.log(`[Profile Command Debug] Going to lookupSpecificProfile`);
-      await logDebugToChannel(interaction.client, 'Going to lookupSpecificProfile');
-      return this.lookupSpecificProfile(interaction, discordUser, queryRaw);
+      // Handle database cleanup if requested
+      if (shouldCleanup) {
+        try {
+          const { duplicatesRemoved } = cleanupDatabase();
+          const message = duplicatesRemoved > 0 
+            ? `✅ Database cleanup completed! Removed ${duplicatesRemoved} duplicate profiles.`
+            : `✅ Database cleanup completed! No duplicates found.`;
+          
+          await interaction.editReply(message);
+          return;
+        } catch (error) {
+          console.error('Database cleanup failed:', error);
+          await interaction.editReply(`❌ Database cleanup failed: ${error.message}`);
+          return;
+        }
+      }
+
+      // If user or query provided, do specific lookup
+      if (discordUser || queryRaw) {
+        console.log(`[Profile Command Debug] Going to lookupSpecificProfile`);
+        await logDebugToChannel(interaction.client, 'Going to lookupSpecificProfile');
+        return this.lookupSpecificProfile(interaction, discordUser, queryRaw);
+      }
+
+      // Show all profiles with pagination
+      console.log(`[Profile Command Debug] Going to showAllProfiles`);
+      await logDebugToChannel(interaction.client, 'Going to showAllProfiles');
+      return this.showAllProfiles(interaction, page, sortBy);
+    } catch (error) {
+      console.error('Profile command execute error:', error);
+      await reportCommandError(interaction, error, {
+        message: `Profile command failed: ${error.message}`,
+        meta: {
+          step: 'execute',
+          discordUser: interaction.options.getUser('user')?.username,
+          query: interaction.options.getString('query'),
+          page: interaction.options.getInteger('page'),
+          sortBy: interaction.options.getString('sort')
+        }
+      });
     }
-
-    // Show all profiles with pagination
-    console.log(`[Profile Command Debug] Going to showAllProfiles`);
-    await logDebugToChannel(interaction.client, 'Going to showAllProfiles');
-    return this.showAllProfiles(interaction, page, sortBy);
   },
 
   async lookupSpecificProfile(interaction, discordUser, queryRaw) {
-    const { db, jsonPath } = loadProfileDb();
-    const profiles = db.profiles || {};
-    const byDiscord = db.byDiscord || {};
-    let dbDirty = false;
+    try {
+      const { db, jsonPath } = loadProfileDb();
+      const profiles = db.profiles || {};
+      const byDiscord = db.byDiscord || {};
+      let dbDirty = false;
 
     // Debug: Check what file is being loaded
     const fs = require('fs');
@@ -371,7 +417,16 @@ module.exports = {
         freshProfiles = results.filter(Boolean);
       } catch (error) {
         console.error('Error in parallel processing:', error);
-        return interaction.editReply(`Error fetching profiles: ${error.message}`);
+        await reportCommandError(interaction, error, {
+          message: `Error fetching profiles: ${error.message}`,
+          meta: {
+            step: 'parallelProcessing',
+            uncachedIds: uncachedIds.length,
+            discordUser: discordUser?.username,
+            query: queryRaw
+          }
+        });
+        return;
       }
     }
 
@@ -379,9 +434,22 @@ module.exports = {
     const allProfiles = [...cachedProfiles, ...freshProfiles];
 
     // Update database with fresh profiles
-    for (const profile of freshProfiles) {
-      mergeProfileRecord(db, profile.id, profile);
-      dbDirty = true;
+    try {
+      for (const profile of freshProfiles) {
+        mergeProfileRecord(db, profile.id, profile);
+        dbDirty = true;
+      }
+    } catch (error) {
+      console.error('Error updating database with fresh profiles:', error);
+      await reportCommandError(interaction, error, {
+        message: `Error updating database: ${error.message}`,
+        meta: {
+          step: 'databaseUpdate',
+          freshProfilesCount: freshProfiles.length,
+          discordUser: discordUser?.username,
+          query: queryRaw
+        }
+      });
     }
 
     // Build embeds with enhanced validation
@@ -496,6 +564,14 @@ module.exports = {
         writeProfileDb(db);
       } catch (error) {
         console.error('Error saving profile database:', error);
+        await reportCommandError(interaction, error, {
+          message: `Error saving profile database: ${error.message}`,
+          meta: {
+            step: 'databaseWrite',
+            discordUser: discordUser?.username,
+            query: queryRaw
+          }
+        });
       }
     }
   },
@@ -567,12 +643,24 @@ module.exports = {
     } else {
       await interaction.editReply({ embeds: [embed], components });
     }
+    } catch (error) {
+      console.error('Profile lookup error:', error);
+      await reportCommandError(interaction, error, {
+        message: `Failed to lookup profile: ${error.message}`,
+        meta: {
+          discordUser: discordUser?.username,
+          query: queryRaw,
+          step: 'lookup'
+        }
+      });
+    }
   },
 
   async showAllProfiles(interaction, page, sortBy) {
-    const { db } = loadProfileDb();
-    const profiles = db.profiles || {};
-    const profileEntries = Object.entries(profiles);
+    try {
+      const { db } = loadProfileDb();
+      const profiles = db.profiles || {};
+      const profileEntries = Object.entries(profiles);
 
     const debugInfo = [];
     debugInfo.push(`showAllProfiles: Found ${profileEntries.length} profiles in database`);
@@ -707,6 +795,17 @@ module.exports = {
       } else {
         await interaction.editReply({ embeds: [embed] });
       }
+    }
+    } catch (error) {
+      console.error('Show all profiles error:', error);
+      await reportCommandError(interaction, error, {
+        message: `Failed to show all profiles: ${error.message}`,
+        meta: {
+          page,
+          sortBy,
+          step: 'showAllProfiles'
+        }
+      });
     }
   },
 };
