@@ -18,6 +18,11 @@ class USMap {
 
   async init() {
     try {
+      // Check if D3.js is available
+      if (typeof d3 === 'undefined') {
+        throw new Error('D3.js library not loaded');
+      }
+      
       // Load TopoJSON data
       await this.loadTopoJSON();
       
@@ -35,7 +40,7 @@ class USMap {
       
     } catch (error) {
       console.error('Failed to initialize map:', error);
-      this.showError('Failed to load map data');
+      this.showError(`Failed to load map: ${error.message}`);
     }
   }
 
@@ -46,6 +51,7 @@ class USMap {
         throw new Error(`HTTP ${response.status}: ${response.statusText}`);
       }
       this.topoData = await response.json();
+      console.log('TopoJSON loaded successfully');
     } catch (error) {
       console.error('Failed to load TopoJSON:', error);
       // Fallback to a simple SVG if TopoJSON fails
@@ -104,6 +110,7 @@ class USMap {
         throw new Error(`HTTP ${response.status}: ${response.statusText}`);
       }
       this.stateData = await response.json();
+      console.log('State data loaded successfully:', Object.keys(this.stateData).length, 'states');
     } catch (error) {
       console.error('Failed to load state data:', error);
       this.stateData = {};
@@ -295,9 +302,9 @@ class USMap {
       case 'gop':
         content += `Republicans: ${stateStats.gopActive || 0} active`;
         break;
-      case 'es':
-        content += `Total ES: ${(stateStats.totalES || 0).toLocaleString()}`;
-        break;
+        case 'es':
+          content += `Total Election Stamina: ${(stateStats.totalES || 0).toLocaleString()}`;
+          break;
       case 'cash':
         content += `Avg Cash: ${formatCurrency(stateStats.avgCash || 0)}`;
         break;
@@ -377,7 +384,7 @@ class USMap {
 
     const metricName = this.currentMetric === 'dem' ? 'Democratic Activity' :
                       this.currentMetric === 'gop' ? 'Republican Activity' :
-                      this.currentMetric === 'es' ? 'Electoral Score' :
+                      this.currentMetric === 'es' ? 'Election Stamina' :
                       this.currentMetric === 'cash' ? 'Average Cash' : 'Activity';
 
     legend.innerHTML = `
