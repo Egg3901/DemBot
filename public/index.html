@@ -1,0 +1,280 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>DemBot Dashboard</title>
+  <link rel="stylesheet" href="/styles/dashboard.css">
+</head>
+<body>
+  <main>
+    <nav class="nav-tabs">
+      <a class="active" href="/">Overview</a>
+      <a href="/stats">Stats</a>
+      <a href="/maps">Maps</a>
+      <a href="/api">API</a>
+    </nav>
+    
+    <header class="page-header">
+      <div>
+        <span class="badge badge-neutral">DemBot Monitoring</span>
+        <h1>Operations Dashboard</h1>
+        <p>Live view of bot health, command throughput, and recent issues</p>
+      </div>
+    </header>
+
+    <!-- Bot Status -->
+    <div class="card">
+      <header class="card-header">
+        <div>
+          <p class="eyebrow">Health</p>
+          <h2>Bot Status</h2>
+        </div>
+        <span id="bot-status-badge" class="badge badge-neutral">Loading...</span>
+      </header>
+      <div class="stats-grid">
+        <div class="stat-item">
+          <div class="stat-label">Uptime</div>
+          <div class="stat-value" id="stat-uptime">Loading...</div>
+        </div>
+        <div class="stat-item">
+          <div class="stat-label">Last Heartbeat</div>
+          <div class="stat-value" id="stat-heartbeat">Loading...</div>
+        </div>
+        <div class="stat-item">
+          <div class="stat-label">Ready At</div>
+          <div class="stat-value" id="stat-readyAt">Loading...</div>
+        </div>
+        <div class="stat-item">
+          <div class="stat-label">Memory Usage</div>
+          <div class="stat-value" id="stat-rss">Loading...</div>
+        </div>
+        <div class="stat-item">
+          <div class="stat-label">Load Average</div>
+          <div class="stat-value" id="stat-load1">Loading...</div>
+        </div>
+        <div class="stat-item">
+          <div class="stat-label">Commands/min</div>
+          <div class="stat-value" id="stat-cmd-rate">Loading...</div>
+        </div>
+      </div>
+    </div>
+
+    <!-- PPUSA Auth Status -->
+    <div class="card">
+      <header class="card-header">
+        <div>
+          <p class="eyebrow">Authentication</p>
+          <h2>PPUSA Login Status</h2>
+        </div>
+        <span id="auth-status-badge" class="badge badge-neutral">Loading...</span>
+      </header>
+      <div id="auth-details">
+        <p class="text-muted">Loading authentication status...</p>
+      </div>
+    </div>
+
+    <!-- Recent Commands -->
+    <div class="card">
+      <header class="card-header">
+        <div>
+          <p class="eyebrow">Activity</p>
+          <h2>Recent Commands</h2>
+        </div>
+      </header>
+      <div class="table-container">
+        <table>
+          <thead>
+            <tr>
+              <th>Command</th>
+              <th>Count</th>
+              <th>Last Used</th>
+              <th>Status</th>
+            </tr>
+          </thead>
+          <tbody id="commands-table">
+            <tr>
+              <td colspan="4" class="text-center text-muted">Loading...</td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+    </div>
+
+    <!-- Recent Errors -->
+    <div class="card">
+      <header class="card-header">
+        <div>
+          <p class="eyebrow">Issues</p>
+          <h2>Recent Errors</h2>
+        </div>
+      </header>
+      <div id="errors-list">
+        <p class="text-muted">Loading error log...</p>
+      </div>
+    </div>
+  </main>
+
+  <script src="/js/common.js"></script>
+  <script>
+    // Initialize dashboard data
+    async function loadDashboardData() {
+      try {
+        const response = await fetch('/status.json');
+        const data = await response.json();
+        
+        updateBotStatus(data);
+        updateAuthStatus(data);
+        updateCommandsTable(data);
+        updateErrorsList(data);
+      } catch (error) {
+        console.error('Failed to load dashboard data:', error);
+      }
+    }
+
+    function updateBotStatus(data) {
+      const bot = data.bot || {};
+      const metrics = data.metrics || {};
+      
+      // Update status badge
+      const statusBadge = document.getElementById('bot-status-badge');
+      if (statusBadge) {
+        if (bot.ready) {
+          statusBadge.textContent = 'Online';
+          statusBadge.className = 'badge badge-success';
+        } else {
+          statusBadge.textContent = 'Offline';
+          statusBadge.className = 'badge badge-warning';
+        }
+      }
+      
+      // Update stats
+      updateElement('stat-uptime', formatUptime(bot.uptimeMs));
+      updateElement('stat-heartbeat', bot.lastHeartbeat || 'N/A');
+      updateElement('stat-readyAt', bot.readyAt || 'N/A');
+      
+      if (metrics.samples && metrics.samples.length > 0) {
+        const lastSample = metrics.samples[metrics.samples.length - 1];
+        updateElement('stat-rss', `${lastSample.rssMB || 0} MB`);
+        updateElement('stat-load1', (lastSample.load1 || 0).toFixed(2));
+        
+        // Calculate commands per minute
+        if (metrics.samples.length > 1) {
+          const prevSample = metrics.samples[metrics.samples.length - 2];
+          const cmdRate = Math.max(0, (lastSample.cmdCountTotal || 0) - (prevSample.cmdCountTotal || 0));
+          updateElement('stat-cmd-rate', cmdRate);
+        }
+      }
+    }
+
+    function updateAuthStatus(data) {
+      const auth = data.ppusaAuth || {};
+      const authBadge = document.getElementById('auth-status-badge');
+      const authDetails = document.getElementById('auth-details');
+      
+      if (authBadge) {
+        if (auth.status === 'success') {
+          authBadge.textContent = 'Authenticated';
+          authBadge.className = 'badge badge-success';
+        } else if (auth.status === 'error') {
+          authBadge.textContent = 'Auth Failed';
+          authBadge.className = 'badge badge-warning';
+        } else {
+          authBadge.textContent = 'Authenticating';
+          authBadge.className = 'badge badge-neutral';
+        }
+      }
+      
+      if (authDetails) {
+        if (auth.status === 'success' && auth.user) {
+          authDetails.innerHTML = `
+            <p><strong>User:</strong> ${auth.user.name || 'Unknown'}</p>
+            <p><strong>State:</strong> ${auth.user.state || 'Unknown'}</p>
+            <p><strong>Party:</strong> ${auth.user.party || 'Unknown'}</p>
+          `;
+        } else if (auth.status === 'error') {
+          authDetails.innerHTML = `<p class="text-muted">Authentication failed: ${auth.error || 'Unknown error'}</p>`;
+        } else {
+          authDetails.innerHTML = `<p class="text-muted">Authentication in progress...</p>`;
+        }
+      }
+    }
+
+    function updateCommandsTable(data) {
+      const commands = data.commands || [];
+      const tbody = document.getElementById('commands-table');
+      
+      if (!tbody) return;
+      
+      if (commands.length === 0) {
+        tbody.innerHTML = '<tr><td colspan="4" class="text-center text-muted">No commands available</td></tr>';
+        return;
+      }
+      
+      tbody.innerHTML = commands.slice(0, 10).map(cmd => `
+        <tr>
+          <td><strong>${cmd.name || 'Unknown'}</strong></td>
+          <td>${cmd.count || 0}</td>
+          <td>${cmd.lastUsed || 'Never'}</td>
+          <td>
+            ${cmd.errorCount > 0 ? 
+              `<span class="badge badge-warning">${cmd.errorCount} error${cmd.errorCount === 1 ? '' : 's'}</span>` : 
+              '<span class="badge badge-success">OK</span>'
+            }
+          </td>
+        </tr>
+      `).join('');
+    }
+
+    function updateErrorsList(data) {
+      const errors = data.errors || [];
+      const errorsList = document.getElementById('errors-list');
+      
+      if (!errorsList) return;
+      
+      if (errors.length === 0) {
+        errorsList.innerHTML = '<p class="text-muted">No recent errors</p>';
+        return;
+      }
+      
+      errorsList.innerHTML = errors.slice(0, 5).map(error => `
+        <div class="mb-2">
+          <strong>${error.command || 'Unknown'}</strong>
+          <span class="text-muted"> - ${error.timestamp || 'Unknown time'}</span>
+          <pre class="text-small">${error.message || 'No message'}</pre>
+        </div>
+      `).join('');
+    }
+
+    function formatUptime(ms) {
+      if (!ms) return 'N/A';
+      const seconds = Math.floor(ms / 1000);
+      const days = Math.floor(seconds / 86400);
+      const hours = Math.floor((seconds % 86400) / 3600);
+      const minutes = Math.floor((seconds % 3600) / 60);
+      const secs = seconds % 60;
+      
+      const parts = [];
+      if (days) parts.push(`${days}d`);
+      if (hours || days) parts.push(`${hours}h`);
+      if (minutes || hours || days) parts.push(`${minutes}m`);
+      parts.push(`${secs}s`);
+      
+      return parts.join(' ');
+    }
+
+    // Load initial data
+    loadDashboardData();
+
+    // Setup SSE updates
+    if (window.sseManager) {
+      window.sseManager.addEventListener('message', (data) => {
+        updateBotStatus(data);
+        updateAuthStatus(data);
+        updateCommandsTable(data);
+        updateErrorsList(data);
+      });
+    }
+  </script>
+</body>
+</html>

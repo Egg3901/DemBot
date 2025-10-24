@@ -1,0 +1,288 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>DemBot API - Documentation</title>
+  <link rel="stylesheet" href="/styles/dashboard.css">
+</head>
+<body>
+  <main>
+    <nav class="nav-tabs">
+      <a href="/">Overview</a>
+      <a href="/stats">Stats</a>
+      <a href="/maps">Maps</a>
+      <a class="active" href="/api">API</a>
+    </nav>
+    
+    <header class="page-header">
+      <div>
+        <span class="badge badge-neutral">DemBot API</span>
+        <h1>API Documentation</h1>
+        <p>RESTful endpoints for accessing bot data and statistics</p>
+      </div>
+    </header>
+
+    <!-- API Endpoints -->
+    <div class="card">
+      <header class="card-header">
+        <div>
+          <p class="eyebrow">Endpoints</p>
+          <h2>Available Endpoints</h2>
+        </div>
+      </header>
+      <div class="table-container">
+        <table>
+          <thead>
+            <tr>
+              <th>Method</th>
+              <th>Endpoint</th>
+              <th>Description</th>
+              <th>Response</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr>
+              <td><span class="badge badge-success">GET</span></td>
+              <td><code>/</code></td>
+              <td>Dashboard overview page</td>
+              <td>HTML</td>
+            </tr>
+            <tr>
+              <td><span class="badge badge-success">GET</span></td>
+              <td><code>/stats</code></td>
+              <td>Player statistics page</td>
+              <td>HTML</td>
+            </tr>
+            <tr>
+              <td><span class="badge badge-success">GET</span></td>
+              <td><code>/maps</code></td>
+              <td>State heatmaps page</td>
+              <td>HTML</td>
+            </tr>
+            <tr>
+              <td><span class="badge badge-success">GET</span></td>
+              <td><code>/api</code></td>
+              <td>API documentation page</td>
+              <td>HTML</td>
+            </tr>
+            <tr>
+              <td><span class="badge badge-success">GET</span></td>
+              <td><code>/status.json</code></td>
+              <td>Bot status and health metrics</td>
+              <td>JSON</td>
+            </tr>
+            <tr>
+              <td><span class="badge badge-success">GET</span></td>
+              <td><code>/stats.json</code></td>
+              <td>Player statistics and leaderboards</td>
+              <td>JSON</td>
+            </tr>
+            <tr>
+              <td><span class="badge badge-success">GET</span></td>
+              <td><code>/state-stats.json</code></td>
+              <td>State-level activity statistics</td>
+              <td>JSON</td>
+            </tr>
+            <tr>
+              <td><span class="badge badge-success">GET</span></td>
+              <td><code>/events</code></td>
+              <td>Server-sent events stream</td>
+              <td>SSE</td>
+            </tr>
+            <tr>
+              <td><span class="badge badge-warning">POST</span></td>
+              <td><code>/heartbeat</code></td>
+              <td>Bot heartbeat endpoint</td>
+              <td>JSON</td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+    </div>
+
+    <!-- Query Parameters -->
+    <div class="card">
+      <header class="card-header">
+        <div>
+          <p class="eyebrow">Parameters</p>
+          <h2>Query Parameters</h2>
+        </div>
+      </header>
+      <div class="table-container">
+        <table>
+          <thead>
+            <tr>
+              <th>Parameter</th>
+              <th>Endpoint</th>
+              <th>Type</th>
+              <th>Description</th>
+              <th>Example</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr>
+              <td><code>activity</code></td>
+              <td>/state-stats.json</td>
+              <td>string</td>
+              <td>Activity filter: "3", "5", or "all"</td>
+              <td>?activity=3</td>
+            </tr>
+            <tr>
+              <td><code>party</code></td>
+              <td>/stats.json</td>
+              <td>string</td>
+              <td>Party filter: "all", "dem", or "gop"</td>
+              <td>?party=dem</td>
+            </tr>
+            <tr>
+              <td><code>search</code></td>
+              <td>/stats.json</td>
+              <td>string</td>
+              <td>Search term for names, Discord, or state</td>
+              <td>?search=john</td>
+            </tr>
+            <tr>
+              <td><code>sort</code></td>
+              <td>/stats.json</td>
+              <td>string</td>
+              <td>Sort field: "cash", "es", "name", "party", "state", "last"</td>
+              <td>?sort=cash</td>
+            </tr>
+            <tr>
+              <td><code>dir</code></td>
+              <td>/stats.json</td>
+              <td>string</td>
+              <td>Sort direction: "asc" or "desc"</td>
+              <td>?dir=desc</td>
+            </tr>
+            <tr>
+              <td><code>page</code></td>
+              <td>/stats.json</td>
+              <td>number</td>
+              <td>Page number for pagination</td>
+              <td>?page=2</td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+    </div>
+
+    <!-- Response Examples -->
+    <div class="card">
+      <header class="card-header">
+        <div>
+          <p class="eyebrow">Examples</p>
+          <h2>Response Examples</h2>
+        </div>
+      </header>
+      <div>
+        <h3>GET /status.json</h3>
+        <pre><code>{
+  "bot": {
+    "ready": true,
+    "uptimeMs": 3600000,
+    "lastHeartbeat": "2024-01-01T12:00:00Z",
+    "readyAt": "2024-01-01T11:00:00Z"
+  },
+  "metrics": {
+    "samples": [
+      {
+        "rssMB": 128,
+        "load1": 0.5,
+        "cmdCountTotal": 1500
+      }
+    ]
+  },
+  "ppusaAuth": {
+    "status": "success",
+    "user": {
+      "name": "John Doe",
+      "state": "California",
+      "party": "Democrat"
+    }
+  },
+  "commands": [
+    {
+      "name": "profile",
+      "count": 150,
+      "lastUsed": "2024-01-01T11:30:00Z",
+      "errorCount": 0
+    }
+  ],
+  "errors": []
+}</code></pre>
+
+        <h3>GET /state-stats.json?activity=3</h3>
+        <pre><code>{
+  "california": {
+    "demActive": 25,
+    "gopActive": 15,
+    "totalES": 125000,
+    "avgCash": 50000,
+    "playerCount": 40,
+    "players": [...]
+  },
+  "texas": {
+    "demActive": 18,
+    "gopActive": 22,
+    "totalES": 98000,
+    "avgCash": 45000,
+    "playerCount": 35,
+    "players": [...]
+  }
+}</code></pre>
+
+        <h3>GET /stats.json?party=dem&sort=cash&dir=desc&page=1</h3>
+        <pre><code>{
+  "players": [
+    {
+      "name": "John Doe",
+      "party": "Democrat",
+      "state": "California",
+      "position": "Governor",
+      "cash": "$125,000",
+      "es": "25,000",
+      "lastOnlineText": "2 hours ago"
+    }
+  ],
+  "summary": {
+    "totalPlayers": 150,
+    "demCount": 75,
+    "gopCount": 75,
+    "uniqueDiscords": 120,
+    "recentActivity": 45,
+    "activePlayers": 60
+  },
+  "pagination": {
+    "currentPage": 1,
+    "totalPages": 15,
+    "totalPlayers": 150
+  }
+}</code></pre>
+      </div>
+    </div>
+
+    <!-- Rate Limits -->
+    <div class="card">
+      <header class="card-header">
+        <div>
+          <p class="eyebrow">Limits</p>
+          <h2>Rate Limits & Usage</h2>
+        </div>
+      </header>
+      <div>
+        <p>Currently, there are no rate limits imposed on API endpoints. However, please be considerate with your usage:</p>
+        <ul>
+          <li>JSON endpoints are cached for 30 seconds</li>
+          <li>SSE connections are limited to 10 concurrent connections</li>
+          <li>Large result sets are paginated (10 items per page by default)</li>
+          <li>Use appropriate query parameters to filter data when possible</li>
+        </ul>
+      </div>
+    </div>
+  </main>
+
+  <script src="/js/common.js"></script>
+</body>
+</html>

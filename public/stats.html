@@ -1,0 +1,293 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>DemBot Stats - Player Analytics</title>
+  <link rel="stylesheet" href="/styles/dashboard.css">
+</head>
+<body>
+  <main>
+    <nav class="nav-tabs">
+      <a href="/">Overview</a>
+      <a class="active" href="/stats">Stats</a>
+      <a href="/maps">Maps</a>
+      <a href="/api">API</a>
+    </nav>
+    
+    <header class="page-header">
+      <div>
+        <span class="badge badge-neutral">DemBot Analytics</span>
+        <h1>Player Statistics</h1>
+        <p>Comprehensive player data, leaderboards, and activity analysis</p>
+      </div>
+    </header>
+
+    <!-- Filters -->
+    <div class="card">
+      <header class="card-header">
+        <div>
+          <p class="eyebrow">Filters</p>
+          <h2>Data Filters</h2>
+        </div>
+      </header>
+      <div class="filter-bar">
+        <div class="form-group">
+          <label for="partyFilter">Party</label>
+          <select id="partyFilter">
+            <option value="all">All Parties</option>
+            <option value="dem">Democrats</option>
+            <option value="gop">Republicans</option>
+          </select>
+        </div>
+        <div class="form-group">
+          <label for="activityFilter">Activity</label>
+          <select id="activityFilter">
+            <option value="all">All Time</option>
+            <option value="recent">Last 3 Days</option>
+            <option value="active">Last 5 Days</option>
+          </select>
+        </div>
+        <div class="form-group">
+          <label for="searchInput">Search</label>
+          <input type="text" id="searchInput" placeholder="Name, Discord, State...">
+        </div>
+        <div class="form-group">
+          <label for="sortField">Sort By</label>
+          <select id="sortField">
+            <option value="cash">Cash</option>
+            <option value="es">Electoral Score</option>
+            <option value="name">Name</option>
+            <option value="party">Party</option>
+            <option value="state">State</option>
+            <option value="last">Last Seen</option>
+          </select>
+        </div>
+        <div class="form-group">
+          <label for="sortDir">Direction</label>
+          <select id="sortDir">
+            <option value="desc">Descending</option>
+            <option value="asc">Ascending</option>
+          </select>
+        </div>
+        <button onclick="applyFilters()" class="btn btn-primary">Apply Filters</button>
+      </div>
+    </div>
+
+    <!-- Summary Stats -->
+    <div class="card">
+      <header class="card-header">
+        <div>
+          <p class="eyebrow">Summary</p>
+          <h2>Player Statistics</h2>
+        </div>
+      </header>
+      <div class="stats-grid" id="summary-stats">
+        <div class="stat-item">
+          <div class="stat-label">Total Players</div>
+          <div class="stat-value" id="total-players">Loading...</div>
+        </div>
+        <div class="stat-item">
+          <div class="stat-label">Democrats</div>
+          <div class="stat-value" id="dem-count">Loading...</div>
+        </div>
+        <div class="stat-item">
+          <div class="stat-label">Republicans</div>
+          <div class="stat-value" id="gop-count">Loading...</div>
+        </div>
+        <div class="stat-item">
+          <div class="stat-label">Unique Discords</div>
+          <div class="stat-value" id="unique-discords">Loading...</div>
+        </div>
+        <div class="stat-item">
+          <div class="stat-label">Recent Activity</div>
+          <div class="stat-value" id="recent-activity">Loading...</div>
+        </div>
+        <div class="stat-item">
+          <div class="stat-label">Active Players</div>
+          <div class="stat-value" id="active-players">Loading...</div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Players Table -->
+    <div class="card">
+      <header class="card-header">
+        <div>
+          <p class="eyebrow">Players</p>
+          <h2>Player Leaderboard</h2>
+        </div>
+        <div id="pagination-info" class="text-muted">Loading...</div>
+      </header>
+      <div class="table-container">
+        <table>
+          <thead>
+            <tr>
+              <th>Rank</th>
+              <th>Name</th>
+              <th>Party</th>
+              <th>State</th>
+              <th>Position</th>
+              <th>Cash</th>
+              <th>ES</th>
+              <th>Last Seen</th>
+            </tr>
+          </thead>
+          <tbody id="players-table">
+            <tr>
+              <td colspan="8" class="text-center text-muted">Loading...</td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+      <div id="pagination" class="text-center mt-2"></div>
+    </div>
+  </main>
+
+  <script src="/js/common.js"></script>
+  <script>
+    let currentPage = 1;
+    let currentFilters = {};
+
+    async function loadStatsData() {
+      try {
+        const params = new URLSearchParams(window.location.search);
+        const response = await fetch(`/stats.json?${params.toString()}`);
+        const data = await response.json();
+        
+        updateSummaryStats(data);
+        updatePlayersTable(data);
+        updatePagination(data);
+      } catch (error) {
+        console.error('Failed to load stats data:', error);
+        document.getElementById('players-table').innerHTML = 
+          '<tr><td colspan="8" class="text-center text-muted">Failed to load data</td></tr>';
+      }
+    }
+
+    function updateSummaryStats(data) {
+      const stats = data.summary || {};
+      
+      updateElement('total-players', stats.totalPlayers || 0);
+      updateElement('dem-count', stats.demCount || 0);
+      updateElement('gop-count', stats.gopCount || 0);
+      updateElement('unique-discords', stats.uniqueDiscords || 0);
+      updateElement('recent-activity', stats.recentActivity || 0);
+      updateElement('active-players', stats.activePlayers || 0);
+    }
+
+    function updatePlayersTable(data) {
+      const players = data.players || [];
+      const tbody = document.getElementById('players-table');
+      
+      if (!tbody) return;
+      
+      if (players.length === 0) {
+        tbody.innerHTML = '<tr><td colspan="8" class="text-center text-muted">No players found</td></tr>';
+        return;
+      }
+      
+      tbody.innerHTML = players.map((player, index) => `
+        <tr>
+          <td>${index + 1}</td>
+          <td><strong>${player.name || 'Unknown'}</strong></td>
+          <td>${player.party || 'Unknown'}</td>
+          <td>${player.state || 'Unknown'}</td>
+          <td>${player.position || 'Unknown'}</td>
+          <td>${formatCurrency(parseMoney(player.cash))}</td>
+          <td>${formatNumber(parseES(player.es))}</td>
+          <td>${player.lastOnlineText || 'Unknown'}</td>
+        </tr>
+      `).join('');
+    }
+
+    function updatePagination(data) {
+      const pagination = document.getElementById('pagination');
+      const paginationInfo = document.getElementById('pagination-info');
+      
+      if (!pagination || !paginationInfo) return;
+      
+      const totalPages = data.totalPages || 1;
+      const currentPage = data.currentPage || 1;
+      const totalPlayers = data.totalPlayers || 0;
+      const perPage = 10;
+      const startIndex = (currentPage - 1) * perPage + 1;
+      const endIndex = Math.min(currentPage * perPage, totalPlayers);
+      
+      paginationInfo.textContent = `Showing ${startIndex}-${endIndex} of ${totalPlayers} players`;
+      
+      if (totalPages <= 1) {
+        pagination.innerHTML = '';
+        return;
+      }
+      
+      let paginationHTML = '';
+      
+      // Previous button
+      if (currentPage > 1) {
+        paginationHTML += `<a href="?${buildQueryString({...currentFilters, page: currentPage - 1})}" class="btn btn-sm">Previous</a> `;
+      }
+      
+      // Page numbers
+      const startPage = Math.max(1, currentPage - 2);
+      const endPage = Math.min(totalPages, currentPage + 2);
+      
+      for (let i = startPage; i <= endPage; i++) {
+        if (i === currentPage) {
+          paginationHTML += `<span class="btn btn-sm btn-primary">${i}</span> `;
+        } else {
+          paginationHTML += `<a href="?${buildQueryString({...currentFilters, page: i})}" class="btn btn-sm">${i}</a> `;
+        }
+      }
+      
+      // Next button
+      if (currentPage < totalPages) {
+        paginationHTML += `<a href="?${buildQueryString({...currentFilters, page: currentPage + 1})}" class="btn btn-sm">Next</a>`;
+      }
+      
+      pagination.innerHTML = paginationHTML;
+    }
+
+    function buildQueryString(params) {
+      const searchParams = new URLSearchParams();
+      Object.entries(params).forEach(([key, value]) => {
+        if (value !== undefined && value !== null && value !== '') {
+          searchParams.set(key, value);
+        }
+      });
+      return searchParams.toString();
+    }
+
+    function applyFilters() {
+      const filters = {
+        party: document.getElementById('partyFilter').value,
+        activity: document.getElementById('activityFilter').value,
+        search: document.getElementById('searchInput').value,
+        sort: document.getElementById('sortField').value,
+        dir: document.getElementById('sortDir').value,
+        page: 1
+      };
+      
+      currentFilters = filters;
+      
+      const queryString = buildQueryString(filters);
+      window.location.href = `?${queryString}`;
+    }
+
+    // Load initial data
+    loadStatsData();
+
+    // Setup filter event listeners
+    document.getElementById('partyFilter').addEventListener('change', applyFilters);
+    document.getElementById('activityFilter').addEventListener('change', applyFilters);
+    document.getElementById('sortField').addEventListener('change', applyFilters);
+    document.getElementById('sortDir').addEventListener('change', applyFilters);
+    
+    document.getElementById('searchInput').addEventListener('keypress', (e) => {
+      if (e.key === 'Enter') {
+        applyFilters();
+      }
+    });
+  </script>
+</body>
+</html>
