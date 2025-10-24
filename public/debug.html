@@ -1,0 +1,117 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>DemBot Debug - System Status</title>
+  <link rel="stylesheet" href="/styles/dashboard.css">
+</head>
+<body>
+  <main>
+    <nav class="nav-tabs">
+      <a href="/">Overview</a>
+      <a href="/stats">Stats</a>
+      <a href="/maps">Maps</a>
+      <a href="/api">API</a>
+      <a class="active" href="/debug">Debug</a>
+    </nav>
+    
+    <header class="page-header">
+      <div>
+        <span class="badge badge-neutral">System Diagnostics</span>
+        <h1>Debug Information</h1>
+        <p>Check system status and data availability</p>
+      </div>
+    </header>
+
+    <!-- Endpoint Tests -->
+    <div class="card">
+      <header class="card-header">
+        <div>
+          <p class="eyebrow">Tests</p>
+          <h2>API Endpoint Tests</h2>
+        </div>
+        <button onclick="runAllTests()" class="btn btn-primary">Run All Tests</button>
+      </header>
+      <div id="test-results">
+        <p class="text-muted">Click "Run All Tests" to check endpoint availability</p>
+      </div>
+    </div>
+
+    <!-- System Information -->
+    <div class="card">
+      <header class="card-header">
+        <div>
+          <p class="eyebrow">System</p>
+          <h2>System Information</h2>
+        </div>
+      </header>
+      <div id="system-info">
+        <p class="text-muted">Loading system information...</p>
+      </div>
+    </div>
+  </main>
+
+  <script src="/js/common.js"></script>
+  <script>
+    async function runAllTests() {
+      const results = document.getElementById('test-results');
+      results.innerHTML = '<p class="text-muted">Running tests...</p>';
+      
+      const tests = [
+        { name: 'Status JSON', url: '/status.json' },
+        { name: 'Stats JSON', url: '/stats.json' },
+        { name: 'State Stats JSON', url: '/state-stats.json' },
+        { name: 'Events SSE', url: '/events' },
+        { name: 'CSS Styles', url: '/styles/dashboard.css' },
+        { name: 'Common JS', url: '/js/common.js' },
+        { name: 'Maps JS', url: '/js/maps.js' },
+        { name: 'US States Data', url: '/data/us-states.topojson' }
+      ];
+      
+      let resultsHTML = '<div class="table-container"><table><thead><tr><th>Endpoint</th><th>Status</th><th>Response</th></tr></thead><tbody>';
+      
+      for (const test of tests) {
+        try {
+          const response = await fetch(test.url);
+          const status = response.ok ? '✅ OK' : `❌ Error ${response.status}`;
+          const contentType = response.headers.get('content-type') || 'Unknown';
+          resultsHTML += `<tr><td>${test.name}</td><td>${status}</td><td>${contentType}</td></tr>`;
+        } catch (error) {
+          resultsHTML += `<tr><td>${test.name}</td><td>❌ Failed</td><td>${error.message}</td></tr>`;
+        }
+      }
+      
+      resultsHTML += '</tbody></table></div>';
+      results.innerHTML = resultsHTML;
+    }
+
+    function loadSystemInfo() {
+      const systemInfo = document.getElementById('system-info');
+      const info = {
+        'User Agent': navigator.userAgent,
+        'Current URL': window.location.href,
+        'Protocol': window.location.protocol,
+        'Host': window.location.host,
+        'Pathname': window.location.pathname,
+        'Timestamp': new Date().toISOString(),
+        'Screen Resolution': `${screen.width}x${screen.height}`,
+        'Viewport Size': `${window.innerWidth}x${window.innerHeight}`,
+        'D3 Available': typeof d3 !== 'undefined' ? 'Yes' : 'No',
+        'TopoJSON Available': typeof topojson !== 'undefined' ? 'Yes' : 'No'
+      };
+      
+      let infoHTML = '<div class="table-container"><table><thead><tr><th>Property</th><th>Value</th></tr></thead><tbody>';
+      for (const [key, value] of Object.entries(info)) {
+        infoHTML += `<tr><td><strong>${key}</strong></td><td>${value}</td></tr>`;
+      }
+      infoHTML += '</tbody></table></div>';
+      
+      systemInfo.innerHTML = infoHTML;
+    }
+
+    // Load system info on page load
+    loadSystemInfo();
+  </script>
+</body>
+</html>

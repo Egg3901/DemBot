@@ -153,6 +153,9 @@
       try {
         const params = new URLSearchParams(window.location.search);
         const response = await fetch(`/stats.json?${params.toString()}`);
+        if (!response.ok) {
+          throw new Error(`HTTP ${response.status}: ${response.statusText}`);
+        }
         const data = await response.json();
         
         updateSummaryStats(data);
@@ -160,9 +163,26 @@
         updatePagination(data);
       } catch (error) {
         console.error('Failed to load stats data:', error);
-        document.getElementById('players-table').innerHTML = 
-          '<tr><td colspan="8" class="text-center text-muted">Failed to load data</td></tr>';
+        showStatsError('Unable to load player statistics. Please check if the server is running and data files are available.');
       }
+    }
+
+    function showStatsError(message) {
+      // Update summary stats
+      updateElement('total-players', 'N/A');
+      updateElement('dem-count', 'N/A');
+      updateElement('gop-count', 'N/A');
+      updateElement('unique-discords', 'N/A');
+      updateElement('recent-activity', 'N/A');
+      updateElement('active-players', 'N/A');
+      
+      // Update table
+      document.getElementById('players-table').innerHTML = 
+        '<tr><td colspan="8" class="text-center text-muted">Data unavailable</td></tr>';
+      
+      // Update pagination
+      document.getElementById('pagination-info').textContent = message;
+      document.getElementById('pagination').innerHTML = '';
     }
 
     function updateSummaryStats(data) {

@@ -107,6 +107,7 @@ class USMap {
     } catch (error) {
       console.error('Failed to load state data:', error);
       this.stateData = {};
+      this.showError('Unable to load state statistics. Please check if the server is running and data files are available.');
     }
   }
 

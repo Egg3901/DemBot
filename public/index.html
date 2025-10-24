@@ -121,6 +121,9 @@
     async function loadDashboardData() {
       try {
         const response = await fetch('/status.json');
+        if (!response.ok) {
+          throw new Error(`HTTP ${response.status}: ${response.statusText}`);
+        }
         const data = await response.json();
         
         updateBotStatus(data);
@@ -129,7 +132,28 @@
         updateErrorsList(data);
       } catch (error) {
         console.error('Failed to load dashboard data:', error);
+        showDataError('Unable to load dashboard data. Please check if the server is running and data files are available.');
       }
+    }
+
+    function showDataError(message) {
+      // Update all loading elements with error state
+      updateElement('bot-status-badge', 'Error');
+      document.getElementById('bot-status-badge').className = 'badge badge-warning';
+      
+      updateElement('stat-uptime', 'N/A');
+      updateElement('stat-heartbeat', 'N/A');
+      updateElement('stat-readyAt', 'N/A');
+      updateElement('stat-rss', 'N/A');
+      updateElement('stat-load1', 'N/A');
+      updateElement('stat-cmd-rate', 'N/A');
+      
+      updateElement('auth-status-badge', 'Error');
+      document.getElementById('auth-status-badge').className = 'badge badge-warning';
+      
+      document.getElementById('auth-details').innerHTML = `<p class="text-muted">${message}</p>`;
+      document.getElementById('commands-table').innerHTML = '<tr><td colspan="4" class="text-center text-muted">Data unavailable</td></tr>';
+      document.getElementById('errors-list').innerHTML = '<p class="text-muted">Data unavailable</p>';
     }
 
     function updateBotStatus(data) {
