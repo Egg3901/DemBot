@@ -371,21 +371,24 @@ class USMap {
   }
 
   updateColors() {
-    if (!this.svg || !this.stateData) return;
+    if (!this.svg) return;
 
     const states = this.svg.selectAll('.state');
+    const mapInstance = this; // preserve class context without rebinding the DOM element
     
-    const mapInstance = this; // preserve USMap instance
     states.each(function(d) {
+      const element = this; // 'this' is the SVG path element
       const stateId = d?.properties?.id;
-      if (!stateId) return;
+      if (!stateId || !mapInstance.stateData) {
+        d3.select(element).attr('class', 'state heat-0');
+        return;
+      }
 
       const stateKey = mapInstance.getStateKey(stateId);
       const stateStats = mapInstance.stateData[stateKey];
       
-      // Default to heat-0 if we don't have stats
       if (!stateStats) {
-        d3.select(this).attr('class', 'state heat-0');
+        d3.select(element).attr('class', 'state heat-0');
         return;
       }
 
@@ -406,7 +409,7 @@ class USMap {
       }
 
       const heatClass = mapInstance.getHeatClass(value, mapInstance.currentMetric);
-      d3.select(this).attr('class', `state ${heatClass}`);
+      d3.select(element).attr('class', `state ${heatClass}`);
     });
   }
 

@@ -274,6 +274,22 @@ async function performWebSend({ type, name, amount, debug }) {
     for (const action of authActions) actions.push({ phase: 'auth', ...action });
     note('login-success', 'Authenticated and ready on treasury page.', { finalUrl });
 
+    // Ensure the send form is present before querying fields
+    try {
+      const candidateFormSelectors = [
+        '#partyTransactions form',
+        'form#partyTransactions',
+        '#partyTransactions',
+        'form[action*="/treasury"]'
+      ];
+      const foundFormSel = await Promise.any(
+        candidateFormSelectors.map((sel) => page.waitForSelector(sel, { timeout: Math.min(8000, NAV_TIMEOUT) }).then(() => sel))
+      ).catch(() => null);
+      note('form-wait', foundFormSel ? 'Send form detected' : 'Send form not detected (continuing)', { foundFormSel, candidateFormSelectors });
+    } catch (e) {
+      note('form-wait', 'Error while waiting for form (continuing)', { error: e?.message || String(e) });
+    }
+
     // Snapshot outgoing transactions before submitting
     const preTransactions = await scrapeOutgoingTransactions(page);
     const preData = await captureOutgoingData(page);
@@ -339,6 +355,7 @@ async function performWebSend({ type, name, amount, debug }) {
       '#target_id',
       'input#target_id',
       'input[name="target_id"]',
+      'input[placeholder="doctorsus"]',
       'input[name*="target"]',
       'input[name*="recipient"]',
       'input[name*="player"]',
@@ -389,13 +406,22 @@ async function performWebSend({ type, name, amount, debug }) {
     );
     note('debug', 'All input elements found on page', { allInputs });
 
+    // Try a short, explicit wait for the most likely selectors before falling back to scanning
     let nameSel = null;
-    for (const sel of nameSels) {
-      const element = await page.$(sel);
-      if (element) {
-        nameSel = sel;
-        note('form', 'Name field found', { selector: sel });
-        break;
+    try {
+      const likely = ['#partyTransactions input#target_id', 'input#target_id', 'input[name="target_id"]'];
+      const waited = await Promise.any(likely.map((sel) => page.waitForSelector(sel, { timeout: 4000 }).then(() => sel))).catch(() => null);
+      if (waited) nameSel = waited;
+    } catch (_) {}
+
+    if (!nameSel) {
+      for (const sel of nameSels) {
+        const element = await page.$(sel);
+        if (element) {
+          nameSel = sel;
+          note('form', 'Name field found', { selector: sel });
+          break;
+        }
       }
     }
 
