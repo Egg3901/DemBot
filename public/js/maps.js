@@ -21,11 +21,14 @@ class USMap {
       // Check if D3.js is available
       if (typeof d3 === 'undefined') {
         console.warn('D3.js not available, loading state data for fallback display');
-        await this.loadStateData();
+        await Promise.race([
+          this.loadStateData(),
+          new Promise((_, reject) => setTimeout(() => reject(new Error('Timeout loading state data')), 10000))
+        ]);
         this.renderFallbackMap();
         return;
       }
-      
+
       // Test D3.js functionality before proceeding
       try {
         const testElement = d3.select(document.createElement('div'));
@@ -34,43 +37,50 @@ class USMap {
         }
       } catch (d3Error) {
         console.warn('D3.js test failed, using simple SVG fallback:', d3Error);
-        await this.loadTopoJSON();
-        await this.loadStateData();
+        await Promise.race([
+          Promise.all([this.loadTopoJSON(), this.loadStateData()]),
+          new Promise((_, reject) => setTimeout(() => reject(new Error('Timeout loading map data')), 10000))
+        ]);
         this.renderSimpleSVGMap();
         return;
       }
-      
-      // Load TopoJSON data
-      await this.loadTopoJSON();
-      
-      // Load state statistics
-      await this.loadStateData();
-      
+
+      // Load TopoJSON data and state statistics in parallel with timeout
+      await Promise.race([
+        Promise.all([this.loadTopoJSON(), this.loadStateData()]),
+        new Promise((_, reject) => setTimeout(() => reject(new Error('Timeout loading map data')), 10000))
+      ]);
+
       // Setup projection and path
       this.setupProjection();
-      
+
       // Validate path generator before rendering
       if (!this.path || typeof this.path !== 'function') {
         throw new Error('Path generator not properly initialized');
       }
-      
+
       // Render the map
       this.renderMap();
-      
+
       // Setup event listeners
       this.setupEventListeners();
-      
+
     } catch (error) {
       console.error('Failed to initialize map:', error);
-      // Try to load state data for fallback even if map fails
+      // Try fallbacks in order of preference
       try {
-        await this.loadTopoJSON();
-        await this.loadStateData();
+        await Promise.race([
+          Promise.all([this.loadTopoJSON(), this.loadStateData()]),
+          new Promise((_, reject) => setTimeout(() => reject(new Error('Timeout')), 5000))
+        ]);
         this.renderSimpleSVGMap();
       } catch (fallbackError) {
         console.error('Simple SVG fallback failed, using data table:', fallbackError);
         try {
-          await this.loadStateData();
+          await Promise.race([
+            this.loadStateData(),
+            new Promise((_, reject) => setTimeout(() => reject(new Error('Timeout')), 5000))
+          ]);
           this.renderFallbackMap();
         } catch (finalError) {
           console.error('All fallbacks failed:', finalError);
@@ -87,21 +97,27 @@ class USMap {
         throw new Error(`HTTP ${response.status}: ${response.statusText}`);
       }
       this.topoData = await response.json();
-      
+
       // Validate the loaded data
       if (!this.topoData || typeof this.topoData !== 'object') {
         throw new Error('Invalid data: not a valid object');
       }
-      
+
       if (!this.topoData.objects || !this.topoData.objects.states) {
         throw new Error('Invalid data: missing states object');
       }
-      
+
+      const geometries = this.topoData.objects.states.geometries;
+      if (!geometries || !Array.isArray(geometries) || geometries.length === 0) {
+        throw new Error('Invalid data: missing or empty geometries array');
+      }
+
       console.log('TopoJSON loaded and validated successfully:', {
         hasObjects: !!this.topoData.objects,
         hasStates: !!this.topoData.objects.states,
-        geometriesCount: this.topoData.objects.states.geometries?.length || 0,
-        arcsCount: this.topoData.arcs?.length || 0
+        geometriesCount: geometries.length,
+        arcsCount: this.topoData.arcs?.length || 0,
+        firstState: geometries[0]?.properties?.name || 'unknown'
       });
     } catch (error) {
       console.error('Failed to load TopoJSON:', error);
@@ -111,16 +127,29 @@ class USMap {
   }
 
   loadFallbackMap() {
-    // Simple fallback - create basic state shapes
-    this.topoData = {
-      type: "Topology",
-      objects: {
-        states: {
-          type: "GeometryCollection",
-          geometries: this.getFallbackStateGeometries()
-        }
+    try {
+      // Simple fallback - create basic state shapes
+      const geometries = this.getFallbackStateGeometries();
+
+      if (!geometries || !Array.isArray(geometries) || geometries.length === 0) {
+        throw new Error('Failed to generate fallback geometries');
       }
-    };
+
+      this.topoData = {
+        type: "Topology",
+        objects: {
+          states: {
+            type: "GeometryCollection",
+            geometries: geometries
+          }
+        }
+      };
+
+      console.log('Fallback map data created successfully:', geometries.length, 'states');
+    } catch (error) {
+      console.error('Failed to create fallback map data:', error);
+      this.showError('Unable to create map fallback data');
+    }
   }
 
   getFallbackStateGeometries() {
@@ -165,7 +194,8 @@ class USMap {
     } catch (error) {
       console.error('Failed to load state data:', error);
       this.stateData = {};
-      this.showError('Unable to load state statistics. Please check if the server is running and data files are available.');
+      // Don't show error immediately, try to render map without data first
+      console.warn('Continuing with empty state data - map will show without statistics');
     }
   }
 
@@ -462,32 +492,76 @@ class USMap {
   }
 
   showStateDetails(d) {
-    const stateName = d.properties.name;
-    const stateKey = this.getStateKey(d.properties.id);
-    const stateStats = this.stateData[stateKey];
-    
-    if (!stateStats) return;
+    try {
+      const stateName = d.properties?.name || 'Unknown State';
+      const stateId = d.properties?.id || 'unknown';
+      const stateKey = this.getStateKey(stateId);
+      const stateStats = this.stateData[stateKey];
 
-    const content = `
-      <div class="modal-header">
-        <h3>${stateName} Players (${stateStats.playerCount || 0})</h3>
-        <button class="modal-close" onclick="window.modal.hide()">&times;</button>
-      </div>
-      <ul class="player-list">
-        ${(stateStats.players || []).slice(0, 10).map(player => `
-          <li class="player-item">
-            <a href="/stats?search=${encodeURIComponent(player.name)}" class="player-link">
-              ${player.name}
-            </a><br>
-            <small class="text-muted">
-              ${formatCurrency(parseMoney(player.cash))} | ES: ${formatNumber(parseES(player.es))} | ${player.party || 'Unknown'}
-            </small>
-          </li>
-        `).join('')}
-      </ul>
-    `;
-    
-    this.modal.show(content);
+      let content = `
+        <div class="modal-header">
+          <h3>${stateName} Players</h3>
+          <button class="modal-close" onclick="window.modal.hide()">&times;</button>
+        </div>
+      `;
+
+      if (stateStats && stateStats.playerCount > 0) {
+        content += `
+          <div class="modal-stats">
+            <p><strong>Active Players:</strong> ${stateStats.playerCount}</p>
+            <p><strong>Democrats:</strong> ${stateStats.demActive || 0}</p>
+            <p><strong>Republicans:</strong> ${stateStats.gopActive || 0}</p>
+            <p><strong>Total ES:</strong> ${formatNumber(stateStats.totalES || 0)}</p>
+            <p><strong>Avg Cash:</strong> ${formatCurrency(stateStats.avgCash || 0)}</p>
+          </div>
+          <ul class="player-list">
+        `;
+
+        const players = stateStats.players || [];
+        const topPlayers = players.slice(0, 10);
+
+        topPlayers.forEach(player => {
+          try {
+            const cash = parseMoney(player.cash);
+            const es = parseES(player.es);
+            const party = player.party || 'Unknown';
+
+            content += `
+              <li class="player-item">
+                <a href="/stats?search=${encodeURIComponent(player.name)}" class="player-link">
+                  ${player.name}
+                </a><br>
+                <small class="text-muted">
+                  ${formatCurrency(cash)} | ES: ${formatNumber(es)} | ${party}
+                </small>
+              </li>
+            `;
+          } catch (playerError) {
+            console.error('Error formatting player data:', playerError, player);
+          }
+        });
+
+        content += '</ul>';
+      } else {
+        content += `
+          <div class="modal-stats">
+            <p class="text-muted">No player data available for this state.</p>
+            <p><strong>State ID:</strong> ${stateId}</p>
+          </div>
+        `;
+      }
+
+      this.modal.show(content);
+    } catch (error) {
+      console.error('Error showing state details:', error);
+      this.modal.show(`
+        <div class="modal-header">
+          <h3>Error</h3>
+          <button class="modal-close" onclick="window.modal.hide()">&times;</button>
+        </div>
+        <p class="text-muted">Unable to load state details.</p>
+      `);
+    }
   }
 
   setupEventListeners() {
@@ -573,8 +647,12 @@ class USMap {
 
   // Alternative fallback that creates a simple SVG map
   renderSimpleSVGMap() {
-    if (!this.container || !this.topoData) return;
-    
+    if (!this.container || !this.topoData) {
+      console.warn('Cannot render simple SVG map: missing container or data');
+      this.renderFallbackMap();
+      return;
+    }
+
     try {
       const svg = document.createElementNS('http://www.w3.org/2000/svg', 'svg');
       svg.setAttribute('viewBox', '0 0 1000 600');
@@ -582,18 +660,30 @@ class USMap {
       svg.style.width = '100%';
       svg.style.height = 'auto';
       svg.style.maxHeight = '500px';
-      
+
       // Simple scale and offset for our coordinates
       const scale = 0.8;
       const offsetX = 100;
       const offsetY = 100;
-      
+
       let successCount = 0;
-      
-      this.topoData.objects.states.geometries.forEach((geom) => {
+      const mapInstance = this; // Preserve reference to USMap instance
+
+      // Validate geometries array
+      const geometries = this.topoData.objects?.states?.geometries;
+      if (!geometries || !Array.isArray(geometries)) {
+        throw new Error('Invalid geometries data');
+      }
+
+      geometries.forEach((geom) => {
         try {
+          if (!geom || !geom.properties) {
+            console.warn('Skipping invalid geometry:', geom);
+            return;
+          }
+
           const path = document.createElementNS('http://www.w3.org/2000/svg', 'path');
-          
+
           // Convert coordinates to SVG path
           let pathData = '';
           if (geom.coordinates && Array.isArray(geom.coordinates)) {
@@ -610,47 +700,64 @@ class USMap {
               }
             });
           }
-          
+
           if (pathData.trim()) {
             path.setAttribute('d', pathData);
             path.setAttribute('class', 'state');
-            path.setAttribute('data-state', geom.properties.id);
-            path.setAttribute('data-name', geom.properties.name);
+            path.setAttribute('data-state', geom.properties.id || 'unknown');
+            path.setAttribute('data-name', geom.properties.name || 'Unknown');
             path.setAttribute('fill', '#e0e0e0');
             path.setAttribute('stroke', '#999');
             path.setAttribute('stroke-width', '1');
             path.style.cursor = 'pointer';
-            
-            // Add hover effect
+
+            // Add hover effect with error handling
             path.addEventListener('mouseenter', () => {
-              path.setAttribute('fill', '#4CAF50');
+              try {
+                path.setAttribute('fill', '#4CAF50');
+              } catch (e) {
+                console.error('Error in mouseenter:', e);
+              }
             });
             path.addEventListener('mouseleave', () => {
-              path.setAttribute('fill', '#e0e0e0');
+              try {
+                path.setAttribute('fill', '#e0e0e0');
+              } catch (e) {
+                console.error('Error in mouseleave:', e);
+              }
             });
-            
-            // Add click handler
+
+            // Add click handler with proper context and error handling
             path.addEventListener('click', () => {
-              this.showStateDetails({
-                properties: {
-                  name: geom.properties.name,
-                  id: geom.properties.id
-                }
-              });
+              try {
+                mapInstance.showStateDetails({
+                  properties: {
+                    name: geom.properties.name || 'Unknown',
+                    id: geom.properties.id || 'unknown'
+                  }
+                });
+              } catch (e) {
+                console.error('Error in click handler:', e);
+              }
             });
-            
+
             svg.appendChild(path);
             successCount++;
           }
         } catch (error) {
-          console.error('Error creating path for', geom.properties.name, error);
+          console.error('Error creating path for', geom?.properties?.name || 'unknown', error);
         }
       });
-      
+
       this.container.innerHTML = '';
       this.container.appendChild(svg);
-      
-      console.log(`Simple SVG map created: ${successCount} states rendered`);
+
+      console.log(`Simple SVG map created: ${successCount} states rendered successfully`);
+
+      if (successCount === 0) {
+        console.warn('No states were rendered, falling back to data table');
+        this.renderFallbackMap();
+      }
     } catch (error) {
       console.error('Error creating simple SVG map:', error);
       this.renderFallbackMap();

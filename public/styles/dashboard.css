@@ -495,6 +495,18 @@ select:focus-visible, input[type="text"]:focus-visible {
   border: 1px solid var(--border);
 }
 
+/* Modal stats */
+.modal-stats {
+  margin: 16px 0;
+  padding: 16px;
+  background: var(--bg-tertiary);
+  border-radius: 8px;
+}
+
+.modal-stats p {
+  margin: 8px 0;
+}
+
 /* Tooltip */
 .tooltip {
   position: absolute;
