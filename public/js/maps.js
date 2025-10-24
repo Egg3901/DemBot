@@ -9,7 +9,7 @@ class USMap {
     this.topoData = null;
     this.stateData = null;
     this.currentMetric = 'dem';
-    this.currentActivity = '3';
+    this.currentActivity = '5';
     this.tooltip = window.tooltip;
     this.modal = window.modal;
     
@@ -91,12 +91,25 @@ class USMap {
   }
 
   async loadTopoJSON() {
-    try {
-      const response = await fetch('/data/us-states.topojson');
-      if (!response.ok) {
-        throw new Error(`HTTP ${response.status}: ${response.statusText}`);
+    // Try a high-quality US map first, then fall back to local simplified file
+    const tryUrls = [
+      'https://cdn.jsdelivr.net/npm/us-atlas@3/states-10m.json',
+      '/data/us-states.topojson'
+    ];
+    let lastError = null;
+    for (const url of tryUrls) {
+      try {
+        const response = await fetch(url, { cache: 'no-store' });
+        if (!response.ok) throw new Error(`HTTP ${response.status}: ${response.statusText}`);
+        const json = await response.json();
+        this.topoData = json;
+        break;
+      } catch (e) {
+        lastError = e;
+        console.warn('Failed to load map from', url, e);
       }
-      this.topoData = await response.json();
+    }
+    if (!this.topoData) throw lastError || new Error('No map data loaded');
 
       // Validate the loaded data
       if (!this.topoData || typeof this.topoData !== 'object') {
@@ -281,22 +294,44 @@ class USMap {
 
       // Convert TopoJSON to GeoJSON
       let states;
+      const simplifiedFormat = !this.topoData.arcs;
       if (typeof topojson !== 'undefined' && this.topoData.arcs) {
         // Real TopoJSON format
         states = topojson.feature(this.topoData, this.topoData.objects.states);
       } else {
         // Our simplified format - treat as GeoJSON
         states = {
-          type: "FeatureCollection",
+          type: 'FeatureCollection',
           features: this.topoData.objects.states.geometries.map(geom => ({
-            type: "Feature",
+            type: 'Feature',
             properties: geom.properties || { id: geom.id, name: geom.name || 'Unknown' },
-            geometry: {
-              type: geom.type,
-              coordinates: geom.coordinates
-            }
+            geometry: { type: geom.type, coordinates: geom.coordinates }
           }))
         };
+      }
+
+      // Ensure we have two-letter state IDs when using us-atlas
+      const nameToAbbr = {
+        'Alabama':'AL','Alaska':'AK','Arizona':'AZ','Arkansas':'AR','California':'CA','Colorado':'CO','Connecticut':'CT','Delaware':'DE','Florida':'FL','Georgia':'GA','Hawaii':'HI','Idaho':'ID','Illinois':'IL','Indiana':'IN','Iowa':'IA','Kansas':'KS','Kentucky':'KY','Louisiana':'LA','Maine':'ME','Maryland':'MD','Massachusetts':'MA','Michigan':'MI','Minnesota':'MN','Mississippi':'MS','Missouri':'MO','Montana':'MT','Nebraska':'NE','Nevada':'NV','New Hampshire':'NH','New Jersey':'NJ','New Mexico':'NM','New York':'NY','North Carolina':'NC','North Dakota':'ND','Ohio':'OH','Oklahoma':'OK','Oregon':'OR','Pennsylvania':'PA','Rhode Island':'RI','South Carolina':'SC','South Dakota':'SD','Tennessee':'TN','Texas':'TX','Utah':'UT','Vermont':'VT','Virginia':'VA','Washington':'WA','West Virginia':'WV','Wisconsin':'WI','Wyoming':'WY'
+      };
+      states.features.forEach(f => {
+        if (!f.properties) f.properties = {};
+        if (!f.properties.id && f.properties.name && nameToAbbr[f.properties.name]) {
+          f.properties.id = nameToAbbr[f.properties.name];
+        }
+      });
+
+      // If we only have simplified coordinates, draw a basic SVG map instead of projecting
+      if (simplifiedFormat) {
+        console.warn('Using simplified local geometry; rendering simple SVG map');
+        this.topoData = { objects: { states: { geometries: states.features.map(f => ({
+          type: f.geometry.type,
+          properties: { id: f.properties.id, name: f.properties.name },
+          coordinates: f.geometry.coordinates
+        })) } } };
+        this.renderSimpleSVGMap();
+        this.updateColors();
+        return;
       }
 
       console.log('States data prepared:', {
