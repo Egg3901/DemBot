@@ -39,6 +39,7 @@ const START_USER_ID = Number(process.env.PPUSA_START_USER_ID || '1');
 const MAX_USER_ID = Number(process.env.PPUSA_MAX_USER_ID || '0'); // 0 = no cap
 const MAX_NEW_PROFILES = Number(process.env.PPUSA_MAX_NEW_PROFILES || '500');
 const MAX_CONSECUTIVE_MISSES = 20;
+const MAX_IDS_PER_RUN = Number(process.env.PPUSA_MAX_IDS_PER_RUN || '1000');
 
 // Role sync is now imported from lib/role-sync.js
 
