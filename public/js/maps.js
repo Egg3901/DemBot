@@ -61,7 +61,22 @@ class USMap {
         throw new Error(`HTTP ${response.status}: ${response.statusText}`);
       }
       this.topoData = await response.json();
-      console.log('TopoJSON loaded successfully');
+      
+      // Validate the loaded data
+      if (!this.topoData || typeof this.topoData !== 'object') {
+        throw new Error('Invalid data: not a valid object');
+      }
+      
+      if (!this.topoData.objects || !this.topoData.objects.states) {
+        throw new Error('Invalid data: missing states object');
+      }
+      
+      console.log('TopoJSON loaded and validated successfully:', {
+        hasObjects: !!this.topoData.objects,
+        hasStates: !!this.topoData.objects.states,
+        geometriesCount: this.topoData.objects.states.geometries?.length || 0,
+        arcsCount: this.topoData.arcs?.length || 0
+      });
     } catch (error) {
       console.error('Failed to load TopoJSON:', error);
       // Fallback to a simple SVG if TopoJSON fails
@@ -164,6 +179,25 @@ class USMap {
     }
 
     try {
+      // Validate data structure
+      if (!this.topoData.objects || !this.topoData.objects.states) {
+        throw new Error('Invalid data: missing states object');
+      }
+
+      if (!this.topoData.objects.states.geometries || !Array.isArray(this.topoData.objects.states.geometries)) {
+        throw new Error('Invalid data: missing or invalid geometries array');
+      }
+
+      // Check if it's our simplified format or real TopoJSON
+      const isSimplifiedFormat = !this.topoData.arcs && this.topoData.objects.states.geometries[0]?.coordinates;
+      console.log('Data format detected:', isSimplifiedFormat ? 'Simplified GeoJSON' : 'TopoJSON');
+
+      console.log('TopoJSON data validated:', {
+        hasObjects: !!this.topoData.objects,
+        hasStates: !!this.topoData.objects.states,
+        geometriesCount: this.topoData.objects.states.geometries?.length || 0
+      });
+
       // Create SVG
       this.svg = d3.select(this.container)
         .append('svg')
@@ -173,19 +207,28 @@ class USMap {
 
       // Convert TopoJSON to GeoJSON
       let states;
-      if (typeof topojson !== 'undefined' && this.topoData.objects && this.topoData.objects.states) {
+      if (typeof topojson !== 'undefined' && this.topoData.arcs) {
+        // Real TopoJSON format
         states = topojson.feature(this.topoData, this.topoData.objects.states);
       } else {
-        // Fallback: use the geometries directly
+        // Our simplified format - treat as GeoJSON
         states = {
           type: "FeatureCollection",
           features: this.topoData.objects.states.geometries.map(geom => ({
             type: "Feature",
-            properties: geom.properties,
-            geometry: geom
+            properties: geom.properties || { id: geom.id, name: geom.name || 'Unknown' },
+            geometry: {
+              type: geom.type,
+              coordinates: geom.coordinates
+            }
           }))
         };
       }
+
+      console.log('States data prepared:', {
+        featuresCount: states.features?.length || 0,
+        firstFeature: states.features?.[0]?.properties
+      });
 
       // Render states
       this.svg.selectAll('.state')
@@ -194,11 +237,11 @@ class USMap {
         .append('path')
         .attr('class', 'state')
         .attr('d', this.path)
-        .attr('data-state', d => d.properties.id)
-        .attr('data-name', d => d.properties.name)
+        .attr('data-state', d => d.properties?.id || 'unknown')
+        .attr('data-name', d => d.properties?.name || 'Unknown')
         .attr('tabindex', '0')
         .attr('role', 'button')
-        .attr('aria-label', d => `${d.properties.name} state - click for details`)
+        .attr('aria-label', d => `${d.properties?.name || 'Unknown'} state - click for details`)
         .on('mouseenter', (event, d) => this.showTooltip(event, d))
         .on('mouseleave', () => this.hideTooltip())
         .on('click', (event, d) => this.showStateDetails(d))

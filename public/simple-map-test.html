@@ -1,0 +1,148 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Simple Map Test - DemBot Dashboard</title>
+    <link rel="stylesheet" href="/styles/dashboard.css">
+</head>
+<body>
+    <div class="container">
+        <div class="page-header">
+            <h1>Simple Map Test</h1>
+            <p>Testing map without external dependencies</p>
+        </div>
+
+        <div class="card">
+            <div class="card-header">
+                <h2>Map Test Results</h2>
+            </div>
+            <div class="card-body">
+                <div id="test-results"></div>
+                <div id="us-map" class="map-container" role="img" aria-label="United States Activity Map"></div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // Simple test without D3.js
+        document.addEventListener('DOMContentLoaded', async () => {
+            const resultsDiv = document.getElementById('test-results');
+            const mapDiv = document.getElementById('us-map');
+            
+            function addResult(message, isError = false) {
+                const div = document.createElement('div');
+                div.style.padding = '8px';
+                div.style.margin = '4px 0';
+                div.style.borderRadius = '4px';
+                div.style.backgroundColor = isError ? '#fee' : '#efe';
+                div.style.border = isError ? '1px solid #fcc' : '1px solid #cfc';
+                div.textContent = message;
+                resultsDiv.appendChild(div);
+            }
+
+            try {
+                addResult('✓ Page loaded successfully');
+                
+                // Test 1: Check if we can fetch the data file
+                addResult('Testing data file fetch...');
+                const response = await fetch('/data/us-states.topojson');
+                if (!response.ok) {
+                    throw new Error(`HTTP ${response.status}: ${response.statusText}`);
+                }
+                addResult('✓ Data file fetch successful');
+                
+                // Test 2: Parse the JSON
+                const data = await response.json();
+                addResult('✓ JSON parsing successful');
+                
+                // Test 3: Validate structure
+                if (!data.objects || !data.objects.states) {
+                    throw new Error('Missing states object');
+                }
+                addResult('✓ Data structure validation passed');
+                
+                if (!data.objects.states.geometries || !Array.isArray(data.objects.states.geometries)) {
+                    throw new Error('Missing or invalid geometries array');
+                }
+                addResult(`✓ Found ${data.objects.states.geometries.length} state geometries`);
+                
+                // Test 4: Check first geometry
+                const firstGeom = data.objects.states.geometries[0];
+                if (!firstGeom.properties || !firstGeom.properties.name) {
+                    throw new Error('First geometry missing properties');
+                }
+                addResult(`✓ First state: ${firstGeom.properties.name} (${firstGeom.properties.id})`);
+                
+                // Test 5: Check coordinates
+                if (!firstGeom.coordinates || !Array.isArray(firstGeom.coordinates)) {
+                    throw new Error('First geometry missing coordinates');
+                }
+                addResult(`✓ Coordinates found: ${firstGeom.coordinates.length} rings`);
+                
+                // Test 6: Try to create a simple SVG
+                addResult('Creating simple SVG map...');
+                const svg = document.createElementNS('http://www.w3.org/2000/svg', 'svg');
+                svg.setAttribute('viewBox', '0 0 1000 600');
+                svg.setAttribute('class', 'map-svg');
+                svg.style.width = '100%';
+                svg.style.height = 'auto';
+                svg.style.maxHeight = '500px';
+                
+                // Simple scale and offset for our coordinates
+                const scale = 0.8;
+                const offsetX = 100;
+                const offsetY = 100;
+                
+                data.objects.states.geometries.forEach((geom, index) => {
+                    const path = document.createElementNS('http://www.w3.org/2000/svg', 'path');
+                    
+                    // Convert coordinates to SVG path
+                    let pathData = '';
+                    geom.coordinates.forEach(ring => {
+                        ring.forEach((coord, i) => {
+                            const x = coord[0] * scale + offsetX;
+                            const y = coord[1] * scale + offsetY;
+                            pathData += (i === 0 ? 'M' : 'L') + x + ',' + y + ' ';
+                        });
+                        pathData += 'Z ';
+                    });
+                    
+                    path.setAttribute('d', pathData);
+                    path.setAttribute('class', 'state');
+                    path.setAttribute('data-state', geom.properties.id);
+                    path.setAttribute('data-name', geom.properties.name);
+                    path.setAttribute('fill', '#e0e0e0');
+                    path.setAttribute('stroke', '#999');
+                    path.setAttribute('stroke-width', '1');
+                    path.style.cursor = 'pointer';
+                    
+                    // Add hover effect
+                    path.addEventListener('mouseenter', () => {
+                        path.setAttribute('fill', '#4CAF50');
+                    });
+                    path.addEventListener('mouseleave', () => {
+                        path.setAttribute('fill', '#e0e0e0');
+                    });
+                    
+                    // Add click handler
+                    path.addEventListener('click', () => {
+                        alert(`Clicked on ${geom.properties.name} (${geom.properties.id})`);
+                    });
+                    
+                    svg.appendChild(path);
+                });
+                
+                mapDiv.innerHTML = '';
+                mapDiv.appendChild(svg);
+                addResult('✓ Simple SVG map created successfully');
+                addResult('✓ Map is interactive - try hovering and clicking on states!');
+                
+            } catch (error) {
+                addResult(`✗ Error: ${error.message}`, true);
+                console.error('Test failed:', error);
+            }
+        });
+    </script>
+</body>
+</html>
