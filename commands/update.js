@@ -66,6 +66,12 @@ module.exports = {
         .setName('clear')
         .setDescription('When used with roles, remove all managed office and region roles')
         .setRequired(false)
+    )
+    .addBooleanOption(opt =>
+      opt
+        .setName('debug')
+        .setDescription('Enable deep logging for troubleshooting')
+        .setRequired(false)
     ),
 
   /**
@@ -82,6 +88,19 @@ module.exports = {
     const updateType = TYPE_CHOICES.has(typeInputRaw) ? typeInputRaw : 'all';
     const typeLabel = TYPE_LABELS[updateType] || TYPE_LABELS.all;
     const inGuild = interaction.inGuild();
+    const debug = interaction.options.getBoolean('debug') || false;
+
+    const runStamp = new Date().toISOString().replace(/[:.]/g, '-');
+    const logPath = path.join(process.cwd(), 'bot-health.log');
+    const dlog = (msg) => {
+      if (!debug) return;
+      const line = `[${new Date().toISOString()}] [update:${updateType}] ${msg}\n`;
+      try { fs.appendFileSync(logPath, line, 'utf8'); } catch (_) {}
+      try { console.log('[update]', msg); } catch (_) {}
+    };
+    if (debug) {
+      dlog(`--- START (stamp=${runStamp}) user=${interaction.user?.id || 'unknown'} guild=${interaction.guild?.id || 'DM'} ---`);
+    }
 
     if (!(await canManageBot(interaction))) {
       return interaction.editReply('You do not have permission to use /update.');
@@ -153,6 +172,9 @@ module.exports = {
     const start = Date.now();
     let found = 0;
     let checked = 0;
+    dlog(`dbCounts: totalProfiles=${profilesList.length} allIds=${allIds.length} demIds=${demIds.length} gopIds=${gopIds.length}`);
+    dlog(`selection: type=${updateType} existingTargetIds=${existingTargetIds.length}`);
+    dlog(`newScan: baseStartId=${baseStartId} maxKnownIdAll=${maxKnownIdAll} newStartId=${newStartId} effectiveNewStartId=${effectiveNewStartId} range=[${effectiveNewStartId}..${effectiveNewStartId + 99}]`);
 
     // Handle special update types (states, primaries, races)
     if (['states', 'primaries', 'races'].includes(updateType)) {
@@ -560,6 +582,7 @@ module.exports = {
       const loginId = Number.isFinite(loginSeed) && loginSeed > 0 ? loginSeed : baseStartId;
       
       session = await sessionManager.authenticateSession('update', `${BASE}/users/${loginId}`);
+      dlog(`auth: loginSeed=${loginSeed} loginId=${loginId}`);
 
       await interaction.editReply(`Updating profiles (${typeSummaryLabel})...`);
 
@@ -571,20 +594,29 @@ module.exports = {
 
       // Process existing profiles first
       if (existingTargetIds.length > 0) {
+        const missCounts = { redirect: 0, noName: 0, exception: 0, unknown: 0 };
         const profileProcessor = async (profileId) => {
           try {
             const targetUrl = `${BASE}/users/${profileId}`;
             const result = await navigateWithSession(session, targetUrl, 'networkidle2');
             const info = parseProfile(result.html);
+            const finalUrl = result.finalUrl || '';
+            const isUserUrl = /\/users\//i.test(finalUrl);
+            const htmlLen = (result.html || '').length;
+            const infoName = info?.name || null;
+            if (debug) dlog(`exist: id=${profileId} url=${finalUrl} bytes=${htmlLen} userUrl=${isUserUrl} name=${infoName || 'null'}`);
             
             if (info?.name) {
               mergeProfileRecord(db, profileId, info);
               return { id: profileId, found: true, info };
             }
-            
-            return { id: profileId, found: false };
+            const reason = !isUserUrl ? 'redirect' : (!infoName ? 'noName' : 'unknown');
+            missCounts[reason] = (missCounts[reason] || 0) + 1;
+            return { id: profileId, found: false, reason };
           } catch (error) {
             console.error(`Error processing profile ${profileId}:`, error.message);
+            if (debug) dlog(`exist: id=${profileId} exception=${error.message}`);
+            missCounts.exception++;
             return { id: profileId, found: false, error: error.message };
           }
         };
@@ -594,16 +626,19 @@ module.exports = {
             if (processed % 5 === 0 || processed === total) {
               const foundCount = results.filter(r => r?.found).length;
               interaction.editReply(`Updating profiles (${typeSummaryLabel})... ${processed}/${total} processed, ${foundCount} found`);
+              if (debug) dlog(`progress(exist): ${processed}/${total} found=${foundCount}`);
             }
           }
         });
 
         found += results.filter(r => r?.found).length;
         checked += results.length;
+        if (debug) dlog(`summary(exist): checked=${results.length} found=${results.filter(r=>r?.found).length} misses=${JSON.stringify(missCounts)}`);
       }
 
       // Process new profiles
       if (effectiveNewStartId > 0) {
+        const missCountsNew = { redirect: 0, noName: 0, exception: 0, unknown: 0 };
         const newIds = [];
         for (let id = effectiveNewStartId; id < effectiveNewStartId + 100; id++) {
           newIds.push(id);
@@ -614,14 +649,22 @@ module.exports = {
             const targetUrl = `${BASE}/users/${profileId}`;
             const result = await navigateWithSession(session, targetUrl, 'networkidle2');
             const info = parseProfile(result.html);
+            const finalUrl = result.finalUrl || '';
+            const isUserUrl = /\/users\//i.test(finalUrl);
+            const htmlLen = (result.html || '').length;
+            const infoName = info?.name || null;
+            if (debug) dlog(`new: id=${profileId} url=${finalUrl} bytes=${htmlLen} userUrl=${isUserUrl} name=${infoName || 'null'}`);
             
             if (info?.name) {
               mergeProfileRecord(db, profileId, info);
               return { id: profileId, found: true, info };
             }
-            
-            return { id: profileId, found: false };
+            const reason = !isUserUrl ? 'redirect' : (!infoName ? 'noName' : 'unknown');
+            missCountsNew[reason] = (missCountsNew[reason] || 0) + 1;
+            return { id: profileId, found: false, reason };
           } catch (error) {
+            if (debug) dlog(`new: id=${profileId} exception=${error.message}`);
+            missCountsNew.exception++;
             return { id: profileId, found: false, error: error.message };
           }
         };
@@ -631,12 +674,14 @@ module.exports = {
             if (processed % 10 === 0 || processed === total) {
               const foundCount = newResults.filter(r => r?.found).length;
               interaction.editReply(`Scanning new profiles... ${processed}/${total} processed, ${foundCount} found`);
+              if (debug) dlog(`progress(new): ${processed}/${total} found=${foundCount}`);
             }
           }
         });
 
         found += newResults.filter(r => r?.found).length;
         checked += newResults.length;
+        if (debug) dlog(`summary(new): checked=${newResults.length} found=${newResults.filter(r=>r?.found).length} misses=${JSON.stringify(missCountsNew)}`);
       }
 
       writeDb();
@@ -647,7 +692,8 @@ module.exports = {
       try { fs.writeFileSync(backupPath, JSON.stringify(db, null, 2)); } catch {}
       
       const secs = Math.round((Date.now() - start) / 1000);
-      await interaction.editReply(`Updated profiles.json (${typeSummaryLabel}). Checked ${checked}, found ${found}. Time: ${secs}s.`);
+      dlog(`final: checked=${checked} found=${found} elapsedSec=${secs}`);
+      await interaction.editReply(`Updated profiles.json (${typeSummaryLabel}). Checked ${checked}, found ${found}. Time: ${secs}s.${debug ? ' (debug log: bot-health.log)' : ''}`);
 
       if (applyRoles) {
         const guild = interaction.guild;
