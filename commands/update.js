@@ -34,6 +34,12 @@ const TYPE_LABELS = {
 const isDemocratic = (party = '') => /democratic/i.test(String(party));
 const isRepublican = (party = '') => /republican/i.test(String(party));
 
+// Scan configuration (align with cron-service defaults)
+const START_USER_ID = Number(process.env.PPUSA_START_USER_ID || '1');
+const MAX_USER_ID = Number(process.env.PPUSA_MAX_USER_ID || '0'); // 0 = no cap
+const MAX_NEW_PROFILES = Number(process.env.PPUSA_MAX_NEW_PROFILES || '500');
+const MAX_CONSECUTIVE_MISSES = 20;
+
 // Role sync is now imported from lib/role-sync.js
 
 module.exports = {
@@ -145,9 +151,9 @@ module.exports = {
       [];
 
     const maxKnownIdAll = allIds.length ? allIds[allIds.length - 1] : 0;
-    const baseStartId = 1000;
+    const baseStartId = START_USER_ID > 0 ? START_USER_ID : 1;
     const newStartId = Math.max(maxKnownIdAll + 1, baseStartId);
-    const effectiveNewStartId = newStartId;
+    const effectiveNewStartId = MAX_USER_ID > 0 ? Math.min(newStartId, MAX_USER_ID) : newStartId;
     const typeSummaryLabel = updateType === 'new' ? 'New accounts' : `${typeLabel} + new accounts`;
 
     const start = Date.now();
@@ -223,41 +229,48 @@ module.exports = {
         checked += results.length;
       }
 
-      // Process new profiles
+      // Process new profiles (discovery loop similar to cron)
       if (effectiveNewStartId > 0) {
-        const newIds = [];
-        for (let id = effectiveNewStartId; id < effectiveNewStartId + 100; id++) {
-          newIds.push(id);
-        }
+        let id = effectiveNewStartId;
+        let newProfilesFound = 0;
+        let consecutiveMisses = 0;
+        const NEW_PROFILE_BATCH_SIZE = 20;
 
         const newProfileProcessor = async (profileId) => {
           try {
             const targetUrl = `${BASE}/users/${profileId}`;
             const result = await navigateWithSession(session, targetUrl, 'networkidle2');
             const info = parseProfile(result.html);
-            
             if (info?.name) {
               mergeProfileRecord(db, profileId, info);
               return { id: profileId, found: true, info };
             }
-            
             return { id: profileId, found: false };
           } catch (error) {
             return { id: profileId, found: false, error: error.message };
           }
         };
 
-        const { results: newResults } = await processor.processProfiles(newIds, newProfileProcessor, {
-          onProgress: (processed, total) => {
-            if (processed % 10 === 0 || processed === total) {
-              const foundCount = newResults.filter(r => r?.found).length;
-              interaction.editReply(`Scanning new profiles... ${processed}/${total} processed, ${foundCount} found`);
-            }
-          }
-        });
+        while (true) {
+          if (MAX_USER_ID > 0 && id > MAX_USER_ID) break;
+          if (newProfilesFound >= Math.max(1, MAX_NEW_PROFILES)) break;
 
-        found += newResults.filter(r => r?.found).length;
-        checked += newResults.length;
+          const batchEnd = Math.min(id + NEW_PROFILE_BATCH_SIZE, MAX_USER_ID > 0 ? MAX_USER_ID + 1 : id + NEW_PROFILE_BATCH_SIZE);
+          const batchIds = [];
+          for (let batchId = id; batchId < batchEnd; batchId++) batchIds.push(batchId);
+
+          const { results: batchResults } = await processor.processProfiles(batchIds, newProfileProcessor);
+          checked += batchResults.length;
+          const batchFound = batchResults.filter(r => r?.found).length;
+          found += batchFound;
+          newProfilesFound += batchFound;
+          consecutiveMisses = batchFound > 0 ? 0 : consecutiveMisses + 1;
+
+          await interaction.editReply(`Scanning new profiles... checked ${checked}, found ${found} (new ${newProfilesFound})`);
+
+          id = batchEnd;
+          if (batchFound === 0 && consecutiveMisses >= MAX_CONSECUTIVE_MISSES) break;
+        }
       }
 
       writeDb();
