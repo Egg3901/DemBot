@@ -233,7 +233,11 @@ module.exports = {
       if (effectiveNewStartId > 0) {
         let id = effectiveNewStartId;
         let newProfilesFound = 0;
-        let consecutiveMisses = 0;
+        let consecutiveMisses = 0; // legacy counter
+        let consecutiveMissIds = 0; // strict per-ID counter
+        let scannedIds = 0;
+        const rangeStart = id;
+        let stopReason = null;
         const NEW_PROFILE_BATCH_SIZE = 20;
 
         const newProfileProcessor = async (profileId) => {
@@ -252,8 +256,8 @@ module.exports = {
         };
 
         while (true) {
-          if (MAX_USER_ID > 0 && id > MAX_USER_ID) break;
-          if (newProfilesFound >= Math.max(1, MAX_NEW_PROFILES)) break;
+          if (MAX_USER_ID > 0 && id > MAX_USER_ID) { stopReason = 'max_user_id'; break; }
+          if (newProfilesFound >= Math.max(1, MAX_NEW_PROFILES)) { stopReason = 'max_new_profiles'; break; }
 
           const batchEnd = Math.min(id + NEW_PROFILE_BATCH_SIZE, MAX_USER_ID > 0 ? MAX_USER_ID + 1 : id + NEW_PROFILE_BATCH_SIZE);
           const batchIds = [];
@@ -261,16 +265,32 @@ module.exports = {
 
           const { results: batchResults } = await processor.processProfiles(batchIds, newProfileProcessor);
           checked += batchResults.length;
-          const batchFound = batchResults.filter(r => r?.found).length;
-          found += batchFound;
-          newProfilesFound += batchFound;
-          consecutiveMisses = batchFound > 0 ? 0 : consecutiveMisses + 1;
+
+          // Walk through IDs in order to compute per-ID consecutive misses
+          const byId = new Map(batchIds.map((bid, i) => [bid, batchResults[i]]));
+          let batchFound = 0;
+          let shouldStop = false;
+          for (let cur = id; cur < batchEnd; cur++) {
+            const r = byId.get(cur);
+            const hit = !!(r && r.found);
+            scannedIds++;
+            if (hit) {
+              consecutiveMisses = 0; consecutiveMissIds = 0; batchFound++; found++; newProfilesFound++;
+            } else {
+              consecutiveMisses++; consecutiveMissIds++;
+            }
+            if (newProfilesFound >= Math.max(1, MAX_NEW_PROFILES)) { stopReason = 'max_new_profiles'; shouldStop = true; break; }
+            if (consecutiveMissIds >= MAX_CONSECUTIVE_MISSES) { stopReason = 'consecutive_misses'; shouldStop = true; break; }
+            if (scannedIds >= MAX_IDS_PER_RUN) { stopReason = 'max_ids_per_run'; shouldStop = true; break; }
+          }
 
           await interaction.editReply(`Scanning new profiles... checked ${checked}, found ${found} (new ${newProfilesFound})`);
-
           id = batchEnd;
-          if (batchFound === 0 && consecutiveMisses >= MAX_CONSECUTIVE_MISSES) break;
+          if (batchFound === 0 && consecutiveMisses >= MAX_CONSECUTIVE_MISSES) { stopReason = stopReason || 'legacy_consecutive_misses'; break; }
+          if (shouldStop) break;
         }
+
+        console.log(`Discovery summary (/update): rangeStart=${rangeStart}, lastTriedId=${id - 1}, scanned=${scannedIds}, newFound=${newProfilesFound}, stopReason=${stopReason || 'loop_end'}`);
       }
 
       writeDb();
