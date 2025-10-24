@@ -314,10 +314,23 @@ class USMap {
       const nameToAbbr = {
         'Alabama':'AL','Alaska':'AK','Arizona':'AZ','Arkansas':'AR','California':'CA','Colorado':'CO','Connecticut':'CT','Delaware':'DE','Florida':'FL','Georgia':'GA','Hawaii':'HI','Idaho':'ID','Illinois':'IL','Indiana':'IN','Iowa':'IA','Kansas':'KS','Kentucky':'KY','Louisiana':'LA','Maine':'ME','Maryland':'MD','Massachusetts':'MA','Michigan':'MI','Minnesota':'MN','Mississippi':'MS','Missouri':'MO','Montana':'MT','Nebraska':'NE','Nevada':'NV','New Hampshire':'NH','New Jersey':'NJ','New Mexico':'NM','New York':'NY','North Carolina':'NC','North Dakota':'ND','Ohio':'OH','Oklahoma':'OK','Oregon':'OR','Pennsylvania':'PA','Rhode Island':'RI','South Carolina':'SC','South Dakota':'SD','Tennessee':'TN','Texas':'TX','Utah':'UT','Vermont':'VT','Virginia':'VA','Washington':'WA','West Virginia':'WV','Wisconsin':'WI','Wyoming':'WY'
       };
+      const fipsToAbbr = {
+        '01':'AL','02':'AK','04':'AZ','05':'AR','06':'CA','08':'CO','09':'CT','10':'DE','11':'DC','12':'FL','13':'GA','15':'HI','16':'ID','17':'IL','18':'IN','19':'IA','20':'KS','21':'KY','22':'LA','23':'ME','24':'MD','25':'MA','26':'MI','27':'MN','28':'MS','29':'MO','30':'MT','31':'NE','32':'NV','33':'NH','34':'NJ','35':'NM','36':'NY','37':'NC','38':'ND','39':'OH','40':'OK','41':'OR','42':'PA','44':'RI','45':'SC','46':'SD','47':'TN','48':'TX','49':'UT','50':'VT','51':'VA','53':'WA','54':'WV','55':'WI','56':'WY'
+      };
+      const abbrToName = Object.fromEntries(Object.entries(nameToAbbr).map(([n,a])=>[a,n]));
       states.features.forEach(f => {
         if (!f.properties) f.properties = {};
-        if (!f.properties.id && f.properties.name && nameToAbbr[f.properties.name]) {
-          f.properties.id = nameToAbbr[f.properties.name];
+        // us-atlas stores numeric FIPS in feature.id
+        const fips = String(f.id || '').padStart(2,'0');
+        if (!f.properties.id) {
+          if (f.properties.name && nameToAbbr[f.properties.name]) {
+            f.properties.id = nameToAbbr[f.properties.name];
+          } else if (fipsToAbbr[fips]) {
+            f.properties.id = fipsToAbbr[fips];
+          }
+        }
+        if (!f.properties.name && f.properties.id && abbrToName[f.properties.id]) {
+          f.properties.name = abbrToName[f.properties.id];
         }
       });
 
