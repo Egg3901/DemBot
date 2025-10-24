@@ -344,6 +344,8 @@ async function performWebSend({ type, name, amount, debug }) {
       'input[name*="player"]',
       'input[name*="user"]',
       'input[name*="name"]',
+      'input[name*="username"]',
+      'input[name*="display_name"]',
       'input[placeholder*="name" i]',
       'input[placeholder*="player" i]',
       'input[placeholder*="recipient" i]',
@@ -351,19 +353,24 @@ async function performWebSend({ type, name, amount, debug }) {
       'input[placeholder*="username" i]',
       '#partyTransactions input[type="text"]',
       '.form-group input[type="text"]',
+      '.form-control input[type="text"]',
       'form input[type="text"]',
       'input[type="text"]',
       'input[type="search"]',
       'input[autocomplete*="name"]',
       'input[autocomplete*="user"]',
+      'input[autocomplete*="username"]',
       'input[data-name]',
       'input[data-target]',
       'input[data-recipient]',
       'input[data-player]',
+      'input[data-username]',
       '.form-control',
       '.form-input',
       '.input-field',
-      'input:not([type="hidden"]):not([type="submit"]):not([type="button"])'
+      '.form-field input',
+      '.field input',
+      'input:not([type="hidden"]):not([type="submit"]):not([type="button"]):not([type="checkbox"]):not([type="radio"])'
     ];
 
     // Debug: Log all available input elements
@@ -407,12 +414,20 @@ async function performWebSend({ type, name, amount, debug }) {
         note('debug', 'Text input found', element);
         
         // If this looks like a name field, use it
-        if (element.name?.includes('name') || 
-            element.name?.includes('user') || 
-            element.name?.includes('player') ||
+        if (element.name?.toLowerCase().includes('name') || 
+            element.name?.toLowerCase().includes('user') || 
+            element.name?.toLowerCase().includes('player') ||
+            element.name?.toLowerCase().includes('recipient') ||
+            element.name?.toLowerCase().includes('target') ||
             element.placeholder?.toLowerCase().includes('name') ||
             element.placeholder?.toLowerCase().includes('user') ||
-            element.placeholder?.toLowerCase().includes('player')) {
+            element.placeholder?.toLowerCase().includes('player') ||
+            element.placeholder?.toLowerCase().includes('recipient') ||
+            element.placeholder?.toLowerCase().includes('username') ||
+            element.id?.toLowerCase().includes('name') ||
+            element.id?.toLowerCase().includes('user') ||
+            element.id?.toLowerCase().includes('player') ||
+            element.id?.toLowerCase().includes('target')) {
           nameSel = `input[name="${element.name}"]`;
           note('form', 'Name field found by heuristic', { selector: nameSel, element });
           break;

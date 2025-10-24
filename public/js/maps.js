@@ -26,6 +26,20 @@ class USMap {
         return;
       }
       
+      // Test D3.js functionality before proceeding
+      try {
+        const testElement = d3.select(document.createElement('div'));
+        if (!testElement || typeof testElement.append !== 'function') {
+          throw new Error('D3.js not functioning properly');
+        }
+      } catch (d3Error) {
+        console.warn('D3.js test failed, using simple SVG fallback:', d3Error);
+        await this.loadTopoJSON();
+        await this.loadStateData();
+        this.renderSimpleSVGMap();
+        return;
+      }
+      
       // Load TopoJSON data
       await this.loadTopoJSON();
       
@@ -50,11 +64,18 @@ class USMap {
       console.error('Failed to initialize map:', error);
       // Try to load state data for fallback even if map fails
       try {
+        await this.loadTopoJSON();
         await this.loadStateData();
-        this.renderFallbackMap();
+        this.renderSimpleSVGMap();
       } catch (fallbackError) {
-        console.error('Fallback also failed:', fallbackError);
-        this.showError(`Failed to load map: ${error.message}`);
+        console.error('Simple SVG fallback failed, using data table:', fallbackError);
+        try {
+          await this.loadStateData();
+          this.renderFallbackMap();
+        } catch (finalError) {
+          console.error('All fallbacks failed:', finalError);
+          this.showError(`Failed to load map: ${error.message}`);
+        }
       }
     }
   }
@@ -277,21 +298,37 @@ class USMap {
         .attr('role', 'button')
         .attr('aria-label', d => `${d.properties?.name || 'Unknown'} state - click for details`);
 
-      // Add event listeners with proper context
+      // Add event listeners with proper context and error handling
       statePaths
         .on('mouseenter', (event, d) => {
-          this.showTooltip(event, d);
+          try {
+            this.showTooltip(event, d);
+          } catch (error) {
+            console.error('Error in mouseenter handler:', error);
+          }
         })
         .on('mouseleave', (event, d) => {
-          this.hideTooltip();
+          try {
+            this.hideTooltip();
+          } catch (error) {
+            console.error('Error in mouseleave handler:', error);
+          }
         })
         .on('click', (event, d) => {
-          this.showStateDetails(d);
+          try {
+            this.showStateDetails(d);
+          } catch (error) {
+            console.error('Error in click handler:', error);
+          }
         })
         .on('keydown', (event, d) => {
-          if (event.key === 'Enter' || event.key === ' ') {
-            event.preventDefault();
-            this.showStateDetails(d);
+          try {
+            if (event.key === 'Enter' || event.key === ' ') {
+              event.preventDefault();
+              this.showStateDetails(d);
+            }
+          } catch (error) {
+            console.error('Error in keydown handler:', error);
           }
         });
 
@@ -532,6 +569,92 @@ class USMap {
         </div>
       </div>
     `;
+  }
+
+  // Alternative fallback that creates a simple SVG map
+  renderSimpleSVGMap() {
+    if (!this.container || !this.topoData) return;
+    
+    try {
+      const svg = document.createElementNS('http://www.w3.org/2000/svg', 'svg');
+      svg.setAttribute('viewBox', '0 0 1000 600');
+      svg.setAttribute('class', 'map-svg');
+      svg.style.width = '100%';
+      svg.style.height = 'auto';
+      svg.style.maxHeight = '500px';
+      
+      // Simple scale and offset for our coordinates
+      const scale = 0.8;
+      const offsetX = 100;
+      const offsetY = 100;
+      
+      let successCount = 0;
+      
+      this.topoData.objects.states.geometries.forEach((geom) => {
+        try {
+          const path = document.createElementNS('http://www.w3.org/2000/svg', 'path');
+          
+          // Convert coordinates to SVG path
+          let pathData = '';
+          if (geom.coordinates && Array.isArray(geom.coordinates)) {
+            geom.coordinates.forEach(ring => {
+              if (Array.isArray(ring)) {
+                ring.forEach((coord, i) => {
+                  if (Array.isArray(coord) && coord.length >= 2) {
+                    const x = coord[0] * scale + offsetX;
+                    const y = coord[1] * scale + offsetY;
+                    pathData += (i === 0 ? 'M' : 'L') + x + ',' + y + ' ';
+                  }
+                });
+                pathData += 'Z ';
+              }
+            });
+          }
+          
+          if (pathData.trim()) {
+            path.setAttribute('d', pathData);
+            path.setAttribute('class', 'state');
+            path.setAttribute('data-state', geom.properties.id);
+            path.setAttribute('data-name', geom.properties.name);
+            path.setAttribute('fill', '#e0e0e0');
+            path.setAttribute('stroke', '#999');
+            path.setAttribute('stroke-width', '1');
+            path.style.cursor = 'pointer';
+            
+            // Add hover effect
+            path.addEventListener('mouseenter', () => {
+              path.setAttribute('fill', '#4CAF50');
+            });
+            path.addEventListener('mouseleave', () => {
+              path.setAttribute('fill', '#e0e0e0');
+            });
+            
+            // Add click handler
+            path.addEventListener('click', () => {
+              this.showStateDetails({
+                properties: {
+                  name: geom.properties.name,
+                  id: geom.properties.id
+                }
+              });
+            });
+            
+            svg.appendChild(path);
+            successCount++;
+          }
+        } catch (error) {
+          console.error('Error creating path for', geom.properties.name, error);
+        }
+      });
+      
+      this.container.innerHTML = '';
+      this.container.appendChild(svg);
+      
+      console.log(`Simple SVG map created: ${successCount} states rendered`);
+    } catch (error) {
+      console.error('Error creating simple SVG map:', error);
+      this.renderFallbackMap();
+    }
   }
 
   renderStateDataTable() {
