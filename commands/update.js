@@ -13,7 +13,7 @@ const { sessionManager } = require('../lib/session-manager');
 const { ParallelProcessor } = require('../lib/parallel-processor');
 const { smartCache } = require('../lib/smart-cache');
 const { performRoleSync } = require('../lib/role-sync');
-const { navigateWithSession } = require('../lib/ppusa-auth-optimized');
+const { navigateWithSession, authenticateAndNavigate: authWithReuse } = require('../lib/ppusa-auth-optimized');
 
 // Inactive (offline) role and threshold (days)
 const INACTIVE_ROLE_ID = '1427236595345522708';
@@ -592,13 +592,35 @@ module.exports = {
         delayBetweenBatches: 200
       });
 
+      const fetchProfile = async (targetUrl) => {
+        // First attempt: use existing session navigation
+        let result = await navigateWithSession(session, targetUrl, 'networkidle2');
+        let finalUrl = result.finalUrl || '';
+        const isLogin = /\/login\b/i.test(finalUrl);
+        const isUserUrl = /\/users\//i.test(finalUrl);
+        if (debug) dlog(`fetch: first url=${finalUrl} login=${isLogin} userUrl=${isUserUrl}`);
+        // If redirected to login or not on a user page, try to re-auth and retry once
+        if (isLogin || !isUserUrl) {
+          if (debug) dlog(`fetch: reauth retry for ${targetUrl}`);
+          try {
+            const re = await authWithReuse({ url: targetUrl, browser: session.browser, page: session.page, waitUntil: 'networkidle2' });
+            result = { html: re.html, finalUrl: re.finalUrl, status: re.status };
+            finalUrl = result.finalUrl || '';
+            if (debug) dlog(`fetch: after-reauth url=${finalUrl}`);
+          } catch (reauthErr) {
+            if (debug) dlog(`fetch: reauth failed ${reauthErr.message}`);
+          }
+        }
+        return result;
+      };
+
       // Process existing profiles first
       if (existingTargetIds.length > 0) {
         const missCounts = { redirect: 0, noName: 0, exception: 0, unknown: 0 };
         const profileProcessor = async (profileId) => {
           try {
             const targetUrl = `${BASE}/users/${profileId}`;
-            const result = await navigateWithSession(session, targetUrl, 'networkidle2');
+            const result = await fetchProfile(targetUrl);
             const info = parseProfile(result.html);
             const finalUrl = result.finalUrl || '';
             const isUserUrl = /\/users\//i.test(finalUrl);
@@ -606,7 +628,9 @@ module.exports = {
             const infoName = info?.name || null;
             if (debug) dlog(`exist: id=${profileId} url=${finalUrl} bytes=${htmlLen} userUrl=${isUserUrl} name=${infoName || 'null'}`);
             
-            if (info?.name) {
+            // Guard against login pages or non-user URLs masquerading as profiles
+            const badName = infoName && /login/i.test(infoName);
+            if (info?.name && isUserUrl && !badName) {
               mergeProfileRecord(db, profileId, info);
               return { id: profileId, found: true, info };
             }
@@ -647,7 +671,7 @@ module.exports = {
         const newProfileProcessor = async (profileId) => {
           try {
             const targetUrl = `${BASE}/users/${profileId}`;
-            const result = await navigateWithSession(session, targetUrl, 'networkidle2');
+            const result = await fetchProfile(targetUrl);
             const info = parseProfile(result.html);
             const finalUrl = result.finalUrl || '';
             const isUserUrl = /\/users\//i.test(finalUrl);
@@ -655,7 +679,8 @@ module.exports = {
             const infoName = info?.name || null;
             if (debug) dlog(`new: id=${profileId} url=${finalUrl} bytes=${htmlLen} userUrl=${isUserUrl} name=${infoName || 'null'}`);
             
-            if (info?.name) {
+            const badName = infoName && /login/i.test(infoName);
+            if (info?.name && isUserUrl && !badName) {
               mergeProfileRecord(db, profileId, info);
               return { id: profileId, found: true, info };
             }
