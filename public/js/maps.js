@@ -20,7 +20,10 @@ class USMap {
     try {
       // Check if D3.js is available
       if (typeof d3 === 'undefined') {
-        throw new Error('D3.js library not loaded');
+        console.warn('D3.js not available, loading state data for fallback display');
+        await this.loadStateData();
+        this.renderFallbackMap();
+        return;
       }
       
       // Load TopoJSON data
@@ -40,7 +43,14 @@ class USMap {
       
     } catch (error) {
       console.error('Failed to initialize map:', error);
-      this.showError(`Failed to load map: ${error.message}`);
+      // Try to load state data for fallback even if map fails
+      try {
+        await this.loadStateData();
+        this.renderFallbackMap();
+      } catch (fallbackError) {
+        console.error('Fallback also failed:', fallbackError);
+        this.showError(`Failed to load map: ${error.message}`);
+      }
     }
   }
 
@@ -147,53 +157,64 @@ class USMap {
     // Clear existing map
     this.container.innerHTML = '';
 
-    // Create SVG
-    this.svg = d3.select(this.container)
-      .append('svg')
-      .attr('class', 'map-svg')
-      .attr('viewBox', '0 0 1000 600')
-      .attr('preserveAspectRatio', 'xMidYMid meet');
-
-    // Convert TopoJSON to GeoJSON
-    let states;
-    if (typeof topojson !== 'undefined') {
-      states = topojson.feature(this.topoData, this.topoData.objects.states);
-    } else {
-      // Fallback: use the geometries directly
-      states = {
-        type: "FeatureCollection",
-        features: this.topoData.objects.states.geometries.map(geom => ({
-          type: "Feature",
-          properties: geom.properties,
-          geometry: geom
-        }))
-      };
+    // Check if D3.js is available
+    if (typeof d3 === 'undefined') {
+      this.showError('D3.js library failed to load. Please check your internet connection or try refreshing the page.');
+      return;
     }
 
-    // Render states
-    this.svg.selectAll('.state')
-      .data(states.features)
-      .enter()
-      .append('path')
-      .attr('class', 'state')
-      .attr('d', this.path)
-      .attr('data-state', d => d.properties.id)
-      .attr('data-name', d => d.properties.name)
-      .attr('tabindex', '0')
-      .attr('role', 'button')
-      .attr('aria-label', d => `${d.properties.name} state - click for details`)
-      .on('mouseenter', (event, d) => this.showTooltip(event, d))
-      .on('mouseleave', () => this.hideTooltip())
-      .on('click', (event, d) => this.showStateDetails(d))
-      .on('keydown', (event, d) => {
-        if (event.key === 'Enter' || event.key === ' ') {
-          event.preventDefault();
-          this.showStateDetails(d);
-        }
-      });
+    try {
+      // Create SVG
+      this.svg = d3.select(this.container)
+        .append('svg')
+        .attr('class', 'map-svg')
+        .attr('viewBox', '0 0 1000 600')
+        .attr('preserveAspectRatio', 'xMidYMid meet');
 
-    // Update colors
-    this.updateColors();
+      // Convert TopoJSON to GeoJSON
+      let states;
+      if (typeof topojson !== 'undefined' && this.topoData.objects && this.topoData.objects.states) {
+        states = topojson.feature(this.topoData, this.topoData.objects.states);
+      } else {
+        // Fallback: use the geometries directly
+        states = {
+          type: "FeatureCollection",
+          features: this.topoData.objects.states.geometries.map(geom => ({
+            type: "Feature",
+            properties: geom.properties,
+            geometry: geom
+          }))
+        };
+      }
+
+      // Render states
+      this.svg.selectAll('.state')
+        .data(states.features)
+        .enter()
+        .append('path')
+        .attr('class', 'state')
+        .attr('d', this.path)
+        .attr('data-state', d => d.properties.id)
+        .attr('data-name', d => d.properties.name)
+        .attr('tabindex', '0')
+        .attr('role', 'button')
+        .attr('aria-label', d => `${d.properties.name} state - click for details`)
+        .on('mouseenter', (event, d) => this.showTooltip(event, d))
+        .on('mouseleave', () => this.hideTooltip())
+        .on('click', (event, d) => this.showStateDetails(d))
+        .on('keydown', (event, d) => {
+          if (event.key === 'Enter' || event.key === ' ') {
+            event.preventDefault();
+            this.showStateDetails(d);
+          }
+        });
+
+      // Update colors
+      this.updateColors();
+    } catch (error) {
+      console.error('Error rendering map:', error);
+      this.showError(`Map rendering failed: ${error.message}`);
+    }
   }
 
   updateColors() {
@@ -406,17 +427,81 @@ class USMap {
         <div class="text-center text-muted" style="padding: 40px;">
           <h3>Map Unavailable</h3>
           <p>${message}</p>
+          <button onclick="location.reload()" class="btn btn-primary" style="margin-top: 16px;">Retry</button>
         </div>
       `;
     }
+  }
+
+  // Fallback map without D3.js
+  renderFallbackMap() {
+    if (!this.container) return;
+    
+    this.container.innerHTML = `
+      <div style="padding: 20px; text-align: center;">
+        <h4>Interactive Map Unavailable</h4>
+        <p class="text-muted">D3.js library failed to load. Showing data table instead.</p>
+        <div style="margin-top: 20px;">
+          ${this.renderStateDataTable()}
+        </div>
+      </div>
+    `;
+  }
+
+  renderStateDataTable() {
+    if (!this.stateData || Object.keys(this.stateData).length === 0) {
+      return '<p class="text-muted">No state data available</p>';
+    }
+
+    const states = Object.entries(this.stateData)
+      .sort(([,a], [,b]) => (b.demActive + b.gopActive) - (a.demActive + a.gopActive))
+      .slice(0, 10);
+
+    let tableHTML = `
+      <div class="table-container">
+        <table>
+          <thead>
+            <tr>
+              <th>State</th>
+              <th>Democrats</th>
+              <th>Republicans</th>
+              <th>Total ES</th>
+              <th>Avg Cash</th>
+            </tr>
+          </thead>
+          <tbody>
+    `;
+
+    states.forEach(([stateName, data]) => {
+      const displayName = stateName.charAt(0).toUpperCase() + stateName.slice(1).replace(/([A-Z])/g, ' $1');
+      tableHTML += `
+        <tr>
+          <td><strong>${displayName}</strong></td>
+          <td>${data.demActive || 0}</td>
+          <td>${data.gopActive || 0}</td>
+          <td>${(data.totalES || 0).toLocaleString()}</td>
+          <td>$${(data.avgCash || 0).toLocaleString()}</td>
+        </tr>
+      `;
+    });
+
+    tableHTML += '</tbody></table></div>';
+    return tableHTML;
   }
 }
 
 // Initialize map when DOM is loaded
 document.addEventListener('DOMContentLoaded', () => {
+  console.log('Maps page loaded, initializing map...');
+  console.log('D3 available:', typeof d3 !== 'undefined');
+  console.log('TopoJSON available:', typeof topojson !== 'undefined');
+  
   const mapContainer = document.getElementById('us-map');
   if (mapContainer) {
+    console.log('Map container found, creating USMap instance...');
     window.usMap = new USMap('us-map');
+  } else {
+    console.error('Map container not found!');
   }
 });
 

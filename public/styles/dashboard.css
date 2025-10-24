@@ -401,6 +401,26 @@ select:focus-visible, input[type="text"]:focus-visible {
   max-height: 500px;
 }
 
+/* Fallback map table styles */
+.map-container .table-container {
+  max-height: 400px;
+  overflow-y: auto;
+  border: 1px solid var(--border);
+  border-radius: 6px;
+}
+
+.map-container .table-container table {
+  margin: 0;
+  font-size: 0.9rem;
+}
+
+.map-container .table-container th {
+  background: var(--bg-tertiary);
+  position: sticky;
+  top: 0;
+  z-index: 1;
+}
+
 .state {
   cursor: pointer;
   stroke: var(--border);
