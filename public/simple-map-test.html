@@ -94,48 +94,68 @@
                 const offsetX = 100;
                 const offsetY = 100;
                 
+                let successCount = 0;
+                let errorCount = 0;
+                
                 data.objects.states.geometries.forEach((geom, index) => {
-                    const path = document.createElementNS('http://www.w3.org/2000/svg', 'path');
-                    
-                    // Convert coordinates to SVG path
-                    let pathData = '';
-                    geom.coordinates.forEach(ring => {
-                        ring.forEach((coord, i) => {
-                            const x = coord[0] * scale + offsetX;
-                            const y = coord[1] * scale + offsetY;
-                            pathData += (i === 0 ? 'M' : 'L') + x + ',' + y + ' ';
-                        });
-                        pathData += 'Z ';
-                    });
-                    
-                    path.setAttribute('d', pathData);
-                    path.setAttribute('class', 'state');
-                    path.setAttribute('data-state', geom.properties.id);
-                    path.setAttribute('data-name', geom.properties.name);
-                    path.setAttribute('fill', '#e0e0e0');
-                    path.setAttribute('stroke', '#999');
-                    path.setAttribute('stroke-width', '1');
-                    path.style.cursor = 'pointer';
-                    
-                    // Add hover effect
-                    path.addEventListener('mouseenter', () => {
-                        path.setAttribute('fill', '#4CAF50');
-                    });
-                    path.addEventListener('mouseleave', () => {
-                        path.setAttribute('fill', '#e0e0e0');
-                    });
-                    
-                    // Add click handler
-                    path.addEventListener('click', () => {
-                        alert(`Clicked on ${geom.properties.name} (${geom.properties.id})`);
-                    });
-                    
-                    svg.appendChild(path);
+                    try {
+                        const path = document.createElementNS('http://www.w3.org/2000/svg', 'path');
+                        
+                        // Convert coordinates to SVG path
+                        let pathData = '';
+                        if (geom.coordinates && Array.isArray(geom.coordinates)) {
+                            geom.coordinates.forEach(ring => {
+                                if (Array.isArray(ring)) {
+                                    ring.forEach((coord, i) => {
+                                        if (Array.isArray(coord) && coord.length >= 2) {
+                                            const x = coord[0] * scale + offsetX;
+                                            const y = coord[1] * scale + offsetY;
+                                            pathData += (i === 0 ? 'M' : 'L') + x + ',' + y + ' ';
+                                        }
+                                    });
+                                    pathData += 'Z ';
+                                }
+                            });
+                        }
+                        
+                        if (pathData.trim()) {
+                            path.setAttribute('d', pathData);
+                            path.setAttribute('class', 'state');
+                            path.setAttribute('data-state', geom.properties.id);
+                            path.setAttribute('data-name', geom.properties.name);
+                            path.setAttribute('fill', '#e0e0e0');
+                            path.setAttribute('stroke', '#999');
+                            path.setAttribute('stroke-width', '1');
+                            path.style.cursor = 'pointer';
+                            
+                            // Add hover effect
+                            path.addEventListener('mouseenter', () => {
+                                path.setAttribute('fill', '#4CAF50');
+                            });
+                            path.addEventListener('mouseleave', () => {
+                                path.setAttribute('fill', '#e0e0e0');
+                            });
+                            
+                            // Add click handler
+                            path.addEventListener('click', () => {
+                                alert(`Clicked on ${geom.properties.name} (${geom.properties.id})`);
+                            });
+                            
+                            svg.appendChild(path);
+                            successCount++;
+                        } else {
+                            addResult(`⚠ Warning: Empty path data for ${geom.properties.name}`, true);
+                            errorCount++;
+                        }
+                    } catch (error) {
+                        addResult(`✗ Error creating path for ${geom.properties.name}: ${error.message}`, true);
+                        errorCount++;
+                    }
                 });
                 
                 mapDiv.innerHTML = '';
                 mapDiv.appendChild(svg);
-                addResult('✓ Simple SVG map created successfully');
+                addResult(`✓ SVG map created: ${successCount} states rendered, ${errorCount} errors`);
                 addResult('✓ Map is interactive - try hovering and clicking on states!');
                 
             } catch (error) {

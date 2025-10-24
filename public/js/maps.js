@@ -35,6 +35,11 @@ class USMap {
       // Setup projection and path
       this.setupProjection();
       
+      // Validate path generator before rendering
+      if (!this.path || typeof this.path !== 'function') {
+        throw new Error('Path generator not properly initialized');
+      }
+      
       // Render the map
       this.renderMap();
       
@@ -157,11 +162,24 @@ class USMap {
         translate: [0, 0]
       };
       this.path = (feature) => {
-        if (feature.type === 'Polygon') {
-          const coords = feature.coordinates[0];
-          return `M ${coords.map(([x, y]) => `${x},${y}`).join(' L ')} Z`;
+        try {
+          if (feature && feature.geometry) {
+            // Handle GeoJSON format
+            const geom = feature.geometry;
+            if (geom.type === 'Polygon' && geom.coordinates && geom.coordinates[0]) {
+              const coords = geom.coordinates[0];
+              return `M ${coords.map(([x, y]) => `${x},${y}`).join(' L ')} Z`;
+            }
+          } else if (feature && feature.type === 'Polygon' && feature.coordinates) {
+            // Handle direct geometry format
+            const coords = feature.coordinates[0];
+            return `M ${coords.map(([x, y]) => `${x},${y}`).join(' L ')} Z`;
+          }
+          return '';
+        } catch (error) {
+          console.error('Error in path generator:', error, feature);
+          return '';
         }
-        return '';
       };
     }
   }
@@ -205,6 +223,11 @@ class USMap {
         .attr('viewBox', '0 0 1000 600')
         .attr('preserveAspectRatio', 'xMidYMid meet');
 
+      // Validate path generator
+      if (!this.path || typeof this.path !== 'function') {
+        throw new Error('Path generator not properly initialized');
+      }
+
       // Convert TopoJSON to GeoJSON
       let states;
       if (typeof topojson !== 'undefined' && this.topoData.arcs) {
@@ -231,20 +254,40 @@ class USMap {
       });
 
       // Render states
-      this.svg.selectAll('.state')
+      const statePaths = this.svg.selectAll('.state')
         .data(states.features)
         .enter()
         .append('path')
         .attr('class', 'state')
-        .attr('d', this.path)
+        .attr('d', (d) => {
+          try {
+            const pathData = this.path(d);
+            if (!pathData) {
+              console.warn('Empty path data for state:', d.properties?.name || 'Unknown');
+            }
+            return pathData;
+          } catch (error) {
+            console.error('Error generating path for state:', d.properties?.name || 'Unknown', error);
+            return '';
+          }
+        })
         .attr('data-state', d => d.properties?.id || 'unknown')
         .attr('data-name', d => d.properties?.name || 'Unknown')
         .attr('tabindex', '0')
         .attr('role', 'button')
-        .attr('aria-label', d => `${d.properties?.name || 'Unknown'} state - click for details`)
-        .on('mouseenter', (event, d) => this.showTooltip(event, d))
-        .on('mouseleave', () => this.hideTooltip())
-        .on('click', (event, d) => this.showStateDetails(d))
+        .attr('aria-label', d => `${d.properties?.name || 'Unknown'} state - click for details`);
+
+      // Add event listeners with proper context
+      statePaths
+        .on('mouseenter', (event, d) => {
+          this.showTooltip(event, d);
+        })
+        .on('mouseleave', (event, d) => {
+          this.hideTooltip();
+        })
+        .on('click', (event, d) => {
+          this.showStateDetails(d);
+        })
         .on('keydown', (event, d) => {
           if (event.key === 'Enter' || event.key === ' ') {
             event.preventDefault();
