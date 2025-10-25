@@ -36,7 +36,8 @@ const isRepublican = (party = '') => /republican/i.test(String(party));
 // Scanning behavior
 const STOP_AFTER_CONSECUTIVE_MISSES = 150; // stop when this many in a row are missing
 const SCAN_BATCH_SIZE = 25;
-const SCAN_CONCURRENCY = 10;
+const SCAN_CONCURRENCY = 4; // lower concurrency to reduce throttling/login fallbacks
+const BATCH_DELAY_MS = 500;
 
 // Role sync is now imported from lib/role-sync.js
 
@@ -217,7 +218,7 @@ module.exports = {
       const processor = new ParallelProcessor({
         maxConcurrency: SCAN_CONCURRENCY,
         batchSize: SCAN_BATCH_SIZE,
-        delayBetweenBatches: 150
+        delayBetweenBatches: BATCH_DELAY_MS
       });
 
       // Process existing profiles first
@@ -260,13 +261,33 @@ module.exports = {
         let consecutiveMisses = 0;
         let highestGoodId = lastGood;
 
+        const isBlocked = (html) => {
+          if (!html) return true;
+          const text = String(html);
+          if (text.length < 800) return true;
+          if (/\bLogin\s*\|\s*Power\s*Play\s*USA\b/i.test(text)) return true;
+          if (/<title>\s*Login\s*\|\s*Power\s*Play\s*USA\s*<\/title>/i.test(text)) return true;
+          return false;
+        };
+
+        const fetchProfile = async (profileId) => {
+          const targetUrl = `${BASE}/users/${profileId}`;
+          let result = await navigateWithSession(session, targetUrl, 'domcontentloaded');
+          if (isBlocked(result.html)) {
+            // Try a harder load
+            result = await navigateWithSession(session, targetUrl, 'load');
+            // Small settle
+            try { await session.page.waitForTimeout?.(300); } catch {}
+          }
+          return result;
+        };
+
         const scanBatch = async (startId) => {
           const ids = [];
           for (let i = 0; i < SCAN_BATCH_SIZE; i++) ids.push(startId + i);
           const newProfileProcessor = async (profileId) => {
             try {
-              const targetUrl = `${BASE}/users/${profileId}`;
-              const result = await navigateWithSession(session, targetUrl, 'networkidle2');
+              const result = await fetchProfile(profileId);
               const info = parseProfile(result.html);
               if (info?.name) {
                 mergeProfileRecord(db, profileId, info);
