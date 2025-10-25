@@ -299,19 +299,39 @@ module.exports = {
           const text = String(html);
           if (text.length < 800) return true;
           if (/\bLogin\s*\|\s*Power\s*Play\s*USA\b/i.test(text)) return true;
+          if (/Just\s+a\s+moment/i.test(text)) return true; // CF interstitial
+          if (/cf-\w+/i.test(text)) return true; // Cloudflare markup
+          if (/turnstile/i.test(text)) return true; // CF turnstile widget
           if (/<title>\s*Login\s*\|\s*Power\s*Play\s*USA\s*<\/title>/i.test(text)) return true;
           return false;
         };
 
         const fetchProfile = async (profileId) => {
           const targetUrl = `${BASE}/users/${profileId}`;
-          let result = await navigateWithSession(session, targetUrl, 'domcontentloaded');
-          if (isBlocked(result.html)) {
-            // Try a harder load
-            result = await navigateWithSession(session, targetUrl, 'load');
-            // Small settle
-            try { await session.page.waitForTimeout?.(300); } catch {}
-          }
+          const attempt = async (waitUntil) => {
+            const res = await navigateWithSession(session, targetUrl, waitUntil);
+            try { await session.page.waitForTimeout?.(200); } catch {}
+            return res;
+          };
+
+          // Attempt 1: domcontentloaded
+          let result = await attempt('domcontentloaded');
+          if (!isBlocked(result.html)) return result;
+
+          // Attempt 2: networkidle2
+          try { result = await attempt('networkidle2'); } catch { /* ignore */ }
+          if (!isBlocked(result.html)) return result;
+
+          // Attempt 3: load
+          try { result = await attempt('load'); } catch { /* ignore */ }
+          if (!isBlocked(result.html)) return result;
+
+          // Attempt 4: bounce via home and back
+          try {
+            await navigateWithSession(session, `${BASE}/`, 'domcontentloaded');
+            await session.page.waitForTimeout?.(300);
+            result = await attempt('load');
+          } catch { /* ignore */ }
           return result;
         };
 
