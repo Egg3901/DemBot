@@ -33,6 +33,10 @@ const TYPE_LABELS = {
 
 const isDemocratic = (party = '') => /democratic/i.test(String(party));
 const isRepublican = (party = '') => /republican/i.test(String(party));
+// Scanning behavior
+const STOP_AFTER_CONSECUTIVE_MISSES = 150; // stop when this many in a row are missing
+const SCAN_BATCH_SIZE = 25;
+const SCAN_CONCURRENCY = 10;
 
 // Role sync is now imported from lib/role-sync.js
 
@@ -99,20 +103,23 @@ module.exports = {
     const jsonPath = path.join(dataDir, 'profiles.json');
     if (!fs.existsSync(dataDir)) fs.mkdirSync(dataDir, { recursive: true });
 
-    let db = { updatedAt: new Date().toISOString(), profiles: {}, byDiscord: {} };
+    let db = { updatedAt: new Date().toISOString(), profiles: {}, byDiscord: {}, meta: {} };
     if (fs.existsSync(jsonPath)) {
       try {
-        db = ensureDbShape(JSON.parse(fs.readFileSync(jsonPath, 'utf8')));
+        const loaded = JSON.parse(fs.readFileSync(jsonPath, 'utf8'));
+        db = ensureDbShape(loaded);
+        if (loaded && typeof loaded.meta === 'object') db.meta = loaded.meta;
       } catch {
         db = { updatedAt: new Date().toISOString(), profiles: {}, byDiscord: {} };
       }
     }
     db = ensureDbShape(db);
+    if (!db.meta || typeof db.meta !== 'object') db.meta = {};
     if (!db.updatedAt) db.updatedAt = new Date().toISOString();
 
     // Ensure a file exists immediately so users can see it while crawling
     const writeDb = () => {
-      const payload = { ...ensureDbShape(db), updatedAt: new Date().toISOString() };
+      const payload = { ...ensureDbShape(db), meta: db.meta || {}, updatedAt: new Date().toISOString() };
       fs.writeFileSync(jsonPath, JSON.stringify(payload, null, 2));
     };
     if (!fs.existsSync(jsonPath)) writeDb();
@@ -145,8 +152,9 @@ module.exports = {
       [];
 
     const maxKnownIdAll = allIds.length ? allIds[allIds.length - 1] : 0;
-    const baseStartId = 1000;
-    const newStartId = Math.max(maxKnownIdAll + 1, baseStartId);
+    const lastGood = Number(db.meta?.lastGoodProfileId) || 0;
+    const baseStartId = 1;
+    const newStartId = Math.max(maxKnownIdAll + 1, lastGood + 1, baseStartId);
     const effectiveNewStartId = newStartId;
     const typeSummaryLabel = updateType === 'new' ? 'New accounts' : `${typeLabel} + new accounts`;
 
@@ -177,7 +185,7 @@ module.exports = {
     let session = null;
     try {
       const fallbackLoginId = allIds.length ? allIds[allIds.length - 1] : baseStartId;
-      const loginSeed = existingTargetIds.length ? existingTargetIds[0] : fallbackLoginId;
+      const loginSeed = (updateType === 'new' || updateType === 'all') ? effectiveNewStartId : (existingTargetIds[0] || fallbackLoginId);
       const loginId = Number.isFinite(loginSeed) && loginSeed > 0 ? loginSeed : baseStartId;
       
       session = await sessionManager.authenticateSession('update', `${BASE}/users/${loginId}`);
@@ -185,9 +193,9 @@ module.exports = {
       await interaction.editReply(`Updating profiles (${typeSummaryLabel})...`);
 
       const processor = new ParallelProcessor({
-        maxConcurrency: 12,
-        batchSize: 20,
-        delayBetweenBatches: 200
+        maxConcurrency: SCAN_CONCURRENCY,
+        batchSize: SCAN_BATCH_SIZE,
+        delayBetweenBatches: 150
       });
 
       // Process existing profiles first
@@ -223,41 +231,56 @@ module.exports = {
         checked += results.length;
       }
 
-      // Process new profiles
-      if (effectiveNewStartId > 0) {
-        const newIds = [];
-        for (let id = effectiveNewStartId; id < effectiveNewStartId + 100; id++) {
-          newIds.push(id);
-        }
+      // Process new profiles (sequential scan) unless specifically limited to party-only updates
+      const allowScanning = (updateType === 'all' || updateType === 'new');
+      if (allowScanning && effectiveNewStartId > 0) {
+        let nextId = effectiveNewStartId;
+        let consecutiveMisses = 0;
+        let highestGoodId = lastGood;
 
-        const newProfileProcessor = async (profileId) => {
-          try {
-            const targetUrl = `${BASE}/users/${profileId}`;
-            const result = await navigateWithSession(session, targetUrl, 'networkidle2');
-            const info = parseProfile(result.html);
-            
-            if (info?.name) {
-              mergeProfileRecord(db, profileId, info);
-              return { id: profileId, found: true, info };
+        const scanBatch = async (startId) => {
+          const ids = [];
+          for (let i = 0; i < SCAN_BATCH_SIZE; i++) ids.push(startId + i);
+          const newProfileProcessor = async (profileId) => {
+            try {
+              const targetUrl = `${BASE}/users/${profileId}`;
+              const result = await navigateWithSession(session, targetUrl, 'networkidle2');
+              const info = parseProfile(result.html);
+              if (info?.name) {
+                mergeProfileRecord(db, profileId, info);
+                return { id: profileId, found: true, info };
+              }
+              return { id: profileId, found: false };
+            } catch (error) {
+              return { id: profileId, found: false, error: error.message };
             }
-            
-            return { id: profileId, found: false };
-          } catch (error) {
-            return { id: profileId, found: false, error: error.message };
-          }
+          };
+          const { results: batchResults } = await processor.processProfiles(ids, newProfileProcessor);
+          return batchResults;
         };
 
-        const { results: newResults } = await processor.processProfiles(newIds, newProfileProcessor, {
-          onProgress: (processed, total) => {
-            if (processed % 10 === 0 || processed === total) {
-              const foundCount = newResults.filter(r => r?.found).length;
-              interaction.editReply(`Scanning new profiles... ${processed}/${total} processed, ${foundCount} found`);
+        while (consecutiveMisses < STOP_AFTER_CONSECUTIVE_MISSES) {
+          const batchResults = await scanBatch(nextId);
+          let batchFound = 0;
+          for (const r of batchResults) {
+            checked += 1;
+            if (r?.found) {
+              found += 1;
+              consecutiveMisses = 0;
+              if (r.id > highestGoodId) highestGoodId = r.id;
+            } else {
+              consecutiveMisses += 1;
             }
           }
-        });
-
-        found += newResults.filter(r => r?.found).length;
-        checked += newResults.length;
+          batchFound = batchResults.filter(r => r?.found).length;
+          if (batchFound > 0) {
+            db.meta.lastGoodProfileId = highestGoodId;
+            writeDb();
+          }
+          await interaction.editReply(`Scanning new profiles from #${effectiveNewStartId}... checked ${checked}, found ${found} (misses in a row: ${consecutiveMisses})`);
+          nextId += SCAN_BATCH_SIZE;
+          if (consecutiveMisses >= STOP_AFTER_CONSECUTIVE_MISSES) break;
+        }
       }
 
       writeDb();
