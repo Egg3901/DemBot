@@ -60,6 +60,13 @@ module.exports = {
           { name: 'Races (all states)', value: 'races' },
         )
     )
+    .addIntegerOption(opt =>
+      opt
+        .setName('start')
+        .setDescription('Starting user id for new scans (default 1000)')
+        .setRequired(false)
+        .setMinValue(1)
+    )
     .addBooleanOption(opt =>
       opt
         .setName('reset')
@@ -90,6 +97,7 @@ module.exports = {
     const applyRoles = interaction.options.getBoolean('roles') || false;
     const clearRoles = interaction.options.getBoolean('clear') || false;
     const doReset = interaction.options.getBoolean('reset') || false;
+    const startOverride = interaction.options.getInteger('start');
     const typeInputRaw = (interaction.options.getString('type') || 'all').toLowerCase();
     const updateType = TYPE_CHOICES.has(typeInputRaw) ? typeInputRaw : 'all';
     const typeLabel = TYPE_LABELS[updateType] || TYPE_LABELS.all;
@@ -144,7 +152,7 @@ module.exports = {
       db = { updatedAt: new Date().toISOString(), profiles: {}, byDiscord: {}, meta: { lastGoodProfileId: 0 } };
       // Persist the empty DB immediately
       fs.writeFileSync(jsonPath, JSON.stringify({ ...db, updatedAt: new Date().toISOString() }, null, 2));
-      await interaction.editReply('profiles.json reset: starting full rescan from ID #1...');
+      await interaction.editReply('profiles.json reset: starting full rescan...');
     }
 
     const profilesList = Object.values(db.profiles || {});
@@ -176,7 +184,7 @@ module.exports = {
 
     const maxKnownIdAll = allIds.length ? allIds[allIds.length - 1] : 0;
     const lastGood = Number(db.meta?.lastGoodProfileId) || 0;
-    const baseStartId = 1;
+    const baseStartId = Number.isInteger(startOverride) && startOverride > 0 ? startOverride : 1000;
     const newStartId = Math.max(maxKnownIdAll + 1, lastGood + 1, baseStartId);
     const effectiveNewStartId = newStartId;
     const typeSummaryLabel = updateType === 'new' ? 'New accounts' : `${typeLabel} + new accounts`;
