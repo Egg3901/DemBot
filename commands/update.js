@@ -61,6 +61,12 @@ module.exports = {
     )
     .addBooleanOption(opt =>
       opt
+        .setName('reset')
+        .setDescription('Recreate profiles.json from scratch before updating')
+        .setRequired(false)
+    )
+    .addBooleanOption(opt =>
+      opt
         .setName('roles')
         .setDescription('After update, apply needed roles to matching server members')
         .setRequired(false)
@@ -82,6 +88,7 @@ module.exports = {
 
     const applyRoles = interaction.options.getBoolean('roles') || false;
     const clearRoles = interaction.options.getBoolean('clear') || false;
+    const doReset = interaction.options.getBoolean('reset') || false;
     const typeInputRaw = (interaction.options.getString('type') || 'all').toLowerCase();
     const updateType = TYPE_CHOICES.has(typeInputRaw) ? typeInputRaw : 'all';
     const typeLabel = TYPE_LABELS[updateType] || TYPE_LABELS.all;
@@ -110,7 +117,7 @@ module.exports = {
         db = ensureDbShape(loaded);
         if (loaded && typeof loaded.meta === 'object') db.meta = loaded.meta;
       } catch {
-        db = { updatedAt: new Date().toISOString(), profiles: {}, byDiscord: {} };
+        db = { updatedAt: new Date().toISOString(), profiles: {}, byDiscord: {}, meta: {} };
       }
     }
     db = ensureDbShape(db);
@@ -123,6 +130,21 @@ module.exports = {
       fs.writeFileSync(jsonPath, JSON.stringify(payload, null, 2));
     };
     if (!fs.existsSync(jsonPath)) writeDb();
+
+    // Optional reset flow: backup current DB (if any) and start fresh
+    if (doReset) {
+      try {
+        if (fs.existsSync(jsonPath)) {
+          const stamp = new Date().toISOString().replace(/[:.]/g, '-');
+          const backupPath = path.join(dataDir, `profiles.reset.${stamp}.json`);
+          fs.renameSync(jsonPath, backupPath);
+        }
+      } catch {}
+      db = { updatedAt: new Date().toISOString(), profiles: {}, byDiscord: {}, meta: { lastGoodProfileId: 0 } };
+      // Persist the empty DB immediately
+      fs.writeFileSync(jsonPath, JSON.stringify({ ...db, updatedAt: new Date().toISOString() }, null, 2));
+      await interaction.editReply('profiles.json reset: starting full rescan from ID #1...');
+    }
 
     const profilesList = Object.values(db.profiles || {});
     const allIdsSet = new Set();
