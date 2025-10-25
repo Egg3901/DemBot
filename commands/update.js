@@ -213,6 +213,22 @@ module.exports = {
       
       session = await sessionManager.authenticateSession('update', `${BASE}/users/${loginId}`);
 
+      // Verify authentication before proceeding (avoid scraping logged-out pages)
+      try {
+        const authCheck = await navigateWithSession(session, `${BASE}/`, 'domcontentloaded');
+        const $auth = cheerio.load(authCheck.html || '');
+        const pageTitle = ($auth('title').first().text() || '').trim();
+        const hasProfilePic = $auth('#profilePicture').length > 0;
+        const showsLoginTitle = /\bLogin\b/i.test(pageTitle);
+        const showsLoginLink = $auth('a[href*="/login"]').length > 0 && $auth('a[href*="/logout"]').length === 0;
+        if (showsLoginTitle || (!hasProfilePic && showsLoginLink)) {
+          await interaction.editReply('Authentication failed: not logged in. Set PPUSA_EMAIL/PPUSA_PASSWORD or run `npm run cookie:update` to set PPUSA_COOKIE, then restart the bot.');
+          return;
+        }
+      } catch (_) {
+        // if auth check fails, continue; downstream fetches will surface errors
+      }
+
       await interaction.editReply(`Updating profiles (${typeSummaryLabel})...`);
 
       const processor = new ParallelProcessor({
