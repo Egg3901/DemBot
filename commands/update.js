@@ -36,7 +36,7 @@ const isRepublican = (party = '') => /republican/i.test(String(party));
 // Scanning behavior
 const STOP_AFTER_CONSECUTIVE_MISSES = 150; // stop when this many in a row are missing
 const SCAN_BATCH_SIZE = 25;
-const SCAN_CONCURRENCY = 4; // lower concurrency to reduce throttling/login fallbacks
+const SCAN_CONCURRENCY = 2; // lower concurrency to reduce throttling/login fallbacks
 const BATCH_DELAY_MS = 500;
 
 // Role sync is now imported from lib/role-sync.js
@@ -245,6 +245,8 @@ module.exports = {
       if (existingTargetIds.length > 0) {
         const profileProcessor = async (profileId) => {
           try {
+            // slight jitter
+            try { await new Promise(r => setTimeout(r, 50 + Math.floor(Math.random()*75))); } catch {}
             const targetUrl = `${BASE}/users/${profileId}`;
             const result = await navigateWithSession(session, targetUrl, 'networkidle2');
             const info = parseProfile(result.html);
@@ -252,6 +254,17 @@ module.exports = {
             if (info?.name) {
               mergeProfileRecord(db, profileId, info);
               return { id: profileId, found: true, info };
+            }
+            // Fallback: derive name from title/meta when logged-in content loaded
+            const $fb = cheerio.load(result.html || '');
+            const title = ($fb('title').first().text() || '').trim();
+            const og = ($fb('meta[property="og:title"]').attr('content') || '').trim();
+            const pageTitle = (og || title || '').split('|')[0].trim();
+            const looksLogin = /\bLogin\b/i.test(title) || /\bLogin\b/i.test(og);
+            if (!looksLogin && pageTitle && pageTitle.length > 1) {
+              const minimal = { name: pageTitle };
+              mergeProfileRecord(db, profileId, minimal);
+              return { id: profileId, found: true, info: minimal };
             }
             
             return { id: profileId, found: false };
@@ -307,11 +320,24 @@ module.exports = {
           for (let i = 0; i < SCAN_BATCH_SIZE; i++) ids.push(startId + i);
           const newProfileProcessor = async (profileId) => {
             try {
+              // jitter between requests
+              try { await new Promise(r => setTimeout(r, 50 + Math.floor(Math.random()*100))); } catch {}
               const result = await fetchProfile(profileId);
               const info = parseProfile(result.html);
               if (info?.name) {
                 mergeProfileRecord(db, profileId, info);
                 return { id: profileId, found: true, info };
+              }
+              // Fallback: accept meta/title username if not a login page
+              const $fb = cheerio.load(result.html || '');
+              const title = ($fb('title').first().text() || '').trim();
+              const og = ($fb('meta[property="og:title"]').attr('content') || '').trim();
+              const pageTitle = (og || title || '').split('|')[0].trim();
+              const looksLogin = /\bLogin\b/i.test(title) || /\bLogin\b/i.test(og);
+              if (!looksLogin && pageTitle && pageTitle.length > 1) {
+                const minimal = { name: pageTitle };
+                mergeProfileRecord(db, profileId, minimal);
+                return { id: profileId, found: true, info: minimal };
               }
               return { id: profileId, found: false };
             } catch (error) {
